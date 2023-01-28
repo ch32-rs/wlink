@@ -20,7 +20,7 @@ const ENDPOINT_IN: u8 = 0x81;
 Request packet:
 
 | 0    | 1   | 2   | 3 ... n |
-| ---- | --- | --- | --- ----|
+| ---- | --- | --- | ------- |
 | 0x81 | CMD | LEN | PAYLOAD ... |
 
 Success response packet:
@@ -127,8 +127,9 @@ pub enum RiscvChip {
 
 ## Firmware Versions
 
-Current 2.8
-2.7
+WCH-LinkUtility v2.8
+
+MRS IDE v2.7
 
 ## Variants
 
