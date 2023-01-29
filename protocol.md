@@ -36,14 +36,13 @@ Error response packet:
 where:
 
 - LEN = PAYLOAD.len()
-- PAYLOAD, sumcommand
+- PAYLOAD
 
 ## Command
 
 - 0x01 - ?
 - 0x02 - Program
 - 0x06 - Flash Read Protect
-- getromram, for riscvchip 3, 5, 6
 - 0x08 - DMI OP
 - 0x0b - Reset
 - 0x0d - Info
@@ -92,7 +91,7 @@ oOp_u8 = 0x02 when failed
 - 0x01 Get firmware version
 - 0x02 Connect chip
 - 0x03 ? stage after connect chip and read riscvchip, for riscvchip 1
-- 0x04 ? stage after connect chip and read riscvchip, for riscvchip 3, 5, 6, 9
+- 0x04 get rom ram split, for riscvchip 3, 5, 6, 9
 - 0xff End process
 
 ### 0x0e
