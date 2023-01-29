@@ -103,24 +103,26 @@ oOp_u8 = 0x02 when failed
 
 - 0x55: failed to connect with riscvchip
 
-
 ## Constants
 
 ### RiscvChip
 
 ```rust
+/// Currently supported RISC-V chip series
 #[repr(u8)]
 pub enum RiscvChip {
     /// CH32V103 RISC-V3A series
     CH32V103 = 0x01,
-    /// CH571/CH573 RISC-V3A series
-    CH573 = 0x02,
-    /// CH569/CH565 RISC-V3A series
-    CH569 = 0x03,
+    /// CH571/CH573 RISC-V3A BLE 4.2 series
+    CH57x = 0x02,
+    /// CH565/CH569 RISC-V3A series
+    CH56x = 0x03,
     /// CH32V20x RISC-V4B/V4C series
     CH32V20x = 0x05,
     /// CH32V30x RISC-V4C/V4F series
     CH32V30x = 0x06,
+    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series
+    CH58x = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
 }
@@ -148,7 +150,7 @@ MRS IDE v2.7
 
 ### WCH-OpenOCD
 
-Since WCH updates there firmware to 2.8, the old version of WCH-OpenOCD is not working.
+Since WCH updates there firmware to 2.8, the old version of WCH-OpenOCD might be not working.
 
 - <https://github.com/Seneral/riscv-openocd-wch>
 - <https://github.com/jiegec/riscv-openocd>
