@@ -1,0 +1,24 @@
+[package]
+name = "wlink"
+version = "0.0.0"
+edition = "2021"
+authors = ["Andelf <andelf@gmail.com>"]
+repository = "https://github.com/ch32-rs/wlink"
+documentation = "https://docs.rs/wlink"
+homepage = "https://github.com/ch32-rs/wlink"
+categories = []
+description = "WCH-Link command link util by Rust"
+keywords = ["WCH", "CH32V"]
+readme = "README.md"
+license = "MIT/Apache-2.0"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+clap = "4.1.4"
+env_logger = "0.10.0"
+hex = "0.4.3"
+log = "0.4.17"
+rusb = "0.9.1"
+simplelog = "0.12.0"
+thiserror = "1.0.38"
