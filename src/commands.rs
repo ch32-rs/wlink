@@ -90,13 +90,26 @@ impl Command for SetRamAddress {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Program {
+    // after read memory
+    PerformOperation = 0x0c,
+}
+impl Command for Program {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x02;
+    fn payload(&self) -> Vec<u8> {
+        vec![*self as u8]
+    }
+}
+
 /// Read a block of memory from the chip.
 pub struct ReadMemory {
     pub start_addr: u32,
     pub len: u32,
 }
 impl Command for ReadMemory {
-    type Response = Vec<u8>;
+    type Response = ();
     const COMMAND_ID: u8 = 0x03;
     fn payload(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(8);

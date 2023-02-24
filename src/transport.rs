@@ -2,11 +2,11 @@
 
 use std::time::Duration;
 
-use rusb::{DeviceHandle};
+use rusb::DeviceHandle;
 
 use crate::{
     commands::{Command, Response},
-    error::{Result},
+    error::Result,
 };
 
 const ENDPOINT_OUT: u8 = 0x01;
@@ -30,6 +30,9 @@ pub trait Transport {
 
         C::Response::from_raw(&resp)
     }
+
+    fn read_from_data_channel(&mut self, n: usize) -> Result<Vec<u8>>;
+    fn write_to_data_channel(&mut self, buf: &[u8]) -> Result<()>;
 }
 
 impl Transport for DeviceHandle<rusb::Context> {
@@ -40,7 +43,7 @@ impl Transport for DeviceHandle<rusb::Context> {
             self.read_bulk(ENDPOINT_IN, &mut buf, Duration::from_millis(USB_TIMEOUT_MS))?;
 
         let resp = buf[..bytes_read].to_vec();
-        log::debug!(
+        log::trace!(
             "recv {} {}",
             hex::encode(&resp[..3]),
             hex::encode(&resp[3..])
@@ -49,8 +52,32 @@ impl Transport for DeviceHandle<rusb::Context> {
     }
 
     fn write_bytes(&mut self, buf: &[u8]) -> Result<()> {
-        log::debug!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         self.write_bulk(ENDPOINT_OUT, buf, Duration::from_millis(USB_TIMEOUT_MS))?;
         Ok(())
+    }
+
+    fn read_from_data_channel(&mut self, n: usize) -> Result<Vec<u8>> {
+        let mut buf = Vec::with_capacity(n);
+        let mut bytes_read = 0;
+        while bytes_read < n {
+            let mut chunk = vec![0u8; 64];
+            let chunk_read = self.read_bulk(
+                RAW_ENDPOINT_IN,
+                &mut chunk,
+                Duration::from_millis(USB_TIMEOUT_MS),
+            )?;
+            buf.extend_from_slice(&chunk[..chunk_read]);
+            bytes_read += chunk_read;
+        }
+        if bytes_read != n {
+            return Err(crate::error::Error::InvalidPayloadLength);
+        }
+        log::trace!("read data channel {} bytes", bytes_read);
+        Ok(buf)
+    }
+
+    fn write_to_data_channel(&mut self, buf: &[u8]) -> Result<()> {
+        todo!()
     }
 }

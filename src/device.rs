@@ -1,9 +1,6 @@
 use rusb::{DeviceHandle, UsbContext};
 
-use crate::{
-    error::{Result},
-    transport::Transport,
-};
+use crate::{error::Result, transport::Transport};
 
 const VENDOR_ID: u16 = 0x1a86;
 const PRODUCT_ID: u16 = 0x8010;
@@ -13,7 +10,7 @@ const ENDPOINT_IN: u8 = 0x81;
 
 #[derive(Debug)]
 pub struct WchLink {
-    device_handle: DeviceHandle<rusb::Context>,
+    pub(crate) device_handle: DeviceHandle<rusb::Context>,
 }
 
 impl WchLink {
@@ -42,11 +39,7 @@ impl WchLink {
 
         let mut device_handle = device.open()?;
 
-        log::debug!("Aquired handle for probe");
-
         let config = device.active_config_descriptor()?;
-
-        log::debug!("Active config descriptor: {:?}", &config);
 
         let descriptor = device.device_descriptor()?;
 

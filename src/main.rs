@@ -22,15 +22,10 @@ fn main() -> Result<()> {
     println!("UID => {uid}");
 
     // read csr
-    link.send_command(DmiOp::write(0x10, 0x80000001))?;
-    link.send_command(DmiOp::write(0x10, 0x80000001))?;
-    link.send_command(DmiOp::write(0x10, 0x00000001))?;
-    link.send_command(DmiOp::write(0x04, 0x00000000))?;
-    link.send_command(DmiOp::write(0x17, 0x00220f12))?; // 0xf12 marchid
-    link.send_command(DmiOp::read(0x16))?;
-    let marchid = link.send_command(DmiOp::read(0x04))?;
-    println!("marchid => {:08x}", marchid.data);
-    let marchid = marchid.data;
+    let marchid = link.read_csr(0xf12)?;
+    // marchid => dc68d882
+    // Parsed marchid: WCH-V4B
+    println!("marchid => {:08x}", marchid);
     println!(
         "Parsed marchid: {}{}{}-{}{}{}",
         (((marchid >> 26) & 0x1F) + 64) as u8 as char,
@@ -41,12 +36,9 @@ fn main() -> Result<()> {
         ((marchid & 0x1F) + 64) as u8 as char,
     );
 
-    // resume sequence
-    link.send_command(DmiOp::write(0x10, 0x80000001))?;
-    link.send_command(DmiOp::write(0x10, 0x80000001))?;
-    link.send_command(DmiOp::write(0x10, 0x00000001))?;
-    link.send_command(DmiOp::write(0x10, 0x40000001))?;
-    link.send_command(DmiOp::read(0x11))?;
+    // link.resume_mcu()?;
+    let mem = link.read_memory(0x08000000, 0x1000)?;
+    println!("=> {:02x?}", mem);
 
     //link.send_command(commands::Reset::Quit)?;
 

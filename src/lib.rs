@@ -5,6 +5,7 @@ use self::error::{Error, Result};
 pub mod commands;
 pub mod device;
 pub mod error;
+mod operations;
 pub mod transport;
 
 /// All WCH-Link probe variants, see-also: http://www.wch-ic.com/products/WCH-Link.html
