@@ -1,3 +1,5 @@
+//! USB transport of WCH-Link
+
 use std::time::Duration;
 
 use rusb::{DeviceHandle, UsbContext};
@@ -7,7 +9,8 @@ use crate::{
     error::{Error, Result},
 };
 
-const USB_TIMEOUT_MS: u64 = 5000;
+const VENDOR_ID: u16 = 0x1a86;
+const PRODUCT_ID: u16 = 0x8010;
 
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
@@ -16,9 +19,7 @@ const RAW_ENDPOINT_OUT: u8 = 0x02;
 const RAW_ENDPOINT_IN: u8 = 0x82;
 
 //  1a86:8010 1a86 WCH-Link  Serial: 0001A0000000
-
-const VENDOR_ID: u16 = 0x1a86;
-const PRODUCT_ID: u16 = 0x8010;
+const USB_TIMEOUT_MS: u64 = 5000;
 
 #[derive(Debug)]
 pub struct WchLink {

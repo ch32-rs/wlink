@@ -21,13 +21,13 @@ pub enum WchLinkVariant {
 }
 
 impl WchLinkVariant {
-    pub fn from(value: u8) -> Self {
+    pub fn try_from_u8(value: u8) -> Result<Self> {
         match value {
-            1 => Self::Ch549,
-            2 => Self::ECh32v305,
-            3 => Self::SCh32v203,
-            4 => Self::B,
-            _ => panic!("invalid WCH-Link variant {}", value),
+            1 => Ok(Self::Ch549),
+            2 => Ok(Self::ECh32v305),
+            3 => Ok(Self::SCh32v203),
+            4 => Ok(Self::B),
+            _ => Err(Error::Custom(format!("Unknown WCH-Link variant {}", value))),
         }
     }
 }
@@ -43,7 +43,7 @@ impl fmt::Display for WchLinkVariant {
     }
 }
 
-/// Currently supported RISC-V chip series
+/// Currently supported RISC-V chip series/family
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum RiscvChip {
@@ -73,7 +73,10 @@ impl RiscvChip {
             0x06 => Ok(RiscvChip::CH32V30x),
             0x07 => Ok(RiscvChip::CH58x),
             0x09 => Ok(RiscvChip::CH32V003),
-            _ => Err(Error::Custom(format!("invalid riscvchip {}", value))),
+            _ => Err(Error::Custom(format!(
+                "Unknown riscvchip type 0x{:02x}",
+                value
+            ))),
         }
     }
 }

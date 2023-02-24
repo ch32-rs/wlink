@@ -9,17 +9,16 @@ fn main() -> Result<()> {
     let mut link = WchLink::open_nth(0)?;
 
     let resp = link.send_command(commands::control::GetProbeInfo)?;
-
-    println!("=> {:?}", resp);
+    println!("probe info: {:?}", resp);
 
     let r = link.send_command(commands::control::AttachChip)?;
-    println!("=> {:?}", r);
+    println!("chip info: {:?}", r);
 
     let protected = link.send_command(commands::GetChipProtected)?;
     println!("protected => {:?}", protected);
 
-    let uid = link.send_command(commands::GetChipId);
-    println!("=> {}", uid);
+    let uid = link.send_command(commands::GetChipId)?;
+    println!("UID => {}", uid);
 
     // read csr
     link.send_command(DmiOp::write(0x10, 0x80000001))?;
@@ -32,7 +31,7 @@ fn main() -> Result<()> {
     println!("marchid => {:08x}", marchid.data);
     let marchid = marchid.data;
     println!(
-        "{}{}{}-{}{}{}",
+        "Parsed marchid: {}{}{}-{}{}{}",
         (((marchid >> 26) & 0x1F) + 64) as u8 as char,
         (((marchid >> 21) & 0x1F) + 64) as u8 as char,
         (((marchid >> 16) & 0x1F) + 64) as u8 as char,

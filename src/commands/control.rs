@@ -1,3 +1,5 @@
+//! Probe control commands.
+
 use std::fmt;
 
 use crate::{RiscvChip, WchLinkVariant};
@@ -14,9 +16,9 @@ impl Command for GetProbeInfo {
 }
 #[derive(Debug)]
 pub struct ProbeInfo {
-    major_version: u8,
-    minor_version: u8,
-    link_variant: WchLinkVariant,
+    pub major_version: u8,
+    pub minor_version: u8,
+    pub variant: WchLinkVariant,
 }
 impl Response for ProbeInfo {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
@@ -26,8 +28,9 @@ impl Response for ProbeInfo {
         Ok(Self {
             major_version: bytes[0],
             minor_version: bytes[1],
-            link_variant: if bytes.len() == 4 {
-                WchLinkVariant::from(bytes[2])
+            // Only avaliable in newer version of firmware
+            variant: if bytes.len() == 4 {
+                WchLinkVariant::try_from_u8(bytes[2])?
             } else {
                 WchLinkVariant::Ch549
             },

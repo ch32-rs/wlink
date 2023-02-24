@@ -1,10 +1,12 @@
-// pub mod dmi;
+//! WCH-Link commands and response types
 
 use std::fmt;
 
 use crate::error::{Error, Result};
 
 pub mod control;
+
+/// Command to call the WCH-Link
 pub trait Command {
     type Response: Response;
     const COMMAND_ID: u8;
@@ -17,6 +19,7 @@ pub trait Command {
     }
 }
 
+/// Response type of a command call
 pub trait Response {
     /// parse the PAYLOAD part only
     fn from_payload(bytes: &[u8]) -> Result<Self>
@@ -172,11 +175,14 @@ impl Command for DmiOp {
     type Response = DmiOpResponse;
     const COMMAND_ID: u8 = 0x08;
     fn payload(&self) -> Vec<u8> {
+        const DMI_OP_NOP: u8 = 0;
         const DMI_OP_READ: u8 = 1;
         const DMI_OP_WRITE: u8 = 2;
         let mut bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         match self {
-            DmiOp::Nop => (),
+            DmiOp::Nop => {
+                bytes[5] = DMI_OP_NOP; // :)
+            }
             DmiOp::Read { addr } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_READ;
