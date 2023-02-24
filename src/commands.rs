@@ -1,6 +1,6 @@
 //! WCH-Link commands and response types
 
-use std::fmt;
+use std::{fmt, ops};
 
 use crate::error::{Error, Result};
 

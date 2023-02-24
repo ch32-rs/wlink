@@ -1,10 +1,5 @@
 use anyhow::Result;
-use wlink::{
-    commands::{self, DmiOp},
-    device::WchLink,
-    transport::Transport,
-    FLASH_OP_V2_V3,
-};
+use wlink::{commands, device::WchLink};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -47,7 +42,9 @@ fn main() -> Result<()> {
     let mem = link.read_memory(0x08000000, 0x0200)?;
     println!("{}", nu_pretty_hex::pretty_hex(&mem));
 
-    //link.send_command(commands::Reset::Quit)?;
+    // link.reset_mcu_and_run()?;
+
+    link.send_command(commands::Reset::Quit)?;
 
     link.send_command(commands::control::DetachChip)?;
 

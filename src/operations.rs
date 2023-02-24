@@ -7,8 +7,8 @@ use crate::{
     device::WchLink,
     error::Error,
     error::Result,
+    flash_op,
     transport::Transport,
-    FLASH_OP_V2_V3,
 };
 
 impl WchLink {
@@ -37,23 +37,23 @@ impl WchLink {
         if data.len() % 256 != 0 {
             data.resize((data.len() / 256 + 1) * 256, 0);
         }
-        // Fix endian
-        //for chunk in data.chunks_exact_mut(4) {
-        //    chunk.reverse();
-        //}
         self.send_command(SetRamAddress {
             start_addr: 0x0800_0000,
             len: data.len() as u32,
         })?;
         self.send_command(Program::BeginWriteMemory)?;
-        self.device_handle.write_to_data_channel(&FLASH_OP_V2_V3)?;
+        self.device_handle
+            .write_to_data_channel(&flash_op::CH32V307)?;
 
-        for _ in 0..10 {
+        for i in 0.. {
             // check written
             if let Ok(n) = self.send_command(Program::ExecMemory) {
                 if n == 0x07 {
                     break;
                 }
+            }
+            if i > 10 {
+                return Err(Error::Custom("timeout while write flash".into()));
             }
             sleep(Duration::from_millis(500));
         }
@@ -61,7 +61,7 @@ impl WchLink {
 
         self.send_command(Program::BeginWriteFlash)?;
 
-        // send pack by pack
+        // TODO: send pack by pack
         self.device_handle.write_to_data_channel(&data)?;
         let rxbuf = self.device_handle.read_from_data_channel(4)?;
         if rxbuf[3] == 0x02 || rxbuf[3] == 0x04 {
@@ -77,7 +77,6 @@ impl WchLink {
     pub fn halt_mcu(&mut self) -> Result<()> {
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
-
         Ok(())
     }
 
@@ -87,6 +86,31 @@ impl WchLink {
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x40000001))?;
         self.send_command(DmiOp::read(0x11))?;
+        Ok(())
+    }
+
+    pub fn reset_mcu_and_run(&mut self) -> Result<()> {
+        self.send_command(DmiOp::write(0x10, 0x80000001))?;
+        self.send_command(DmiOp::write(0x10, 0x80000001))?;
+        self.send_command(DmiOp::write(0x10, 0x00000001))?;
+        self.send_command(DmiOp::write(0x10, 0x00000003))?; // initiate a core reset request
+
+        let dmcontrol = self.dmi_read(0x11)?;
+        if (dmcontrol >> 18) & 0b11 == 0b11 {
+            // reseted
+            println!("reseted");
+        } else {
+            println!("not reseted");
+        }
+
+        self.send_command(DmiOp::write(0x10, 0x00000001))?;
+        self.send_command(DmiOp::write(0x10, 0x10000001))?;
+        let dmcontrol = self.dmi_read(0x11)?;
+        if (dmcontrol >> 18) & 0b11 == 0b00 {
+            println!("reset status cleared");
+        } else {
+            println!("reset status not cleared");
+        }
         Ok(())
     }
 
@@ -117,5 +141,15 @@ impl WchLink {
         }
 
         Ok(())
+    }
+
+    pub fn dmi_read(&mut self, addr: u8) -> Result<u32> {
+        loop {
+            let resp = self.send_command(DmiOp::read(addr))?;
+            if resp.is_success() {
+                return Ok(resp.data);
+            }
+            sleep(Duration::from_millis(10));
+        }
     }
 }
