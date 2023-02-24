@@ -4,6 +4,7 @@ use std::fmt;
 
 use crate::error::{Error, Result};
 
+// 0x0d
 pub mod control;
 
 /// Command to call the WCH-Link
@@ -63,8 +64,50 @@ impl Response for Vec<u8> {
     }
 }
 
-pub struct GetChipProtected;
-impl Command for GetChipProtected {
+impl Response for u8 {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() != 1 {
+            return Err(Error::InvalidPayloadLength);
+        }
+        Ok(bytes[0])
+    }
+}
+
+/// Set RAM address (0x08000000)
+pub struct SetRamAddress {
+    // 0x08000000 or 0x00000000
+    pub start_addr: u32,
+    pub len: u32,
+}
+impl Command for SetRamAddress {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x01;
+    fn payload(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(8);
+        bytes.extend_from_slice(&self.start_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.len.to_be_bytes());
+        bytes
+    }
+}
+
+/// Read a block of memory from the chip.
+pub struct ReadMemory {
+    pub start_addr: u32,
+    pub len: u32,
+}
+impl Command for ReadMemory {
+    type Response = Vec<u8>;
+    const COMMAND_ID: u8 = 0x03;
+    fn payload(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(8);
+        bytes.extend_from_slice(&self.start_addr.to_be_bytes());
+        bytes.extend_from_slice(&self.len.to_be_bytes());
+        bytes
+    }
+}
+
+pub struct GetFlashProtected;
+impl Command for GetFlashProtected {
     type Response = bool;
     const COMMAND_ID: u8 = 0x06;
     fn payload(&self) -> Vec<u8> {
@@ -82,6 +125,21 @@ impl Response for bool {
             Ok(false)
         } else {
             Err(Error::InvalidPayload)
+        }
+    }
+}
+
+pub struct SetFlashProtected {
+    pub protected: bool,
+}
+impl Command for SetFlashProtected {
+    type Response = u8;
+    const COMMAND_ID: u8 = 0x06;
+    fn payload(&self) -> Vec<u8> {
+        if self.protected {
+            vec![0x03]
+        } else {
+            vec![0x02]
         }
     }
 }
@@ -119,7 +177,7 @@ impl Response for ChipId {
         }
     }
 
-    fn from_payload(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(_bytes: &[u8]) -> Result<Self> {
         unreachable!("ChipId is not be parsed from payload; qed")
     }
 }
@@ -141,6 +199,7 @@ impl fmt::Debug for ChipId {
     }
 }
 
+/// Device reset
 pub enum Reset {
     Quit,
 }
@@ -155,6 +214,7 @@ impl Command for Reset {
     }
 }
 
+/// DMI operations
 pub enum DmiOp {
     Nop,
     Read { addr: u8 },
@@ -196,11 +256,29 @@ impl Command for DmiOp {
         bytes
     }
 }
+
+// DMI_STATUS_SUCCESS = 0,
+// DMI_STATUS_FAILED = 2,
+// DMI_STATUS_BUSY = 3
 #[derive(Debug)]
 pub struct DmiOpResponse {
     pub addr: u8,
     pub data: u32,
     pub op: u8,
+}
+impl DmiOpResponse {
+    pub fn is_busy(&self) -> bool {
+        self.op == 0x03
+    }
+
+    pub fn is_success(&self) -> bool {
+        self.op == 0x00
+    }
+
+    // should read mcause to get the reason
+    pub fn is_failed(&self) -> bool {
+        self.op == 0x02 || self.op == 0x03
+    }
 }
 impl Response for DmiOpResponse {
     fn from_payload(bytes: &[u8]) -> Result<Self> {

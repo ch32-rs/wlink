@@ -3,6 +3,7 @@ use std::fmt;
 use self::error::{Error, Result};
 
 pub mod commands;
+pub mod device;
 pub mod error;
 pub mod transport;
 
@@ -77,6 +78,30 @@ impl RiscvChip {
                 "Unknown riscvchip type 0x{:02x}",
                 value
             ))),
+        }
+    }
+
+    pub fn page_size(&self) -> u32 {
+        match self {
+            RiscvChip::CH32V103 => 128,
+            RiscvChip::CH32V003 => 64,
+            _ => 256,
+        }
+    }
+
+    pub fn code_flash_start(&self) -> u32 {
+        match self {
+            RiscvChip::CH58x => 0x0000_0000,
+            RiscvChip::CH56x => 0x0000_0000,
+            RiscvChip::CH57x => 0x0000_0000,
+            _ => 0x0800_0000,
+        }
+    }
+
+    pub fn write_pack_size(&self) -> u32 {
+        match self {
+            RiscvChip::CH32V003 => 1024,
+            _ => 4096,
         }
     }
 }

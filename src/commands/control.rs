@@ -1,4 +1,5 @@
 //! Probe control commands.
+//  COMMAND_ID = 0x0d
 
 use std::fmt;
 
@@ -51,6 +52,7 @@ pub struct ChipInfo {
     riscvchip: u8,
     pub chip_type: u32,
 }
+impl ChipInfo {}
 impl Response for ChipInfo {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 5 {
@@ -79,5 +81,16 @@ impl Command for DetachChip {
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         vec![0xff]
+    }
+}
+
+/// Only avaliable for CH32V2, CH32V3, CH56x
+/// 0, 1, 2, 3
+pub struct GetChipRomRamSplit;
+impl Command for GetChipRomRamSplit {
+    type Response = u8;
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        vec![0x04]
     }
 }

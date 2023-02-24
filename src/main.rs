@@ -1,7 +1,8 @@
 use anyhow::Result;
 use wlink::{
     commands::{self, DmiOp},
-    transport::{Transport, WchLink},
+    device::WchLink,
+    transport::Transport,
 };
 
 fn main() -> Result<()> {
@@ -14,7 +15,7 @@ fn main() -> Result<()> {
     let r = link.send_command(commands::control::AttachChip)?;
     println!("chip info: {:?}", r);
 
-    let protected = link.send_command(commands::GetChipProtected)?;
+    let protected = link.send_command(commands::GetFlashProtected)?;
     println!("protected => {:?}", protected);
 
     let uid = link.send_command(commands::GetChipId)?;
