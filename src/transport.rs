@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use rusb::{DeviceHandle, UsbContext};
 
-use crate::{error::{Error, Result}, commands::{Command, Response}};
+use crate::{
+    commands::{Command, Response},
+    error::{Error, Result},
+};
 
 const USB_TIMEOUT_MS: u64 = 5000;
 
@@ -105,24 +108,7 @@ pub trait Transport {
         self.write_bytes(&raw)?;
         let resp = self.read_bytes()?;
 
-        if resp[0] == 0x81 {
-            let reason = resp[1];
-            let len = resp[2] as usize;
-            if len != resp[3..].len() {
-                return Err(Error::InvalidPayloadLength);
-            }
-            let payload = resp[3..3 + len].to_vec();
-            return Err(Error::Protocol(reason, payload));
-        } else if resp[0] == 0x82 {
-            let len = resp[2] as usize;
-            if len != resp[3..].len() {
-                return Err(Error::InvalidPayloadLength);
-            }
-            let payload = resp[3..3 + len].to_vec();
-            C::Response::from_bytes(&payload)
-        } else {
-            Err(Error::Custom("Invalid response".to_string()))
-        }
+        C::Response::from_raw(&resp)
     }
 }
 
@@ -137,7 +123,11 @@ impl Transport for WchLink {
         )?;
 
         let resp = buf[..bytes_read].to_vec();
-        log::debug!("recv {} {}", hex::encode(&resp[..3]), hex::encode(&resp[3..]));
+        log::debug!(
+            "recv {} {}",
+            hex::encode(&resp[..3]),
+            hex::encode(&resp[3..])
+        );
         Ok(resp)
     }
 

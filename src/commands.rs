@@ -1,6 +1,8 @@
 // pub mod dmi;
 
-use crate::error::Result;
+use std::fmt;
+
+use crate::error::{Error, Result};
 
 pub mod control;
 pub trait Command {
@@ -16,19 +18,44 @@ pub trait Command {
 }
 
 pub trait Response {
-    fn from_bytes(bytes: &[u8]) -> Result<Self>
+    /// parse the PAYLOAD part only
+    fn from_payload(bytes: &[u8]) -> Result<Self>
     where
         Self: Sized;
+    /// default implementation for parsing [0x82 CMD LEN PAYLOAD] style response
+    fn from_raw(resp: &[u8]) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        if resp[0] == 0x81 {
+            let reason = resp[1];
+            let len = resp[2] as usize;
+            if len != resp[3..].len() {
+                return Err(Error::InvalidPayloadLength);
+            }
+            let payload = resp[3..3 + len].to_vec();
+            return Err(Error::Protocol(reason, payload));
+        } else if resp[0] == 0x82 {
+            let len = resp[2] as usize;
+            if len != resp[3..].len() {
+                return Err(Error::InvalidPayloadLength);
+            }
+            let payload = resp[3..3 + len].to_vec();
+            Self::from_payload(&payload)
+        } else {
+            Err(Error::InvalidPayload)
+        }
+    }
 }
 
 impl Response for () {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
         Ok(())
     }
 }
 
 impl Response for Vec<u8> {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
         Ok(bytes.to_vec())
     }
 }
@@ -42,29 +69,72 @@ impl Command for GetChipProtected {
     }
 }
 impl Response for bool {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 1 {
-            return Err(crate::error::Error::InvalidPayloadLength);
+            return Err(Error::InvalidPayloadLength);
         }
         if bytes[0] == 0x01 {
             Ok(true)
         } else if bytes[0] == 0x02 {
             Ok(false)
         } else {
-            Err(crate::error::Error::InvalidPayload)
+            Err(Error::InvalidPayload)
         }
     }
 }
 
-/// Does not use standard response.
-/// ffff00 20 aeb4abcd 16c6bc45 e339e339e339e339
-///   cd-ab-b4-ae-45-bc-c6-16
+/// Get Chip UID, the UID is also avaliable in the `wchisp` command.
 pub struct GetChipId;
 impl Command for GetChipId {
-    type Response = Vec<u8>;
+    type Response = ChipId;
     const COMMAND_ID: u8 = 0x11;
     fn payload(&self) -> Vec<u8> {
         vec![0x09]
+    }
+}
+
+// This does not use standard response format:
+// raw response: ffff00 20 aeb4abcd 16c6bc45 e339e339e339e339
+// UID in wchisp: cd-ab-b4-ae-45-bc-c6-16
+// FIXME: no idea of what the remaining bytes mean
+pub struct ChipId(pub [u8; 8]);
+impl Response for ChipId {
+    fn from_raw(resp: &[u8]) -> Result<Self> {
+        if resp.len() <= 12 {
+            return Err(Error::InvalidPayloadLength);
+        }
+        if &resp[..2] == b"\xff\xff" {
+            let mut bytes = [0u8; 8];
+            bytes[0..4]
+                .copy_from_slice(&u32::from_be_bytes(resp[4..8].try_into().unwrap()).to_le_bytes());
+            bytes[4..8].copy_from_slice(
+                &u32::from_be_bytes(resp[8..12].try_into().unwrap()).to_le_bytes(),
+            );
+            Ok(Self(bytes))
+        } else {
+            Err(Error::InvalidPayload)
+        }
+    }
+
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
+        unreachable!("ChipId is not be parsed from payload; qed")
+    }
+}
+impl fmt::Display for ChipId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(
+            &self
+                .0
+                .iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<Vec<_>>()
+                .join("-"),
+        )
+    }
+}
+impl fmt::Debug for ChipId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&format!("ChipId({:02x?})", &self.0[..]))
     }
 }
 
@@ -127,13 +197,28 @@ pub struct DmiOpResponse {
     pub op: u8,
 }
 impl Response for DmiOpResponse {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 6 {
-            return Err(crate::error::Error::InvalidPayloadLength);
+            return Err(Error::InvalidPayloadLength);
         }
         let addr = bytes[0];
         let op = bytes[5];
         let data = u32::from_be_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
         Ok(DmiOpResponse { addr, data, op })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chip_id_parsing() {
+        let raw = hex::decode("ffff0020aeb4abcd16c6bc45e339e339e339e339").unwrap();
+
+        let uid = ChipId::from_raw(&raw).unwrap();
+
+        println!("=> {:?}", uid);
+        assert_eq!("cd-ab-b4-ae-45-bc-c6-16", uid.to_string());
     }
 }

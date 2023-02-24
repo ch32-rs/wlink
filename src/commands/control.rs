@@ -19,7 +19,7 @@ pub struct ProbeInfo {
     link_variant: WchLinkVariant,
 }
 impl Response for ProbeInfo {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 3 {
             return Err(crate::error::Error::InvalidPayloadLength);
         }
@@ -49,7 +49,7 @@ pub struct ChipInfo {
     pub chip_type: u32,
 }
 impl Response for ChipInfo {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 5 {
             return Err(crate::error::Error::InvalidPayloadLength);
         }
