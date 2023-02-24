@@ -10,16 +10,16 @@ fn main() -> Result<()> {
     let mut link = WchLink::open_nth(0)?;
 
     let resp = link.send_command(commands::control::GetProbeInfo)?;
-    println!("probe info: {:?}", resp);
+    println!("probe info: {resp:?}");
 
     let r = link.send_command(commands::control::AttachChip)?;
-    println!("chip info: {:?}", r);
+    println!("chip info: {r:?}");
 
     let protected = link.send_command(commands::GetFlashProtected)?;
-    println!("protected => {:?}", protected);
+    println!("protected => {protected:?}");
 
     let uid = link.send_command(commands::GetChipId)?;
-    println!("UID => {}", uid);
+    println!("UID => {uid}");
 
     // read csr
     link.send_command(DmiOp::write(0x10, 0x80000001))?;

@@ -38,7 +38,7 @@ pub trait Response {
                 return Err(Error::InvalidPayloadLength);
             }
             let payload = resp[3..3 + len].to_vec();
-            return Err(Error::Protocol(reason, payload));
+            Err(Error::Protocol(reason, payload))
         } else if resp[0] == 0x82 {
             let len = resp[2] as usize;
             if len != resp[3..].len() {
@@ -53,7 +53,7 @@ pub trait Response {
 }
 
 impl Response for () {
-    fn from_payload(bytes: &[u8]) -> Result<Self> {
+    fn from_payload(_bytes: &[u8]) -> Result<Self> {
         Ok(())
     }
 }
@@ -187,7 +187,7 @@ impl fmt::Display for ChipId {
             &self
                 .0
                 .iter()
-                .map(|b| format!("{:02x}", b))
+                .map(|b| format!("{b:02x}"))
                 .collect::<Vec<_>>()
                 .join("-"),
         )
@@ -302,7 +302,7 @@ mod tests {
 
         let uid = ChipId::from_raw(&raw).unwrap();
 
-        println!("=> {:?}", uid);
+        println!("=> {uid:?}");
         assert_eq!("cd-ab-b4-ae-45-bc-c6-16", uid.to_string());
     }
 }

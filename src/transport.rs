@@ -2,11 +2,11 @@
 
 use std::time::Duration;
 
-use rusb::{DeviceHandle, UsbContext};
+use rusb::{DeviceHandle};
 
 use crate::{
     commands::{Command, Response},
-    error::{Error, Result},
+    error::{Result},
 };
 
 const ENDPOINT_OUT: u8 = 0x01;

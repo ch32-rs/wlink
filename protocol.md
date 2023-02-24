@@ -40,18 +40,35 @@ where:
 
 ## Command
 
-- 0x01 - ?
+- 0x01 - Set address and size
 - 0x02 - Program
+- 0x03 - Memory read
 - 0x06 - Flash Read Protect
 - 0x08 - DMI OP
 - 0x0b - Reset
 - 0x0d - Info
-- 0x0e - Disable debug
+- 0x0e - Disable debug for riscvchip 2, 3
 - 0x0f - ? beigin verify
+
+### 0x01 - Set RAM address and size
 
 ### 0x02 - Program
 
 - 0x01 Erase
+- 0x03 execute ram?
+- 0x05 begin buck transfer?
+- 0x06 ?? - wlink_ready_write
+- 0x07 Verify
+- 0x08 End Program
+- 0x09 buck transfer ends
+- 0x0a ? Verify
+- 0x0b for riscvchip 1, = verify
+- 0x0c BeginReadMemory
+
+### 0x03 - Memory Read
+
+- offset: u32
+- len: u32
 
 ### 0x06 - Flash Read Protect
 
@@ -84,7 +101,7 @@ oOp_u8 = 0x02 when failed
 - 0x01 Quit reset
   - 300ms delay after this command
 - 0x02 Reset for riscvchip 0x02
-- 0x03 Reset
+- 0x03 Reset, normal?
 
 ### 0x0d - Control
 

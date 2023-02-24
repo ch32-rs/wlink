@@ -1,7 +1,7 @@
 use rusb::{DeviceHandle, UsbContext};
 
 use crate::{
-    error::{Error, Result},
+    error::{Result},
     transport::Transport,
 };
 
