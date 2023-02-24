@@ -78,6 +78,18 @@ impl Transport for DeviceHandle<rusb::Context> {
     }
 
     fn write_to_data_channel(&mut self, buf: &[u8]) -> Result<()> {
-        todo!()
+        let mut bytes_written = 0;
+        const CHUNK: usize = 64;
+        while bytes_written < buf.len() {
+            let chunk = &buf[bytes_written..(bytes_written + CHUNK).min(buf.len())];
+            self.write_bulk(
+                RAW_ENDPOINT_OUT,
+                chunk,
+                Duration::from_millis(USB_TIMEOUT_MS),
+            )?;
+            bytes_written += chunk.len();
+        }
+        log::trace!("write data channel {} bytes", bytes_written);
+        Ok(())
     }
 }

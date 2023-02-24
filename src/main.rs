@@ -3,6 +3,7 @@ use wlink::{
     commands::{self, DmiOp},
     device::WchLink,
     transport::Transport,
+    FLASH_OP_V2_V3,
 };
 
 fn main() -> Result<()> {
@@ -15,6 +16,7 @@ fn main() -> Result<()> {
     let r = link.send_command(commands::control::AttachChip)?;
     println!("chip info: {r:?}");
 
+    // ??? multiple times?
     let protected = link.send_command(commands::GetFlashProtected)?;
     println!("protected => {protected:?}");
 
@@ -37,13 +39,17 @@ fn main() -> Result<()> {
     );
 
     // link.resume_mcu()?;
-    let mem = link.read_memory(0x08000000, 0x1000)?;
-    println!("=> {:02x?}", mem);
+
+    let firmware = include_bytes!("../firmware.bin");
+    println!("flash {} bytes", firmware.len());
+    link.write_flash(firmware)?;
+
+    let mem = link.read_memory(0x08000000, 0x0200)?;
+    println!("{}", nu_pretty_hex::pretty_hex(&mem));
 
     //link.send_command(commands::Reset::Quit)?;
 
-    //let r = link.send_command(commands::control::DetachChip)?;
-    //println!("detach => {:?}", r);
+    link.send_command(commands::control::DetachChip)?;
 
     Ok(())
 }

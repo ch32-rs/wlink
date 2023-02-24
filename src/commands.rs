@@ -92,11 +92,18 @@ impl Command for SetRamAddress {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Program {
+    BeginWriteFlash = 0x02,
+    // after write memory
+    BeginWriteMemory = 0x05,
+
+    ExecMemory = 0x07,
+    // EndProgram
+    End = 0x08,
     // after read memory
-    PerformOperation = 0x0c,
+    BeginReadMemory = 0x0c,
 }
 impl Command for Program {
-    type Response = ();
+    type Response = u8;
     const COMMAND_ID: u8 = 0x02;
     fn payload(&self) -> Vec<u8> {
         vec![*self as u8]
@@ -170,7 +177,7 @@ impl Command for GetChipId {
 // This does not use standard response format:
 // raw response: ffff00 20 aeb4abcd 16c6bc45 e339e339e339e339
 // UID in wchisp: cd-ab-b4-ae-45-bc-c6-16
-// FIXME: no idea of what the remaining bytes mean
+// e339e339e339e339 => inital value of erased flash
 pub struct ChipId(pub [u8; 8]);
 impl Response for ChipId {
     fn from_raw(resp: &[u8]) -> Result<Self> {

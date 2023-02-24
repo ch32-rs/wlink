@@ -1,11 +1,14 @@
 //! Predefined operations for WCH-Link
 
+use std::{thread::sleep, time::Duration};
+
 use crate::{
-    commands::{DmiOp, Program, ReadMemory},
+    commands::{DmiOp, Program, ReadMemory, SetRamAddress},
     device::WchLink,
     error::Error,
     error::Result,
     transport::Transport,
+    FLASH_OP_V2_V3,
 };
 
 impl WchLink {
@@ -18,7 +21,7 @@ impl WchLink {
             start_addr: address,
             len: length,
         })?;
-        self.send_command(Program::PerformOperation)?;
+        self.send_command(Program::BeginReadMemory)?;
 
         let mut mem = self.device_handle.read_from_data_channel(length as usize)?;
         // Fix endian
@@ -27,6 +30,48 @@ impl WchLink {
         }
 
         Ok(mem)
+    }
+
+    pub fn write_flash(&mut self, data: &[u8]) -> Result<()> {
+        let mut data = data.to_vec();
+        if data.len() % 256 != 0 {
+            data.resize((data.len() / 256 + 1) * 256, 0);
+        }
+        // Fix endian
+        //for chunk in data.chunks_exact_mut(4) {
+        //    chunk.reverse();
+        //}
+        self.send_command(SetRamAddress {
+            start_addr: 0x0800_0000,
+            len: data.len() as u32,
+        })?;
+        self.send_command(Program::BeginWriteMemory)?;
+        self.device_handle.write_to_data_channel(&FLASH_OP_V2_V3)?;
+
+        for _ in 0..10 {
+            // check written
+            if let Ok(n) = self.send_command(Program::ExecMemory) {
+                if n == 0x07 {
+                    break;
+                }
+            }
+            sleep(Duration::from_millis(500));
+        }
+        // wlink_fastprogram
+
+        self.send_command(Program::BeginWriteFlash)?;
+
+        // send pack by pack
+        self.device_handle.write_to_data_channel(&data)?;
+        let rxbuf = self.device_handle.read_from_data_channel(4)?;
+        if rxbuf[3] == 0x02 || rxbuf[3] == 0x04 {
+            // success
+            // wlink_endprogram
+            self.send_command(Program::End)?;
+            Ok(())
+        } else {
+            Err(Error::Custom("error while fastprogram".into()))
+        }
     }
 
     pub fn halt_mcu(&mut self) -> Result<()> {
