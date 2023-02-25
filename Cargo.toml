@@ -1,17 +1,16 @@
 [package]
 name = "wlink"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["Andelf <andelf@gmail.com>"]
 repository = "https://github.com/ch32-rs/wlink"
 documentation = "https://docs.rs/wlink"
 homepage = "https://github.com/ch32-rs/wlink"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
-description = "WCH-Link tool for CH32V faimily MCUs(WIP)"
+description = "WCH-Link flash tool for CH32V faimily MCUs"
 keywords = ["embedded", "WCH", "CH32V", "WCH-Link"]
 readme = "README.md"
 license = "MIT/Apache-2.0"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.68"

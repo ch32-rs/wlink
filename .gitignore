@@ -2,3 +2,5 @@
 Cargo.lock
 trash/
 test.py
+
+firmware.bin
