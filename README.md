@@ -1,4 +1,4 @@
-# wlink - WCH-LinkRV support
+# wlink - WCH-Link command line tool
 
 WIP.
 
