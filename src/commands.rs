@@ -2,7 +2,7 @@
 
 use std::{fmt, ops};
 
-use crate::error::{Error, Result};
+use crate::{error::Error, Result};
 
 // 0x0d
 pub mod control;

@@ -1,14 +1,18 @@
 #![feature(try_trait_v2)]
 use std::fmt;
 
-use self::error::{Error, Result};
-
 pub mod commands;
 pub mod device;
 pub mod error;
 pub mod flash_op;
 mod operations;
-pub mod transport;
+mod transport;
+
+pub use transport::Transport;
+/// The Result alias used in wlink library
+pub type Result<T> = std::result::Result<T, error::Error>;
+
+use error::Error;
 
 /// All WCH-Link probe variants, see-also: http://www.wch-ic.com/products/WCH-Link.html
 #[derive(Clone, Copy, Debug)]
@@ -31,7 +35,7 @@ impl WchLinkVariant {
             2 => Ok(Self::ECh32v305),
             3 => Ok(Self::SCh32v203),
             4 => Ok(Self::B),
-            _ => Err(Error::Custom(format!("Unknown WCH-Link variant {value}"))),
+            _ => Err(Error::UnknownLinkType(value)),
         }
     }
 }
@@ -77,9 +81,7 @@ impl RiscvChip {
             0x06 => Ok(RiscvChip::CH32V30x),
             0x07 => Ok(RiscvChip::CH58x),
             0x09 => Ok(RiscvChip::CH32V003),
-            _ => Err(Error::Custom(format!(
-                "Unknown riscvchip type 0x{value:02x}"
-            ))),
+            _ => Err(Error::UnknownRiscvChipType(value)),
         }
     }
 

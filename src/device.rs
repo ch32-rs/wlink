@@ -1,6 +1,6 @@
 use rusb::{DeviceHandle, UsbContext};
 
-use crate::{error::Result, transport::Transport};
+use crate::{commands::Response, error::Error, transport::Transport, Result};
 
 const VENDOR_ID: u16 = 0x1a86;
 const PRODUCT_ID: u16 = 0x8010;
@@ -32,10 +32,7 @@ impl WchLink {
                     .unwrap_or(false)
             })
             .nth(nth)
-            .map_or(
-                Err(crate::error::Error::Custom("No such device".to_string())),
-                Ok,
-            )?;
+            .map_or(Err(Error::UsbNoSuchDevice), Ok)?;
 
         let mut device_handle = device.open()?;
 
@@ -67,16 +64,20 @@ impl WchLink {
         }
 
         if !endpoint_out || !endpoint_in {
-            return Err(crate::error::Error::Custom(
-                "Could not find endpoints".to_string(),
-            ));
+            return Err(Error::UsbNoSuchEndpoints);
         }
 
         Ok(Self { device_handle })
     }
 
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {
-        self.device_handle.send_command(cmd)
+        let raw = cmd.to_raw();
+        self.device_handle.write_command_bytes(&raw)?;
+
+        let mut buf = vec![0u8; 64];
+        let len = self.device_handle.read_command_bytes(&mut buf)?;
+
+        C::Response::from_raw(&buf[..len])
     }
 }
 

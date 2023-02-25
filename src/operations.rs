@@ -6,9 +6,9 @@ use crate::{
     commands::{DmiOp, Program, ReadMemory, SetRamAddress},
     device::WchLink,
     error::Error,
-    error::Result,
     flash_op,
     transport::Transport,
+    Result,
 };
 
 impl WchLink {
@@ -23,13 +23,14 @@ impl WchLink {
         })?;
         self.send_command(Program::BeginReadMemory)?;
 
-        let mut mem = self.device_handle.read_from_data_channel(length as usize)?;
+        let mut buf = vec![0u8; length as usize];
+        let len = self.device_handle.read_data_bytes(&mut buf)?;
         // Fix endian
-        for chunk in mem.chunks_exact_mut(4) {
+        for chunk in buf.chunks_exact_mut(4) {
             chunk.reverse();
         }
 
-        Ok(mem)
+        Ok(buf)
     }
 
     pub fn write_flash(&mut self, data: &[u8]) -> Result<()> {
@@ -42,8 +43,7 @@ impl WchLink {
             len: data.len() as u32,
         })?;
         self.send_command(Program::BeginWriteMemory)?;
-        self.device_handle
-            .write_to_data_channel(&flash_op::CH32V307)?;
+        self.device_handle.write_data_bytes(&flash_op::CH32V307)?;
 
         for i in 0.. {
             // check written
@@ -53,7 +53,7 @@ impl WchLink {
                 }
             }
             if i > 10 {
-                return Err(Error::Custom("timeout while write flash".into()));
+                return Err(Error::WriteFlashTimeout);
             }
             sleep(Duration::from_millis(500));
         }
@@ -62,15 +62,16 @@ impl WchLink {
         self.send_command(Program::BeginWriteFlash)?;
 
         // TODO: send pack by pack
-        self.device_handle.write_to_data_channel(&data)?;
-        let rxbuf = self.device_handle.read_from_data_channel(4)?;
-        if rxbuf[3] == 0x02 || rxbuf[3] == 0x04 {
+        self.device_handle.write_data_bytes(&data)?;
+        let mut buf = [0u8; 4];
+        let _len = self.device_handle.read_data_bytes(&mut buf)?;
+        if buf[3] == 0x02 || buf[3] == 0x04 {
             // success
             // wlink_endprogram
             self.send_command(Program::End)?;
             Ok(())
         } else {
-            Err(Error::Custom("error while fastprogram".into()))
+            Err(Error::FastProgram)
         }
     }
 
@@ -133,11 +134,11 @@ impl WchLink {
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000003))?;
         if self.send_command(DmiOp::read(0x10))?.data != 0x00000003 {
-            return Err(Error::Custom("Failed to reset debug module".into()));
+            return Err(Error::DebugModuleResetFailed);
         }
         self.send_command(DmiOp::write(0x10, 0x00000002))?;
         if self.send_command(DmiOp::read(0x10))?.data != 0xb0 {
-            return Err(Error::Custom("Failed to reset debug module".into()));
+            return Err(Error::DebugModuleResetFailed);
         }
 
         Ok(())
