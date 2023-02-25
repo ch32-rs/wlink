@@ -69,6 +69,17 @@ pub enum RiscvChip {
 }
 
 impl RiscvChip {
+    fn flash_op(&self) -> &[u8] {
+        match self {
+            RiscvChip::CH32V103 => &flash_op::CH32V103,
+            RiscvChip::CH32V003 => &flash_op::CH32V003,
+            RiscvChip::CH57x => &flash_op::CH573,
+            RiscvChip::CH56x => &flash_op::CH569,
+            RiscvChip::CH32V20x => &flash_op::CH32V307,
+            RiscvChip::CH32V30x => &flash_op::CH32V307,
+            RiscvChip::CH58x => &flash_op::CH573,
+        }
+    }
     fn try_from_u8(value: u8) -> Result<Self> {
         match value {
             0x01 => Ok(RiscvChip::CH32V103),

@@ -15,8 +15,8 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 anyhow = "1.0.68"
-clap = "4.1.4"
-env_logger = "0.10.0"
+bitfield = "0.14.0"
+clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
 log = "0.4.17"
 nu-pretty-hex = "0.76.0"

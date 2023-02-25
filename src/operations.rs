@@ -14,15 +14,16 @@ use crate::{
 };
 
 impl WchLink {
+    pub fn probe_info(&mut self) -> Result<()> {
+        let info = self.send_command(commands::control::GetProbeInfo)?;
+        log::info!("{}", info);
+        Ok(())
+    }
     /// Attach chip and get chip info
     pub fn attach_chip(&mut self) -> Result<()> {
         if self.chip.is_some() {
             log::warn!("chip already attached");
         }
-
-        let probe_info = self.send_command(commands::control::GetProbeInfo)?;
-        log::info!("{}", probe_info);
-
         let chip_info = self.send_command(commands::control::AttachChip)?;
         log::debug!("attached chip: {:?}", chip_info);
 
@@ -123,7 +124,9 @@ impl WchLink {
         })?;
         self.send_command(Program::BeginWriteMemory)?;
         self.device_handle
-            .write_to_data_channel(&flash_op::CH32V307)?;
+            .write_to_data_channel(self.chip.as_ref().unwrap().chip_family.flash_op())?;
+
+        log::debug!("flash op written");
 
         for i in 0.. {
             // check written
@@ -147,6 +150,7 @@ impl WchLink {
                 return Err(Error::Custom("error while fastprogram".into()));
             }
         }
+        log::debug!("fastprogram done");
 
         Ok(())
     }

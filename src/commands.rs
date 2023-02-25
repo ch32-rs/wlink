@@ -223,6 +223,7 @@ impl fmt::Debug for ChipId {
 /// Device reset
 pub enum Reset {
     Quit,
+    Normal,
 }
 impl Command for Reset {
     type Response = ();
@@ -230,7 +231,7 @@ impl Command for Reset {
     fn payload(&self) -> Vec<u8> {
         match self {
             Reset::Quit => vec![0x01],
-            // TODO: 0x02, 0x03
+            Reset::Normal => vec![0x03], // TODO: 0x02
         }
     }
 }
