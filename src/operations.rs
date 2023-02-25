@@ -3,15 +3,78 @@
 use std::{thread::sleep, time::Duration};
 
 use crate::{
-    commands::{DmiOp, Program, ReadMemory, SetRamAddress},
-    device::WchLink,
+    commands::{self, DmiOp, Program, ReadMemory, SetRamAddress},
+    device::{ChipInfo, WchLink},
     error::Error,
     error::Result,
     flash_op,
+    regs::{self, DMReg, Dmcontrol, Dmstatus},
     transport::Transport,
+    RiscvChip,
 };
 
 impl WchLink {
+    /// Attach chip and get chip info
+    pub fn attach_chip(&mut self) -> Result<()> {
+        if self.chip.is_some() {
+            log::warn!("chip already attached");
+        }
+
+        let probe_info = self.send_command(commands::control::GetProbeInfo)?;
+        log::info!("{}", probe_info);
+
+        let chip_info = self.send_command(commands::control::AttachChip)?;
+        log::debug!("attached chip: {:?}", chip_info);
+
+        let uid = self.send_command(commands::GetChipId)?;
+        log::debug!("Chip UID: {uid}");
+
+        self.send_command(commands::GetFlashProtected)?;
+        let flash_protected = self.send_command(commands::GetFlashProtected)?;
+        log::debug!("flash protected: {}", flash_protected);
+
+        let sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
+        log::debug!("SRAM CODE mode: {}", sram_code_mode);
+
+        // detect chip's RISC-V core version, QingKe cores
+        let marchid = self.read_csr(regs::MARCHID)?;
+        log::trace!("read csr marchid: {marchid:08x}");
+        let core_type = parse_marchid(marchid);
+        log::debug!("RISC-V core version: {core_type:?}");
+
+        // riscvchip = 7 => 2
+        let flash_addr = chip_info.chip_family.code_flash_start();
+        let page_size = chip_info.chip_family.page_size();
+
+        let info = ChipInfo {
+            uid,
+            flash_protected,
+            chip_family: chip_info.chip_family,
+            chip_type: chip_info.chip_type,
+            march: core_type,
+            flash_size: 0, // TODO: read flash size
+            memory_start_addr: flash_addr,
+            sram_code_mode,
+            page_size,
+            rom_kb: 0, // TODO:
+            ram_kb: 0, // TODO:
+        };
+
+        self.chip = Some(info);
+
+        Ok(())
+    }
+
+    pub fn read_flash_size_kb(&mut self) -> Result<u32> {
+        // Ref: (DS) Chapter 31 Electronic Signature (ESIG)
+        let raw_flash_cap = self.read_memory(0x1FFFF7E0, 4)?;
+        println!("=> {:02x?}", raw_flash_cap);
+        let flash_size = u32::from_le_bytes(raw_flash_cap[0..4].try_into().unwrap());
+        log::info!("Flash size {}KiB", flash_size);
+        Ok(flash_size as u32)
+    }
+
+    /// Read a continuous memory region, require MCU to be halted
     pub fn read_memory(&mut self, address: u32, length: u32) -> Result<Vec<u8>> {
         let mut length = length;
         if length % 4 != 0 {
@@ -29,16 +92,33 @@ impl WchLink {
             chunk.reverse();
         }
 
+        println!(
+            "{}",
+            nu_pretty_hex::config_hex(
+                &mem,
+                nu_pretty_hex::HexConfig {
+                    title: false,
+                    ascii: true,
+                    address_offset: address as _,
+                    ..Default::default()
+                },
+            )
+        );
+
         Ok(mem)
     }
 
     pub fn write_flash(&mut self, data: &[u8]) -> Result<()> {
+        let pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
+        let code_start_addr = self.chip.as_ref().unwrap().memory_start_addr;
+        log::debug!("Code start address 0x{:08x}", code_start_addr);
+
         let mut data = data.to_vec();
         if data.len() % 256 != 0 {
             data.resize((data.len() / 256 + 1) * 256, 0);
         }
         self.send_command(SetRamAddress {
-            start_addr: 0x0800_0000,
+            start_addr: code_start_addr,
             len: data.len() as u32,
         })?;
         self.send_command(Program::BeginWriteMemory)?;
@@ -55,28 +135,40 @@ impl WchLink {
             if i > 10 {
                 return Err(Error::Custom("timeout while write flash".into()));
             }
-            sleep(Duration::from_millis(500));
+            sleep(Duration::from_millis(10));
         }
         // wlink_fastprogram
-
         self.send_command(Program::BeginWriteFlash)?;
 
-        // TODO: send pack by pack
-        self.device_handle.write_to_data_channel(&data)?;
-        let rxbuf = self.device_handle.read_from_data_channel(4)?;
-        if rxbuf[3] == 0x02 || rxbuf[3] == 0x04 {
-            // success
-            // wlink_endprogram
-            self.send_command(Program::End)?;
-            Ok(())
-        } else {
-            Err(Error::Custom("error while fastprogram".into()))
+        for chunk in data.chunks(pack_size as usize) {
+            self.device_handle.write_to_data_channel(chunk)?;
+            let rxbuf = self.device_handle.read_from_data_channel(4)?;
+            if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {
+                return Err(Error::Custom("error while fastprogram".into()));
+            }
         }
+
+        Ok(())
     }
 
     pub fn halt_mcu(&mut self) -> Result<()> {
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
+        if self.dmi_read::<Dmstatus>()?.allhalted() {
+            log::warn!("already halted");
+            return Ok(());
+        }
+
+        loop {
+            self.send_command(DmiOp::write(0x10, 0x80000001))?;
+            let dmstatus = self.dmi_read::<Dmstatus>()?;
+            if dmstatus.anyhalted() && dmstatus.allhalted() {
+                break;
+            } else {
+                log::warn!("not halt, resend");
+                sleep(Duration::from_millis(10));
+            }
+        }
+        self.send_command(DmiOp::write(0x10, 0x00000001))?;
+
         Ok(())
     }
 
@@ -94,24 +186,28 @@ impl WchLink {
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000003))?; // initiate a core reset request
-
-        let dmcontrol = self.dmi_read(0x11)?;
-        if (dmcontrol >> 18) & 0b11 == 0b11 {
+        let dmstatus = self.dmi_read::<Dmstatus>()?;
+        log::debug!("dmstatus {:?}", dmstatus);
+        if dmstatus.allhavereset() && dmstatus.anyhavereset() {
             // reseted
             println!("reseted");
         } else {
-            println!("not reseted");
+            println!("reset failed");
         }
 
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x10000001))?;
-        let dmcontrol = self.dmi_read(0x11)?;
-        if (dmcontrol >> 18) & 0b11 == 0b00 {
+        let dmstatus = self.dmi_read::<Dmstatus>()?;
+        if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
             println!("reset status cleared");
         } else {
-            println!("reset status not cleared");
+            println!("reset status clear failed");
         }
         Ok(())
+    }
+
+    pub fn reset_mcu_and_halt(&mut self) -> Result<()> {
+        todo!()
     }
 
     pub fn read_csr(&mut self, csr: u16) -> Result<u32> {
@@ -128,28 +224,68 @@ impl WchLink {
     }
 
     pub fn reset_debug_module(&mut self) -> Result<()> {
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
+        // let dmcontrol = Dmcontrol::from(0x80000001);
+        // self.send_command(DmiOp::write(0x10, 0x80000001))?;
+        //self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000003))?;
-        if self.send_command(DmiOp::read(0x10))?.data != 0x00000003 {
+        sleep(Duration::from_millis(1000));
+
+        let dmcontrol = self.dmi_read::<Dmcontrol>()?;
+        log::debug!("{:?}", dmcontrol);
+
+        if !dmcontrol.dmactive() {
             return Err(Error::Custom("Failed to reset debug module".into()));
         }
         self.send_command(DmiOp::write(0x10, 0x00000002))?;
         if self.send_command(DmiOp::read(0x10))?.data != 0xb0 {
             return Err(Error::Custom("Failed to reset debug module".into()));
         }
-
         Ok(())
     }
 
-    pub fn dmi_read(&mut self, addr: u8) -> Result<u32> {
+    pub fn dmi_read<R>(&mut self) -> Result<R>
+    where
+        R: DMReg,
+    {
+        let resp = self.send_command(DmiOp::read(R::ADDR))?;
+        if resp.is_success() {
+            return Ok(R::from(resp.data));
+        }
         loop {
-            let resp = self.send_command(DmiOp::read(addr))?;
+            let resp = self.send_command(DmiOp::read(R::ADDR))?;
+            // let resp = self.send_command(DmiOp::Nop)?;
             if resp.is_success() {
-                return Ok(resp.data);
+                return Ok(R::from(resp.data));
             }
             sleep(Duration::from_millis(10));
         }
+    }
+
+    pub fn dmi_write<R>(&mut self, reg: R) -> Result<()>
+    where
+        R: DMReg,
+    {
+        self.send_command(DmiOp::write(R::ADDR, reg.into()))?;
+        Ok(())
+    }
+}
+
+// marchid => dc68d882
+// Parsed marchid: WCH-V4B
+// Ref: QingKe V4 Manual
+fn parse_marchid(marchid: u32) -> Option<String> {
+    if marchid == 0 {
+        None
+    } else {
+        Some(format!(
+            "{}{}{}-{}{}{}",
+            (((marchid >> 26) & 0x1F) + 64) as u8 as char,
+            (((marchid >> 21) & 0x1F) + 64) as u8 as char,
+            (((marchid >> 16) & 0x1F) + 64) as u8 as char,
+            (((marchid >> 10) & 0x1F) + 64) as u8 as char,
+            ((((marchid >> 5) & 0x1F) as u8) + b'0') as char,
+            ((marchid & 0x1F) + 64) as u8 as char,
+        ))
     }
 }

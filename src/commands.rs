@@ -178,6 +178,7 @@ impl Command for GetChipId {
 // raw response: ffff00 20 aeb4abcd 16c6bc45 e339e339e339e339
 // UID in wchisp: cd-ab-b4-ae-45-bc-c6-16
 // e339e339e339e339 => inital value of erased flash
+/// Chip UID, also reported by wchisp
 pub struct ChipId(pub [u8; 8]);
 impl Response for ChipId {
     fn from_raw(resp: &[u8]) -> Result<Self> {
@@ -278,8 +279,8 @@ impl Command for DmiOp {
 }
 
 // DMI_STATUS_SUCCESS = 0,
-// DMI_STATUS_FAILED = 2,
-// DMI_STATUS_BUSY = 3
+// DMI_STATUS_FAILED = 1,
+// DMI_STATUS_BUSY = 2
 #[derive(Debug)]
 pub struct DmiOpResponse {
     pub addr: u8,
@@ -288,7 +289,7 @@ pub struct DmiOpResponse {
 }
 impl DmiOpResponse {
     pub fn is_busy(&self) -> bool {
-        self.op == 0x03
+        self.op == 0x02
     }
 
     pub fn is_success(&self) -> bool {
@@ -297,7 +298,7 @@ impl DmiOpResponse {
 
     // should read mcause to get the reason
     pub fn is_failed(&self) -> bool {
-        self.op == 0x02 || self.op == 0x03
+        self.op == 0x01 || self.op == 0x02
     }
 }
 impl Response for DmiOpResponse {

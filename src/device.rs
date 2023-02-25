@@ -1,6 +1,6 @@
 use rusb::{DeviceHandle, UsbContext};
 
-use crate::{error::Result, transport::Transport};
+use crate::{commands::ChipId, error::Result, transport::Transport, RiscvChip};
 
 const VENDOR_ID: u16 = 0x1a86;
 const PRODUCT_ID: u16 = 0x8010;
@@ -8,16 +8,32 @@ const PRODUCT_ID: u16 = 0x8010;
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
 
+/// Attached chip information
+#[derive(Debug)]
+pub struct ChipInfo {
+    pub uid: ChipId,
+    pub flash_protected: bool,
+    pub chip_family: RiscvChip,
+    pub chip_type: u32,
+    /// parsed marchid: WCH-V4B, WCH-V4F...
+    pub march: Option<String>,
+
+    pub flash_size: u32,
+    pub page_size: u32,
+    pub memory_start_addr: u32,
+    // Fields for ROM/RAM split
+    pub sram_code_mode: u8,
+    pub(crate) rom_kb: u32,
+    pub(crate) ram_kb: u32,
+}
+
 #[derive(Debug)]
 pub struct WchLink {
     pub(crate) device_handle: DeviceHandle<rusb::Context>,
+    pub chip: Option<ChipInfo>,
 }
 
 impl WchLink {
-    fn new(device_handle: DeviceHandle<rusb::Context>) -> Self {
-        Self { device_handle }
-    }
-
     pub fn open_nth(nth: usize) -> Result<Self> {
         let context = rusb::Context::new()?;
 
@@ -43,7 +59,7 @@ impl WchLink {
 
         let descriptor = device.device_descriptor()?;
 
-        log::debug!("Device descriptor: {:?}", &descriptor);
+        log::trace!("Device descriptor: {:?}", &descriptor);
 
         device_handle.claim_interface(0)?;
 
@@ -72,7 +88,10 @@ impl WchLink {
             ));
         }
 
-        Ok(Self { device_handle })
+        Ok(Self {
+            device_handle,
+            chip: None,
+        })
     }
 
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {

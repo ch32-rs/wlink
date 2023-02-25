@@ -38,22 +38,32 @@ impl Response for ProbeInfo {
         })
     }
 }
+impl fmt::Display for ProbeInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "WCH-Link v{}.{} ({})",
+            self.major_version, self.minor_version, self.variant
+        )
+    }
+}
 
+/// _ 0d _ 02
 pub struct AttachChip;
 impl Command for AttachChip {
-    type Response = ChipInfo;
+    type Response = AttachChipResponse;
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         vec![0x02]
     }
 }
-pub struct ChipInfo {
+pub struct AttachChipResponse {
     pub chip_family: RiscvChip,
-    riscvchip: u8,
+    pub riscvchip: u8,
     pub chip_type: u32,
 }
-impl ChipInfo {}
-impl Response for ChipInfo {
+impl AttachChipResponse {}
+impl Response for AttachChipResponse {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 5 {
             return Err(crate::error::Error::InvalidPayloadLength);
@@ -65,7 +75,7 @@ impl Response for ChipInfo {
         })
     }
 }
-impl fmt::Debug for ChipInfo {
+impl fmt::Debug for AttachChipResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ChipInfo")
             .field("chip_family", &self.chip_family)

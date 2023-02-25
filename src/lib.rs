@@ -8,9 +8,10 @@ pub mod device;
 pub mod error;
 pub mod flash_op;
 mod operations;
+pub mod regs;
 pub mod transport;
 
-/// All WCH-Link probe variants, see-also: http://www.wch-ic.com/products/WCH-Link.html
+/// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum WchLinkVariant {
@@ -48,7 +49,7 @@ impl fmt::Display for WchLinkVariant {
 }
 
 /// Currently supported RISC-V chip series/family
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum RiscvChip {
     /// CH32V103 RISC-V3A series
@@ -61,7 +62,7 @@ pub enum RiscvChip {
     CH32V20x = 0x05,
     /// CH32V30x RISC-V4C/V4F series
     CH32V30x = 0x06,
-    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series
+    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, failback as CH57x
     CH58x = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
@@ -93,9 +94,9 @@ impl RiscvChip {
 
     pub fn code_flash_start(&self) -> u32 {
         match self {
-            RiscvChip::CH58x => 0x0000_0000,
             RiscvChip::CH56x => 0x0000_0000,
             RiscvChip::CH57x => 0x0000_0000,
+            RiscvChip::CH58x => 0x0000_0000,
             _ => 0x0800_0000,
         }
     }
