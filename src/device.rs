@@ -1,3 +1,5 @@
+//! WchLink device type
+
 use rusb::{DeviceHandle, UsbContext};
 
 use crate::{

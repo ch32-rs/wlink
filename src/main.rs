@@ -120,13 +120,6 @@ fn main() -> Result<()> {
         _ => todo!(),
     }
 
-    /*loop {
-        link.resume_mcu()?;
-        std::thread::sleep(std::time::Duration::from_millis(10000));
-        link.halt_mcu()?;
-        std::thread::sleep(std::time::Duration::from_millis(10000));
-    }*/
-
     /*
 
     let dmcontrol: Dmcontrol = probe.dmi_read()?;
@@ -140,13 +133,6 @@ fn main() -> Result<()> {
     let dmcontrol: Dmcontrol = probe.dmi_read()?;
     println!("=> {:?}", dmcontrol);
     */
-
-    //let firmware = include_bytes!("../firmware.bin");
-    //println!("flash {} bytes", firmware.len());
-    //link.write_flash(firmware)?;
-
-    //let dmstatus: Dmstatus = probe.dmi_read()?;
-    //println!("=> {:?}", dmstatus);
 
     // probe.resume_mcu()?;
 

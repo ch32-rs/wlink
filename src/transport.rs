@@ -1,4 +1,4 @@
-//! USB transport of WCH-Link
+//! USB transport layer of WCH-Link
 
 use std::time::Duration;
 
