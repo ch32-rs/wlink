@@ -1,6 +1,10 @@
 use rusb::{DeviceHandle, UsbContext};
 
-use crate::{commands::ChipId, error::Result, transport::Transport, RiscvChip};
+use crate::{
+    commands::{ChipId, Response},
+    transport::Transport,
+    Result, RiscvChip,
+};
 
 const VENDOR_ID: u16 = 0x1a86;
 const PRODUCT_ID: u16 = 0x8010;
@@ -36,8 +40,8 @@ pub struct WchLink {
 impl WchLink {
     pub fn open_nth(nth: usize) -> Result<Self> {
         let context = rusb::Context::new()?;
+        log::trace!("Acquired libusb context.");
 
-        log::debug!("Acquired libusb context.");
         let device = context
             .devices()?
             .iter()
@@ -63,7 +67,7 @@ impl WchLink {
 
         device_handle.claim_interface(0)?;
 
-        log::debug!("Claimed interface 0 of USB device.");
+        log::trace!("Claimed interface 0 of USB device.");
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
@@ -95,7 +99,11 @@ impl WchLink {
     }
 
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {
-        self.device_handle.send_command(cmd)
+        let raw = cmd.to_raw();
+        self.device_handle.write_command_endpoint(&raw)?;
+        let resp = self.device_handle.read_command_endpoint()?;
+
+        C::Response::from_raw(&resp)
     }
 }
 

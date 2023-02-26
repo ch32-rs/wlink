@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// Alias for a `Result` with the error type `wlink::Error`.
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, Debug)]

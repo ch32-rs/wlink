@@ -5,12 +5,9 @@ use std::{thread::sleep, time::Duration};
 use crate::{
     commands::{self, DmiOp, Program, ReadMemory, SetRamAddress},
     device::{ChipInfo, WchLink},
-    error::Error,
-    error::Result,
-    flash_op,
     regs::{self, DMReg, Dmcontrol, Dmstatus},
     transport::Transport,
-    RiscvChip,
+    Error, Result,
 };
 
 impl WchLink {
@@ -69,10 +66,10 @@ impl WchLink {
     pub fn read_flash_size_kb(&mut self) -> Result<u32> {
         // Ref: (DS) Chapter 31 Electronic Signature (ESIG)
         let raw_flash_cap = self.read_memory(0x1FFFF7E0, 4)?;
-        println!("=> {:02x?}", raw_flash_cap);
+        println!("=> {raw_flash_cap:02x?}");
         let flash_size = u32::from_le_bytes(raw_flash_cap[0..4].try_into().unwrap());
         log::info!("Flash size {}KiB", flash_size);
-        Ok(flash_size as u32)
+        Ok(flash_size)
     }
 
     /// Read a continuous memory region, require MCU to be halted
@@ -87,7 +84,7 @@ impl WchLink {
         })?;
         self.send_command(Program::BeginReadMemory)?;
 
-        let mut mem = self.device_handle.read_from_data_channel(length as usize)?;
+        let mut mem = self.device_handle.read_data_endpoint(length as usize)?;
         // Fix endian
         for chunk in mem.chunks_exact_mut(4) {
             chunk.reverse();
@@ -124,7 +121,7 @@ impl WchLink {
         })?;
         self.send_command(Program::BeginWriteMemory)?;
         self.device_handle
-            .write_to_data_channel(self.chip.as_ref().unwrap().chip_family.flash_op())?;
+            .write_data_endpoint(self.chip.as_ref().unwrap().chip_family.flash_op())?;
 
         log::debug!("flash op written");
 
@@ -144,8 +141,8 @@ impl WchLink {
         self.send_command(Program::BeginWriteFlash)?;
 
         for chunk in data.chunks(pack_size as usize) {
-            self.device_handle.write_to_data_channel(chunk)?;
-            let rxbuf = self.device_handle.read_from_data_channel(4)?;
+            self.device_handle.write_data_endpoint(chunk)?;
+            let rxbuf = self.device_handle.read_data_endpoint(4)?;
             if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {
                 return Err(Error::Custom("error while fastprogram".into()));
             }

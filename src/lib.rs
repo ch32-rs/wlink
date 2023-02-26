@@ -1,7 +1,5 @@
 use std::fmt;
 
-use self::error::{Error, Result};
-
 pub mod commands;
 pub mod device;
 pub mod error;
@@ -9,6 +7,8 @@ pub mod flash_op;
 mod operations;
 pub mod regs;
 pub mod transport;
+
+pub use crate::error::{Error, Result};
 
 /// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
 #[derive(Clone, Copy, Debug)]

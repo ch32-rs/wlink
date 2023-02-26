@@ -4,10 +4,7 @@ use std::time::Duration;
 
 use rusb::DeviceHandle;
 
-use crate::{
-    commands::{Command, Response},
-    error::Result,
-};
+use crate::Result;
 
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
@@ -18,25 +15,20 @@ const RAW_ENDPOINT_IN: u8 = 0x82;
 //  1a86:8010 1a86 WCH-Link  Serial: 0001A0000000
 const USB_TIMEOUT_MS: u64 = 5000;
 
-pub trait Transport {
-    fn read_bytes(&mut self) -> Result<Vec<u8>>;
+/// A Transport type represents the USB connection to the WCH-Link.
+/// With ep 0x01 and 0x81 for commands and 0x02 and 0x82 for raw data.
+pub(crate) trait Transport {
+    fn read_command_endpoint(&mut self) -> Result<Vec<u8>>;
 
-    fn write_bytes(&mut self, buf: &[u8]) -> Result<()>;
+    fn write_command_endpoint(&mut self, buf: &[u8]) -> Result<()>;
 
-    fn send_command<C: Command>(&mut self, cmd: C) -> Result<C::Response> {
-        let raw = cmd.to_raw();
-        self.write_bytes(&raw)?;
-        let resp = self.read_bytes()?;
+    fn read_data_endpoint(&mut self, n: usize) -> Result<Vec<u8>>;
 
-        C::Response::from_raw(&resp)
-    }
-
-    fn read_from_data_channel(&mut self, n: usize) -> Result<Vec<u8>>;
-    fn write_to_data_channel(&mut self, buf: &[u8]) -> Result<()>;
+    fn write_data_endpoint(&mut self, buf: &[u8]) -> Result<()>;
 }
 
 impl Transport for DeviceHandle<rusb::Context> {
-    fn read_bytes(&mut self) -> Result<Vec<u8>> {
+    fn read_command_endpoint(&mut self) -> Result<Vec<u8>> {
         let mut buf = [0u8; 64];
 
         let bytes_read =
@@ -51,13 +43,13 @@ impl Transport for DeviceHandle<rusb::Context> {
         Ok(resp)
     }
 
-    fn write_bytes(&mut self, buf: &[u8]) -> Result<()> {
+    fn write_command_endpoint(&mut self, buf: &[u8]) -> Result<()> {
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         self.write_bulk(ENDPOINT_OUT, buf, Duration::from_millis(USB_TIMEOUT_MS))?;
         Ok(())
     }
 
-    fn read_from_data_channel(&mut self, n: usize) -> Result<Vec<u8>> {
+    fn read_data_endpoint(&mut self, n: usize) -> Result<Vec<u8>> {
         let mut buf = Vec::with_capacity(n);
         let mut bytes_read = 0;
         while bytes_read < n {
@@ -71,13 +63,13 @@ impl Transport for DeviceHandle<rusb::Context> {
             bytes_read += chunk_read;
         }
         if bytes_read != n {
-            return Err(crate::error::Error::InvalidPayloadLength);
+            return Err(crate::Error::InvalidPayloadLength);
         }
-        log::trace!("read data channel {} bytes", bytes_read);
+        log::trace!("read data ep {} bytes", bytes_read);
         Ok(buf)
     }
 
-    fn write_to_data_channel(&mut self, buf: &[u8]) -> Result<()> {
+    fn write_data_endpoint(&mut self, buf: &[u8]) -> Result<()> {
         let mut bytes_written = 0;
         const CHUNK: usize = 64;
         while bytes_written < buf.len() {
@@ -89,7 +81,7 @@ impl Transport for DeviceHandle<rusb::Context> {
             )?;
             bytes_written += chunk.len();
         }
-        log::trace!("write data channel {} bytes", bytes_written);
+        log::trace!("write data ep {} bytes", bytes_written);
         Ok(())
     }
 }

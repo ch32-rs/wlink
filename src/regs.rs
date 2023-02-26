@@ -28,9 +28,9 @@ impl From<u32> for Dmcontrol {
     }
 }
 
-impl Into<u32> for Dmcontrol {
-    fn into(self) -> u32 {
-        self.0
+impl From<Dmcontrol> for u32 {
+    fn from(val: Dmcontrol) -> Self {
+        val.0
     }
 }
 
@@ -62,9 +62,9 @@ impl From<u32> for Dmstatus {
     }
 }
 
-impl Into<u32> for Dmstatus {
-    fn into(self) -> u32 {
-        self.0
+impl From<Dmstatus> for u32 {
+    fn from(val: Dmstatus) -> Self {
+        val.0
     }
 }
 
