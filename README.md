@@ -1,5 +1,7 @@
 # wlink - WCH-Link command line tool
 
+![Crates.io](https://img.shields.io/crates/l/wlink?style=for-the-badge) | ![Crates.io](https://img.shields.io/crates/v/wlink?style=for-the-badge) | ![docs.rs](https://img.shields.io/docsrs/wlink?style=for-the-badge) | ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ch32-rs/wlink/ci.yml?style=for-the-badge)
+
 WIP.
 
 ## Install
