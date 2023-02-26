@@ -42,6 +42,7 @@ jobs:
           cp target/release/wlink.exe release/ || true
           cp README.md release/
           (cd release/ && tar -czvf ../wlink-${{ matrix.config.arch }}.tar.gz *)
+        shell: bash
       - uses: actions/upload-artifact@v3
         with:
           name: wlink-binaries
