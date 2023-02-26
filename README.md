@@ -2,6 +2,10 @@
 
 WIP.
 
+## Install
+
+`cargo install --git` or download a binary from the [Nightly Release page](https://github.com/ch32-rs/wlink/releases/tag/nightly).
+
 ## Usage
 
 ```console
