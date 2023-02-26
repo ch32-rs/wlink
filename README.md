@@ -1,8 +1,14 @@
 # wlink - WCH-Link command line tool
 
-[![Crates.io](https://img.shields.io/crates/l/wlink?style=for-the-badge)](https://crates.io/crates/wlink) [![Crates.io](https://img.shields.io/crates/v/wlink?style=for-the-badge)](https://crates.io/crates/wlink) [![docs.rs](https://img.shields.io/docsrs/wlink?style=for-the-badge)](https://docs.rs/wlink) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ch32-rs/wlink/ci.yml?style=for-the-badge)](https://github.com/ch32-rs/wlink/actions) [![GitHub release](https://img.shields.io/github/v/release/ch32-rs/wlink?include_prereleases&style=for-the-badge)](https://github.com/ch32-rs/wlink/releases/tag/nightly)
+[![Crates.io](https://img.shields.io/crates/l/wlink?style=for-the-badge)](https://crates.io/crates/wlink) [![Crates.io](https://img.shields.io/crates/v/wlink?style=for-the-badge)](https://crates.io/crates/wlink) [![docs.rs](https://img.shields.io/docsrs/wlink?style=for-the-badge)](https://docs.rs/wlink) [![GitHub release](https://img.shields.io/github/v/release/ch32-rs/wlink?include_prereleases&style=for-the-badge)](https://github.com/ch32-rs/wlink/releases/tag/nightly)
 
-WIP.
+**NOTE**: This tool is still in development and not ready for production use.
+
+**Known Issue:**
+
+- MCU Reset is not stable
+- Operation on DM regsiters might fail
+- Only support binary firmware file
 
 ## Install
 
