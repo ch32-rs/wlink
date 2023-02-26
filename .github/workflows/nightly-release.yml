@@ -68,7 +68,7 @@ jobs:
           mkdir -p release
           cp target/aarch64-apple-darwin/release/wlink release/
           cp README.md release/
-          (cd release/ && tar -czvf ../wlink-${{ matrix.config.arch }}.tar.gz *)
+          (cd release/ && tar -czvf ../wlink-macos-arm64.tar.gz *)
       - uses: actions/upload-artifact@v3
         with:
           name: wlink-binaries
