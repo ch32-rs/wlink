@@ -24,10 +24,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v2
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+          override: true
       - name: Build
         run: cargo build --release
       - name: Run help
-        run: cargo run -- --release --help
+        run: cargo run --release -- --help
       - name: Compress binary
         run: |
           mkdir -p release
@@ -45,10 +52,16 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v2
+        with:
+          profile: minimal
+          toolchain: nightly
+          target: aarch64-apple-darwin
+          components: rustfmt, clippy
+          override: true
       - name: Build
         run: cargo build --release --target aarch64-apple-darwin
-      - name: Run help
-        run: cargo run --target aarch64-apple-darwin --release --help
       - name: Compress binary
         run: |
           mkdir -p release
