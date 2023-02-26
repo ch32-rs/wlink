@@ -38,10 +38,10 @@ jobs:
       - name: Compress binary
         run: |
           mkdir -p release
-          cp target/release/wlink release/
-          cp target/release/wlink.exe release/
+          cp target/release/wlink release/ || true
+          cp target/release/wlink.exe release/ || true
           cp README.md release/
-          tar -czvf ./wlink-${{ matrix.config.arch }}.tar.gz -C release/ release/*
+          (cd release/ && tar -czvf ../wlink-${{ matrix.config.arch }}.tar.gz *)
       - uses: actions/upload-artifact@v3
         with:
           name: wlink-binaries
@@ -67,7 +67,7 @@ jobs:
           mkdir -p release
           cp target/aarch64-apple-darwin/release/wlink release/
           cp README.md release/
-          tar -czvf ./wlink-macos-arm64.tar.gz -C release/ release/*
+          (cd release/ && tar -czvf ../wlink-${{ matrix.config.arch }}.tar.gz *)
       - uses: actions/upload-artifact@v3
         with:
           name: wlink-binaries
