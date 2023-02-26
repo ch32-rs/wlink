@@ -31,7 +31,7 @@ impl WchLinkVariant {
             2 => Ok(Self::ECh32v305),
             3 => Ok(Self::SCh32v203),
             4 => Ok(Self::B),
-            _ => Err(Error::Custom(format!("Unknown WCH-Link variant {value}"))),
+            _ => Err(Error::UnknownLinkVariant(value)),
         }
     }
 }
@@ -88,9 +88,7 @@ impl RiscvChip {
             0x06 => Ok(RiscvChip::CH32V30x),
             0x07 => Ok(RiscvChip::CH58x),
             0x09 => Ok(RiscvChip::CH32V003),
-            _ => Err(Error::Custom(format!(
-                "Unknown riscvchip type 0x{value:02x}"
-            ))),
+            _ => Err(Error::UnknownChip(value)),
         }
     }
 
