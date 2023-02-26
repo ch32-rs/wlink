@@ -1,0 +1,90 @@
+name: Nightly Release
+
+on:
+  workflow_dispatch:
+  schedule: # Every day at the 2 P.M. (UTC) we run a scheduled nightly build
+    - cron: "0 14 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build (${{ matrix.config.arch }})
+    strategy:
+      matrix:
+        config:
+          - os: windows-latest
+            arch: win-x64
+          - os: ubuntu-latest
+            arch: linux-x64
+          - os: macos-latest
+            arch: macos-x64
+    runs-on: ${{ matrix.config.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release
+      - name: Run help
+        run: cargo run -- --release --help
+      - name: Compress binary
+        run: |
+          mkdir -p release
+          cp target/release/wlink release/
+          cp target/release/wlink.exe release/
+          cp README.md release/
+          tar -czvf ./wlink-${{ matrix.config.arch }}.tar.gz -C release/ release/*
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wlink-binaries
+          path: wlink-${{ matrix.config.arch }}.tar.gz
+
+  build-macos-arm64:
+    name: build (macos-arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --target aarch64-apple-darwin
+      - name: Run help
+        run: cargo run --target aarch64-apple-darwin --release --help
+      - name: Compress binary
+        run: |
+          mkdir -p release
+          cp target/aarch64-apple-darwin/release/wlink release/
+          cp README.md release/
+          tar -czvf ./wlink-macos-arm64.tar.gz -C release/ release/*
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wlink-binaries
+          path: wlink-macos-arm64.tar.gz
+
+  release:
+    needs: [build, build-macos-arm64]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: wlink-binaries
+          path: ./
+
+      - name: List files
+        run: ls -R ./
+        shell: bash
+
+      - name: Update Nightly Release
+        uses: andelf/nightly-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: nightly
+          name: "wlink Nightly Release $$"
+          draft: false
+          prerelease: false
+          body: |
+            This is a nightly binary release of the wlink command line tool.
+
+          files: |
+            wlink-*.tar.gz
