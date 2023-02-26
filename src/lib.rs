@@ -1,4 +1,3 @@
-#![feature(try_trait_v2)]
 use std::fmt;
 
 use self::error::{Error, Result};
