@@ -32,10 +32,21 @@ enum Commands {
         #[arg(value_parser = parse_number)]
         length: u32,
     },
+    /// Dump registers
+    Regs {},
     /// Program the flash
     Flash {
         /// Path to the binary file to flash
         path: String,
+    },
+    /// Force set register
+    WriteReg {
+        /// Reg in u16
+        #[arg(value_parser = parse_number)]
+        reg: u32,
+        /// Value in u32
+        #[arg(value_parser = parse_number)]
+        value: u32,
     },
     /// Halts the MCU
     Halt {},
@@ -94,13 +105,17 @@ fn main() -> Result<()> {
                     );
                     probe.read_memory(address, length)?;
                 }
+                Regs {} => {
+                    log::info!("Dump GPRs");
+                    probe.dump_regs()?;
+                }
                 Halt {} => {
                     log::info!("Halt MCU");
-                    probe.halt_mcu()?;
+                    probe.ensure_mcu_halt()?;
                 }
                 Resume {} => {
                     log::info!("Resume MCU");
-                    probe.resume_mcu()?;
+                    probe.ensure_mcu_resume()?;
                 }
                 Flash { path } => {
                     let firmware = std::fs::read(path)?;
@@ -112,7 +127,12 @@ fn main() -> Result<()> {
                     probe.send_command(commands::Reset::Quit)?;
                     log::info!("reset");
                     sleep(Duration::from_millis(300));
-                    probe.resume_mcu()?;
+                    probe.ensure_mcu_resume()?;
+                }
+                WriteReg { reg, value } => {
+                    let regno = reg as u16;
+                    log::info!("set reg 0x{:04x} to 0x{:08x}", regno, value);
+                    probe.write_reg(regno, value)?;
                 }
                 _ => todo!(),
             }

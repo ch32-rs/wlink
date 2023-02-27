@@ -17,6 +17,10 @@
 ## Usage
 
 ```console
+> # Flash firmware.bin to Code FLASH
+> wlink -v flash ./firmware.bin
+
+> # Dump Code FLASH, for verification
 > cargo run -- -v dump 0x08000000 100`
 18:31:18 [DEBUG] (1) wlink::device: Acquired libusb context.
 18:31:18 [DEBUG] (1) wlink::device: Claimed interface 0 of USB device.
@@ -35,7 +39,26 @@
 08000050:   f3 23 40 f1  b7 02 00 00  93 82 02 00  63 f4 72 00   ×#@××•00××•0c×r0
 08000060:   6f 00 c0 29                                          o0×)
 
-> wlink -v flash ./firmware.bin
+> # Dump System FLASH, BOOT_28KB
+> cargo run -- dump 0x1FFF8000 0x7000
+....
+
+> # Dump all general purpose registers
+> cargo run -- regs
+16:24:20 [INFO] Dump GPRs
+dpc(pc):   0x2000011a
+x0   zero: 0x00000000
+x1     ra: 0x49c85c07
+x2     sp: 0x20002800
+x3     gp: 0x206e24c4
+x4     tp: 0x9add07a3
+x5     t0: 0xb4a9b38a
+....
+
+
+> # Set dpc(pc) to System Flash and Run
+> cargo run -- write-reg 0x7b1 0x1fff8000
+
 ````
 
 ## References

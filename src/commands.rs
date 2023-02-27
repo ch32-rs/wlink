@@ -194,7 +194,9 @@ impl Response for ChipId {
             );
             Ok(Self(bytes))
         } else {
-            Err(Error::InvalidPayload)
+            // Err(Error::InvalidPayload)
+            log::debug!("TODO: cannot read chip id");
+            Ok(Self(Default::default()))
         }
     }
 
