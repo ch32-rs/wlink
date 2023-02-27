@@ -18,7 +18,13 @@
 
 ```console
 > # Flash firmware.bin to Code FLASH
-> wlink -v flash ./firmware.bin
+> cargo run -- flash ./firmware.bin`
+16:55:56 [INFO] WCH-Link v2.7 (WCH-Link-CH549)
+16:55:56 [INFO] attached chip: CH32V20x(0x20360510)
+16:55:56 [INFO] flash 860 bytes
+16:55:57 [INFO] flash done
+16:55:58 [INFO] now reset...
+16:55:59 [INFO] resume executing...
 
 > # Dump Code FLASH, for verification
 > cargo run -- -v dump 0x08000000 100`
@@ -56,7 +62,7 @@ x5     t0: 0xb4a9b38a
 ....
 
 
-> # Set dpc(pc) to System Flash and Run
+> # Set dpc(pc) to System Flash and Run - Not working :(
 > cargo run -- write-reg 0x7b1 0x1fff8000
 
 ````

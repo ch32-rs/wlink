@@ -57,6 +57,8 @@ impl Command for AttachChip {
         vec![0x02]
     }
 }
+
+#[derive(Debug)]
 pub struct AttachChipResponse {
     pub chip_family: RiscvChip,
     pub riscvchip: u8,
@@ -75,12 +77,10 @@ impl Response for AttachChipResponse {
         })
     }
 }
-impl fmt::Debug for AttachChipResponse {
+// For logging
+impl fmt::Display for AttachChipResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ChipInfo")
-            .field("chip_family", &self.chip_family)
-            .field("chip_type", &format!("{:#010x}", self.chip_type))
-            .finish()
+        write!(f, "{:?}(0x{:08x})", self.chip_family, self.chip_type)
     }
 }
 

@@ -22,7 +22,7 @@ impl WchLink {
             log::warn!("chip already attached");
         }
         let chip_info = self.send_command(commands::control::AttachChip)?;
-        log::info!("attached chip: {:?}", chip_info);
+        log::info!("attached chip: {}", chip_info);
 
         let uid = self.send_command(commands::GetChipId)?;
         log::debug!("Chip UID: {uid}");
@@ -275,10 +275,10 @@ impl WchLink {
         let abstractcs = self.dmi_read::<Abstractcs>()?;
         log::debug!("{:?}", abstractcs);
         if abstractcs.busy() {
-            log::info!("absctract command busy");
+            log::error!("absctract command busy");
         }
         if abstractcs.cmderr() == 0b000 {
-            log::info!("abstract command OK");
+            log::trace!("abstract command OK");
         }
 
         let resp = self.send_command(DmiOp::read(0x04))?;
@@ -296,10 +296,10 @@ impl WchLink {
         let abstractcs = self.dmi_read::<Abstractcs>()?;
         log::debug!("{:?}", abstractcs);
         if abstractcs.busy() {
-            log::info!("absctract command busy");
+            log::error!("absctract command busy");
         }
         if abstractcs.cmderr() == 0b000 {
-            log::info!("abstract command OK");
+            log::trace!("abstract command OK");
         }
 
         Ok(())

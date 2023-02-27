@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
-use wlink::{commands, device::WchLink};
+use wlink::{commands, device::WchLink, regs};
 
 use clap::{Parser, Subcommand};
 
@@ -54,6 +54,8 @@ enum Commands {
     Resume {},
     /// Reset the MCU
     Reset {},
+    /// Debug, check status
+    Status {},
 }
 
 fn main() -> Result<()> {
@@ -122,6 +124,14 @@ fn main() -> Result<()> {
                     log::info!("flash {} bytes", firmware.len());
                     probe.write_flash(&firmware)?;
                     log::info!("flash done");
+
+                    sleep(Duration::from_secs(1));
+
+                    log::info!("now reset...");
+                    probe.send_command(commands::Reset::Quit)?;
+                    sleep(Duration::from_secs(1));
+                    log::info!("resume executing...");
+                    probe.ensure_mcu_resume()?;
                 }
                 Reset {} => {
                     probe.send_command(commands::Reset::Quit)?;
@@ -133,6 +143,10 @@ fn main() -> Result<()> {
                     let regno = reg as u16;
                     log::info!("set reg 0x{:04x} to 0x{:08x}", regno, value);
                     probe.write_reg(regno, value)?;
+                }
+                Status {} => {
+                    let dmstatus: regs::Dmstatus = probe.dmi_read()?;
+                    println!("=> {:?}", dmstatus);
                 }
                 _ => todo!(),
             }
