@@ -146,7 +146,7 @@ fn main() -> Result<()> {
                 }
                 Status {} => {
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
-                    println!("=> {:?}", dmstatus);
+                    println!("=> {dmstatus:?}");
                 }
                 _ => todo!(),
             }

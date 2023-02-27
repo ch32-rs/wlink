@@ -192,7 +192,7 @@ impl WchLink {
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allresumeack() && dmstatus.anyresumeack() {
             log::debug!("already resumed");
-            return Ok(());
+            Ok(())
         } else {
             log::warn!("resume fails");
             Ok(())
@@ -253,10 +253,10 @@ impl WchLink {
 
     pub fn dump_regs(&mut self) -> Result<()> {
         let dpc = self.read_reg(regs::DPC)?;
-        println!("dpc(pc):   0x{:08x}", dpc);
+        println!("dpc(pc):   0x{dpc:08x}");
         for (reg, name, regno) in regs::GPRS {
             let val = self.read_reg(regno)?;
-            println!("{:<4}{:>5}: 0x{:08x}", reg, name, val);
+            println!("{reg:<4}{name:>5}: 0x{val:08x}");
         }
         Ok(())
     }
@@ -322,7 +322,7 @@ impl WchLink {
         // Write the debug module reset command
         self.send_command(DmiOp::write(0x10, 0x00000002))?;
 
-        if self.dmi_read::<Dmcontrol>()?.ndmreset() == false {
+        if !self.dmi_read::<Dmcontrol>()?.ndmreset() {
             Ok(())
         } else {
             log::warn!("reset is not successful");
