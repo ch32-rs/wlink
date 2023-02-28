@@ -224,6 +224,7 @@ impl fmt::Debug for ChipId {
 
 /// Device reset
 pub enum Reset {
+    /// wlink_quitreset
     Quit,
     Normal,
 }

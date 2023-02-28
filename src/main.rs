@@ -16,6 +16,10 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
 
+    /// Detach chip after operation
+    #[arg(long, global = true)]
+    detach: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -44,6 +48,15 @@ enum Commands {
         /// Reg in u16
         #[arg(value_parser = parse_number)]
         reg: u32,
+        /// Value in u32
+        #[arg(value_parser = parse_number)]
+        value: u32,
+    },
+    /// Force write a memory word
+    WriteMem {
+        /// Address in u32
+        #[arg(value_parser = parse_number)]
+        address: u32,
         /// Value in u32
         #[arg(value_parser = parse_number)]
         value: u32,
@@ -144,14 +157,20 @@ fn main() -> Result<()> {
                     log::info!("set reg 0x{:04x} to 0x{:08x}", regno, value);
                     probe.write_reg(regno, value)?;
                 }
+                WriteMem { address, value } => {
+                    log::info!("write 0x{:08x} to 0x{:08x}", value, address);
+                    probe.write_memory_word(address, value)?;
+                }
                 Status {} => {
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
                     println!("=> {dmstatus:?}");
                 }
-                _ => todo!(),
             }
         }
-        _ => todo!(),
+    }
+
+    if cli.detach {
+        probe.detach_chip()?;
     }
 
     /*

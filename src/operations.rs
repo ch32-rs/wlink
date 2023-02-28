@@ -5,6 +5,7 @@ use std::{thread::sleep, time::Duration};
 use crate::{
     commands::{self, DmiOp, Program, ReadMemory, SetRamAddress},
     device::{ChipInfo, WchLink},
+    error::AbstractcsCmdErr,
     regs::{self, Abstractcs, DMReg, Dmcontrol, Dmstatus},
     transport::Transport,
     Error, Result,
@@ -60,6 +61,17 @@ impl WchLink {
 
         self.chip = Some(info);
 
+        Ok(())
+    }
+
+    // wlink_endprocess
+    /// Detach chip and let it resume
+    pub fn detach_chip(&mut self) -> Result<()> {
+        log::debug!("detach chip");
+        if self.chip.is_some() {
+            self.send_command(commands::control::DetachChip)?;
+            self.chip = None;
+        }
         Ok(())
     }
 
@@ -197,6 +209,58 @@ impl WchLink {
             log::warn!("resume fails");
             Ok(())
         }
+    }
+
+    /// Write a memory word, require MCU to be halted.
+    ///
+    /// V2 microprocessor debug module abstract command only supports the register access mode,
+    /// So this function will use the register access mode to write a memory word,
+    /// instead of using the memory access mode.
+    pub fn write_memory_word(&mut self, address: u32, data: u32) -> Result<()> {
+        self.ensure_mcu_halt()?;
+
+        self.send_command(DmiOp::write(0x20, 0x0072a023))?; // sw x7,0(x5)
+        self.send_command(DmiOp::write(0x21, 0x00100073))?; // ebreak
+        self.send_command(DmiOp::write(0x04, address))?; // data0 <- address
+        self.clear_abstractcs_cmderr()?;
+        self.send_command(DmiOp::write(0x17, 0x00231005))?; // x5 <- data0
+
+        let abstractcs = self.dmi_read::<Abstractcs>()?;
+        log::debug!("{:?}", abstractcs);
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+
+        self.send_command(DmiOp::write(0x04, data))?; // data0 <- data
+        self.clear_abstractcs_cmderr()?;
+        self.send_command(DmiOp::write(0x17, 0x00271007))?; // data0 <- x7
+        let abstractcs = self.dmi_read::<Abstractcs>()?;
+        log::debug!("{:?}", abstractcs);
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+
+        Ok(())
+    }
+
+    /// Clear cmderror field of abstractcs register.
+    /// write 1 to clean the corresponding bit.
+    fn clear_abstractcs_cmderr(&mut self) -> Result<()> {
+        let mut abstractcs = self.dmi_read::<Abstractcs>()?;
+        abstractcs.set_cmderr(0b111);
+        self.dmi_write(abstractcs)?;
+        Ok(())
+    }
+
+    /// Soft reset MCU, using PFIC.CFGR.SYSRST
+    pub fn soft_reset(&mut self) -> Result<()> {
+        Ok(())
     }
 
     pub fn reset_mcu_and_run(&mut self) -> Result<()> {
