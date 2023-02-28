@@ -147,8 +147,9 @@ fn main() -> Result<()> {
                     probe.ensure_mcu_resume()?;
                 }
                 Reset {} => {
-                    probe.send_command(commands::Reset::Quit)?;
-                    log::info!("reset");
+                    // probe.send_command(commands::Reset::Quit)?;
+                    probe.soft_reset()?;
+                    log::info!("soft reset");
                     sleep(Duration::from_millis(300));
                     probe.ensure_mcu_resume()?;
                 }
@@ -158,7 +159,7 @@ fn main() -> Result<()> {
                     probe.write_reg(regno, value)?;
                 }
                 WriteMem { address, value } => {
-                    log::info!("write 0x{:08x} to 0x{:08x}", value, address);
+                    log::info!("write memory 0x{:08x} to 0x{:08x}", value, address);
                     probe.write_memory_word(address, value)?;
                 }
                 Status {} => {

@@ -187,23 +187,15 @@ impl WchLink {
         Ok(())
     }
 
+    // SingleLineExitPauseMode
     pub fn ensure_mcu_resume(&mut self) -> Result<()> {
-        /*
-        let dmstatus = self.dmi_read::<Dmstatus>()?;
-        if dmstatus.allresumeack() && dmstatus.anyresumeack() {
-            log::debug!("already resumed");
-            return Ok(());
-        }
-        */
-
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x40000001))?;
-        self.send_command(DmiOp::read(0x11))?;
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allresumeack() && dmstatus.anyresumeack() {
-            log::debug!("already resumed");
+            log::debug!("resumed");
             Ok(())
         } else {
             log::warn!("resume fails");
@@ -226,7 +218,7 @@ impl WchLink {
         self.send_command(DmiOp::write(0x17, 0x00231005))?; // x5 <- data0
 
         let abstractcs = self.dmi_read::<Abstractcs>()?;
-        log::debug!("{:?}", abstractcs);
+        log::trace!("{:?}", abstractcs);
         if abstractcs.busy() {
             return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
         }
@@ -238,7 +230,7 @@ impl WchLink {
         self.clear_abstractcs_cmderr()?;
         self.send_command(DmiOp::write(0x17, 0x00271007))?; // data0 <- x7
         let abstractcs = self.dmi_read::<Abstractcs>()?;
-        log::debug!("{:?}", abstractcs);
+        log::trace!("{:?}", abstractcs);
         if abstractcs.busy() {
             return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
         }
@@ -260,6 +252,15 @@ impl WchLink {
 
     /// Soft reset MCU, using PFIC.CFGR.SYSRST
     pub fn soft_reset(&mut self) -> Result<()> {
+        const PFIC_CFGR: u32 = 0xE000E048;
+        const KEY3: u32 = 0xBEEF;
+        const KEY_OFFSET: u8 = 16;
+        const RESETSYS_OFFSET: u8 = 7;
+
+        const RESET_VAL: u32 = KEY3 << KEY_OFFSET | 1 << RESETSYS_OFFSET;
+
+        self.write_memory_word(PFIC_CFGR, RESET_VAL)?;
+
         Ok(())
     }
 
