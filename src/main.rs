@@ -110,6 +110,8 @@ fn main() -> Result<()> {
     match cli.command {
         None => {
             println!("No command given, use --help for help.");
+            //probe.attach_chip()?;
+            //probe.reset_mcu_and_halt()?;
         }
         Some(command) => {
             probe.attach_chip()?;
@@ -158,6 +160,8 @@ fn main() -> Result<()> {
                     log::info!("soft reset");
                     sleep(Duration::from_millis(300));
                     probe.ensure_mcu_resume()?;
+
+                    // probe.reset_debug_module()?;
                 }
                 WriteReg { reg, value } => {
                     let regno = reg as u16;

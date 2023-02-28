@@ -13,6 +13,8 @@ pub enum Error {
     UnknownLinkVariant(u8),
     #[error("Unknown RISC-V Chip: 0x{0:02x}")]
     UnknownChip(u8),
+    #[error("Probe is not attached to an MCU")]
+    NotAttached,
     #[error("WCH-Link underlying protocol error: {0:02x} {1:02x?}")]
     Protocol(u8, Vec<u8>),
     #[error("Invalid payload length")]
@@ -23,6 +25,10 @@ pub enum Error {
     AbstractCommandError(AbstractcsCmdErr),
     #[error("DM is busy")]
     Busy,
+    #[error("DMI Status Failed")]
+    DmiFailed,
+    #[error("Operation timeout")]
+    Timeout,
 }
 
 #[derive(Debug, Clone, Copy)]

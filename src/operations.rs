@@ -172,7 +172,7 @@ impl WchLink {
     pub fn ensure_mcu_halt(&mut self) -> Result<()> {
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allhalted() && dmstatus.anyhalted() {
-            log::debug!("already halted");
+            log::trace!("already halted, nop");
         } else {
             loop {
                 self.send_command(DmiOp::write(0x10, 0x80000001))?;
@@ -194,10 +194,18 @@ impl WchLink {
 
     // SingleLineExitPauseMode
     pub fn ensure_mcu_resume(&mut self) -> Result<()> {
+        self.clear_dmstatus_havereset()?;
+        let dmstatus = self.dmi_read::<Dmstatus>()?;
+        if dmstatus.allrunning() && dmstatus.anyrunning() {
+            log::debug!("already running, nop");
+            return Ok(());
+        }
+
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x80000001))?;
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
         self.send_command(DmiOp::write(0x10, 0x40000001))?;
+
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allresumeack() && dmstatus.anyresumeack() {
             log::debug!("resumed");
@@ -246,6 +254,13 @@ impl WchLink {
         Ok(())
     }
 
+    fn clear_dmstatus_havereset(&mut self) -> Result<()> {
+        let mut dmcontrol = self.dmi_read::<Dmcontrol>()?;
+        dmcontrol.set_ackhavereset(true);
+        self.dmi_write(dmcontrol)?;
+        Ok(())
+    }
+
     /// Clear cmderror field of abstractcs register.
     /// write 1 to clean the corresponding bit.
     fn clear_abstractcs_cmderr(&mut self) -> Result<()> {
@@ -272,34 +287,36 @@ impl WchLink {
     // SingleLineCoreReset
     pub fn reset_mcu_and_run(&mut self) -> Result<()> {
         self.ensure_mcu_halt()?;
-        self.send_command(DmiOp::write(0x10, 0x00000003))?; // initiate a core reset request
-        let dmstatus = self.dmi_read::<Dmstatus>()?;
-        log::debug!("dmstatus {:?}", dmstatus);
-        if dmstatus.allhavereset() && dmstatus.anyhavereset() {
-            // reseted
-            println!("reseted");
-        } else {
-            println!("reset failed");
-        }
+        self.clear_dmstatus_havereset()?;
 
         // Clear the reset signal.
-        self.send_command(DmiOp::write(0x10, 0x00000001))?;
+        self.send_command(DmiOp::write(0x10, 0x00000001))?; // clear haltreq
+
+        self.send_command(DmiOp::write(0x10, 0x00000003))?; // initiate ndmreset
+        let dmstatus = self.dmi_read::<Dmstatus>()?;
+        println!("{:?}", dmstatus);
+        if dmstatus.allhavereset() && dmstatus.anyhavereset() {
+            // reseted
+            log::debug!("reseted");
+        } else {
+            log::warn!("reset failed");
+        }
+
         // Clear the reset status signal
-        self.send_command(DmiOp::write(0x10, 0x10000001))?;
+        self.send_command(DmiOp::write(0x10, 0x10000001))?; // ackhavereset
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
-            println!("reset status cleared");
+            log::debug!("reset status cleared");
         } else {
-            println!("reset status clear failed");
+            log::warn!("reset status clear failed");
         }
         Ok(())
     }
 
     /// Microprocessor halted immediately after reset
     pub fn reset_mcu_and_halt(&mut self) -> Result<()> {
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
-        // Initiate a halt request.
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
+        self.ensure_mcu_halt()?;
+
         // Initiate a core reset request and hold the halt request.
         self.send_command(DmiOp::write(0x10, 0x80000003))?;
         let dmstatus = self.dmi_read::<Dmstatus>()?;
@@ -309,12 +326,16 @@ impl WchLink {
             log::debug!("reset failed")
         }
         // Clear the reset status signal and hold the halt request
-        self.send_command(DmiOp::write(0x10, 0x90000001))?;
-        let dmstatus = self.dmi_read::<Dmstatus>()?;
-        if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
-            log::debug!("reset status cleared");
-        } else {
-            log::error!("reset status clear failed")
+        loop {
+            self.send_command(DmiOp::write(0x10, 0x90000001))?;
+            let dmstatus = self.dmi_read::<Dmstatus>()?;
+            if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
+                log::debug!("reset status cleared");
+                break;
+            } else {
+                log::warn!("reset status clear failed")
+            }
+
         }
         // Clear the halt request when the processor is reset and haltedd again
         self.send_command(DmiOp::write(0x10, 0x00000001))?;
@@ -344,12 +365,11 @@ impl WchLink {
         self.send_command(DmiOp::write(0x17, 0x00220000 | reg))?;
 
         let abstractcs = self.dmi_read::<Abstractcs>()?;
-        log::debug!("{:?}", abstractcs);
         if abstractcs.busy() {
-            log::error!("absctract command busy");
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
         }
-        if abstractcs.cmderr() == 0b000 {
-            log::trace!("abstract command OK");
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
         }
 
         let resp = self.send_command(DmiOp::read(0x04))?;
@@ -365,12 +385,11 @@ impl WchLink {
         self.send_command(DmiOp::write(0x17, 0x00230000 | reg))?;
 
         let abstractcs = self.dmi_read::<Abstractcs>()?;
-        log::debug!("{:?}", abstractcs);
         if abstractcs.busy() {
-            log::error!("absctract command busy");
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
         }
-        if abstractcs.cmderr() == 0b000 {
-            log::trace!("abstract command OK");
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
         }
 
         Ok(())
@@ -385,7 +404,9 @@ impl WchLink {
 
         let dmcontrol = self.dmi_read::<Dmcontrol>()?;
         if !(dmcontrol.dmactive() && dmcontrol.ndmreset()) {
-            return Err(Error::Custom("Value not written, DM reset might be not supported".into()));
+            return Err(Error::Custom(
+                "Value not written, DM reset might be not supported".into(),
+            ));
         }
 
         // Write the debug module reset command
@@ -405,14 +426,22 @@ impl WchLink {
     where
         R: DMReg,
     {
+        let mut n = 0;
         loop {
             let resp = self.send_command(DmiOp::read(R::ADDR))?;
+            if resp.op == 0x03 && resp.data == 0xffffffff && resp.addr == 0x7d {
+                // special code for NotAttached
+                return Err(Error::NotAttached);
+            }
             if resp.is_success() {
                 return Ok(R::from(resp.data));
+            } else if n > 100 {
+                return Err(Error::Timeout);
             } else if resp.is_busy() {
                 sleep(Duration::from_millis(10));
+                n += 1;
             } else {
-                return Err(Error::Busy);
+                return Err(Error::DmiFailed);
             }
         }
     }
