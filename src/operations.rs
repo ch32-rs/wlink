@@ -118,6 +118,11 @@ impl WchLink {
         Ok(mem)
     }
 
+    pub fn erase_flash(&mut self) -> Result<()> {
+        self.send_command(Program::EraseFlash)?;
+        Ok(())
+    }
+
     pub fn write_flash(&mut self, data: &[u8]) -> Result<()> {
         let pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
         let code_start_addr = self.chip.as_ref().unwrap().memory_start_addr;
@@ -264,6 +269,7 @@ impl WchLink {
         Ok(())
     }
 
+    // SingleLineCoreReset
     pub fn reset_mcu_and_run(&mut self) -> Result<()> {
         self.ensure_mcu_halt()?;
         self.send_command(DmiOp::write(0x10, 0x00000003))?; // initiate a core reset request
@@ -302,7 +308,7 @@ impl WchLink {
         } else {
             log::debug!("reset failed")
         }
-        // Clear the reset status signal and hold the halt reques
+        // Clear the reset status signal and hold the halt request
         self.send_command(DmiOp::write(0x10, 0x90000001))?;
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
@@ -370,7 +376,7 @@ impl WchLink {
         Ok(())
     }
 
-    // ???
+    // via: SingleLineDebugMReset
     pub fn reset_debug_module(&mut self) -> Result<()> {
         self.ensure_mcu_halt()?;
 
@@ -378,16 +384,16 @@ impl WchLink {
         self.send_command(DmiOp::write(0x10, 0x00000003))?;
 
         let dmcontrol = self.dmi_read::<Dmcontrol>()?;
-        log::debug!("{:?}", dmcontrol);
-
-        if !dmcontrol.dmactive() {
-            return Err(Error::Custom("Failed to reset debug module".into()));
+        if !(dmcontrol.dmactive() && dmcontrol.ndmreset()) {
+            return Err(Error::Custom("Value not written, DM reset might be not supported".into()));
         }
 
         // Write the debug module reset command
         self.send_command(DmiOp::write(0x10, 0x00000002))?;
 
-        if !self.dmi_read::<Dmcontrol>()?.ndmreset() {
+        let dmcontrol = self.dmi_read::<Dmcontrol>()?;
+
+        if !dmcontrol.ndmreset() {
             Ok(())
         } else {
             log::warn!("reset is not successful");
@@ -399,17 +405,15 @@ impl WchLink {
     where
         R: DMReg,
     {
-        let resp = self.send_command(DmiOp::read(R::ADDR))?;
-        if resp.is_success() {
-            return Ok(R::from(resp.data));
-        }
         loop {
             let resp = self.send_command(DmiOp::read(R::ADDR))?;
-            // let resp = self.send_command(DmiOp::Nop)?;
             if resp.is_success() {
                 return Ok(R::from(resp.data));
+            } else if resp.is_busy() {
+                sleep(Duration::from_millis(10));
+            } else {
+                return Err(Error::Busy);
             }
-            sleep(Duration::from_millis(10));
         }
     }
 

@@ -6,9 +6,22 @@
 
 **Known Issue:**
 
-- MCU Reset is not stable
-- Operation on DM regsiters might fail
 - Only support binary firmware file
+
+## Tested On
+
+### Probes
+
+- WCH-Link CH549
+- WCH-LinkE CH32V305
+
+### MCU
+
+- CH32V003 - flash ok, reset not work
+- CH32V103 - flash ok
+- CH32V203 - flash & reset ok
+- CH32V307 - flash & reset ok
+- ... (Feel free to open an issue if you have tested on other chips)
 
 ## Install
 

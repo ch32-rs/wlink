@@ -21,6 +21,8 @@ pub enum Error {
     InvalidPayload,
     #[error("DM Abstract comand error: {0:?}")]
     AbstractCommandError(AbstractcsCmdErr),
+    #[error("DM is busy")]
+    Busy,
 }
 
 #[derive(Debug, Clone, Copy)]

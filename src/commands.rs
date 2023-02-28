@@ -92,6 +92,8 @@ impl Command for SetRamAddress {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Program {
+    // wlink_erase
+    EraseFlash = 0x01,
     BeginWriteFlash = 0x02,
     // after write memory
     BeginWriteMemory = 0x05,

@@ -38,6 +38,8 @@ enum Commands {
     },
     /// Dump registers
     Regs {},
+    /// Erase flash
+    Erase {},
     /// Program the flash
     Flash {
         /// Path to the binary file to flash
@@ -107,7 +109,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         None => {
-            println!("No command given, doing nothing");
+            println!("No command given, use --help for help.");
         }
         Some(command) => {
             probe.attach_chip()?;
@@ -131,6 +133,10 @@ fn main() -> Result<()> {
                 Resume {} => {
                     log::info!("Resume MCU");
                     probe.ensure_mcu_resume()?;
+                }
+                Erase {} => {
+                    log::info!("Erase flash");
+                    probe.erase_flash()?;
                 }
                 Flash { path } => {
                     let firmware = std::fs::read(path)?;
