@@ -1,10 +1,21 @@
 # wlink - WCH-Link command line tool
 
-[![Crates.io](https://img.shields.io/crates/l/wlink?style=for-the-badge)](https://crates.io/crates/wlink) [![Crates.io](https://img.shields.io/crates/v/wlink?style=for-the-badge)](https://crates.io/crates/wlink) [![docs.rs](https://img.shields.io/docsrs/wlink?style=for-the-badge)](https://docs.rs/wlink) [![GitHub release](https://img.shields.io/github/v/release/ch32-rs/wlink?include_prereleases&style=for-the-badge)](https://github.com/ch32-rs/wlink/releases/tag/nightly)
+[![Crates.io][badge-license]][crates]
+[![Crates.io][badge-version]][crates]
+[![docs.rs][badge-docsrs]][docsrs]
+[![GitHub release][badge-release]][nightly]
+
+[badge-license]: https://img.shields.io/crates/l/wlink?style=for-the-badge
+[badge-version]: https://img.shields.io/crates/v/wlink?style=for-the-badge
+[badge-docsrs]: https://img.shields.io/docsrs/wlink?style=for-the-badge
+[badge-release]: https://img.shields.io/github/v/release/ch32-rs/wlink?include_prereleases&style=for-the-badge
+[crates]: https://crates.io/crates/wlink
+[docsrs]: https://docs.rs/wlink
+[nightly]: https://github.com/ch32-rs/wlink/releases/tag/nightly
 
 **NOTE**: This tool is still in development and not ready for production use.
 
-**Known Issue:**
+**Known issues**:
 
 - Only support binary firmware file
 
@@ -12,16 +23,23 @@
 
 ### Probes
 
-- WCH-Link CH549
-- WCH-LinkE CH32V305
+- WCH-Link [CH549]
+- WCH-LinkE [CH32V305][CH32V307]
+
+[CH549]: http://www.wch-ic.com/products/CH549.html
 
 ### MCU
 
-- CH32V003 - flash ok, reset not work
-- CH32V103 - flash ok
-- CH32V203 - flash & reset ok
-- CH32V307 - flash & reset ok
+- [CH32V003] - flash ok, reset not work
+- [CH32V103] - flash ok
+- [CH32V203] - flash & reset ok
+- [CH32V307] - flash & reset ok
 - ... (Feel free to open an issue if you have tested on other chips)
+
+[CH32V003]: http://www.wch-ic.com/products/CH32V003.html
+[CH32V103]: http://www.wch-ic.com/products/CH32V103.html
+[CH32V203]: http://www.wch-ic.com/products/CH32V203.html
+[CH32V307]: http://www.wch-ic.com/products/CH32V307.html
 
 ## Install
 
