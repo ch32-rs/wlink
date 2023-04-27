@@ -31,6 +31,7 @@ impl WchLinkVariant {
             2 => Ok(Self::ECh32v305),
             3 => Ok(Self::SCh32v203),
             4 => Ok(Self::B),
+            18 => Ok(Self::ECh32v305),
             _ => Err(Error::UnknownLinkVariant(value)),
         }
     }
