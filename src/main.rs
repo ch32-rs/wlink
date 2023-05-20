@@ -42,6 +42,9 @@ enum Commands {
     Erase {},
     /// Program the flash
     Flash {
+        /// Address in u32
+        #[arg(value_parser = parse_number)]
+        address: u32,
         /// Path to the binary file to flash
         path: String,
     },
@@ -137,27 +140,27 @@ fn main() -> Result<()> {
                     probe.ensure_mcu_resume()?;
                 }
                 Erase {} => {
-                    log::info!("Erase flash");
+                    log::info!("Erase Flash");
                     probe.erase_flash()?;
                 }
-                Flash { path } => {
+                Flash { address, path } => {
                     let firmware = std::fs::read(path)?;
-                    log::info!("flash {} bytes", firmware.len());
-                    probe.write_flash(&firmware)?;
-                    log::info!("flash done");
+                    log::info!("Flashing {} bytes to 0x{:08x}", firmware.len(), address);
+                    probe.write_flash(&firmware, address)?;
+                    log::info!("Flash done");
 
-                    sleep(Duration::from_secs(1));
+                    sleep(Duration::from_millis(500));
 
-                    log::info!("now reset...");
+                    log::info!("Now reset...");
                     probe.send_command(commands::Reset::Quit)?;
-                    sleep(Duration::from_secs(1));
-                    log::info!("resume executing...");
+                    sleep(Duration::from_millis(500));
+                    log::info!("Resume executing...");
                     probe.ensure_mcu_resume()?;
                 }
                 Reset {} => {
                     // probe.send_command(commands::Reset::Quit)?;
                     probe.soft_reset()?;
-                    log::info!("soft reset");
+                    log::info!("Soft reset");
                     sleep(Duration::from_millis(300));
                     probe.ensure_mcu_resume()?;
 
@@ -165,11 +168,11 @@ fn main() -> Result<()> {
                 }
                 WriteReg { reg, value } => {
                     let regno = reg as u16;
-                    log::info!("set reg 0x{:04x} to 0x{:08x}", regno, value);
+                    log::info!("Set reg 0x{:04x} to 0x{:08x}", regno, value);
                     probe.write_reg(regno, value)?;
                 }
                 WriteMem { address, value } => {
-                    log::info!("write memory 0x{:08x} to 0x{:08x}", value, address);
+                    log::info!("Write memory 0x{:08x} to 0x{:08x}", value, address);
                     probe.write_memory_word(address, value)?;
                 }
                 Status {} => {
