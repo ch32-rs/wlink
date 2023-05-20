@@ -20,24 +20,24 @@ impl WchLink {
     /// Attach chip and get chip info
     pub fn attach_chip(&mut self) -> Result<()> {
         if self.chip.is_some() {
-            log::warn!("chip already attached");
+            log::warn!("Chip already attached");
         }
         let chip_info = self.send_command(commands::control::AttachChip)?;
-        log::info!("attached chip: {}", chip_info);
+        log::info!("Attached chip: {}", chip_info);
 
         let uid = self.send_command(commands::GetChipId)?;
         log::debug!("Chip UID: {uid}");
 
         self.send_command(commands::GetFlashProtected)?;
         let flash_protected = self.send_command(commands::GetFlashProtected)?;
-        log::debug!("flash protected: {}", flash_protected);
+        log::debug!("Flash protected: {}", flash_protected);
 
         let sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
         log::debug!("SRAM CODE mode: {}", sram_code_mode);
 
         // detect chip's RISC-V core version, QingKe cores
         let marchid = self.read_reg(regs::MARCHID)?;
-        log::trace!("read csr marchid: {marchid:08x}");
+        log::trace!("Read csr marchid: {marchid:08x}");
         let core_type = parse_marchid(marchid);
         log::debug!("RISC-V core version: {core_type:?}");
 
@@ -67,7 +67,7 @@ impl WchLink {
     // wlink_endprocess
     /// Detach chip and let it resume
     pub fn detach_chip(&mut self) -> Result<()> {
-        log::debug!("detach chip");
+        log::debug!("Detach chip");
         if self.chip.is_some() {
             self.send_command(commands::control::DetachChip)?;
             self.chip = None;
@@ -123,24 +123,24 @@ impl WchLink {
         Ok(())
     }
 
-    pub fn write_flash(&mut self, data: &[u8]) -> Result<()> {
+    pub fn write_flash(&mut self, data: &[u8], address: u32) -> Result<()> {
         let pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
         let code_start_addr = self.chip.as_ref().unwrap().memory_start_addr;
-        log::debug!("Code start address 0x{:08x}", code_start_addr);
+        log::debug!("Default flash address 0x{:08x}", code_start_addr);
 
         let mut data = data.to_vec();
         if data.len() % 256 != 0 {
             data.resize((data.len() / 256 + 1) * 256, 0);
         }
         self.send_command(SetRamAddress {
-            start_addr: code_start_addr,
+            start_addr: address,
             len: data.len() as u32,
         })?;
         self.send_command(Program::BeginWriteMemory)?;
         self.device_handle
             .write_data_endpoint(self.chip.as_ref().unwrap().chip_family.flash_op())?;
 
-        log::debug!("flash op written");
+        log::debug!("Flash op written");
 
         for i in 0.. {
             // check written
@@ -150,7 +150,7 @@ impl WchLink {
                 }
             }
             if i > 10 {
-                return Err(Error::Custom("timeout while write flash".into()));
+                return Err(Error::Custom("Timeout while write flash".into()));
             }
             sleep(Duration::from_millis(10));
         }
@@ -161,10 +161,10 @@ impl WchLink {
             self.device_handle.write_data_endpoint(chunk)?;
             let rxbuf = self.device_handle.read_data_endpoint(4)?;
             if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {
-                return Err(Error::Custom("error while fastprogram".into()));
+                return Err(Error::Custom("Error while fastprogram".into()));
             }
         }
-        log::debug!("fastprogram done");
+        log::debug!("Fastprogram done");
 
         Ok(())
     }
@@ -172,7 +172,7 @@ impl WchLink {
     pub fn ensure_mcu_halt(&mut self) -> Result<()> {
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allhalted() && dmstatus.anyhalted() {
-            log::trace!("already halted, nop");
+            log::trace!("Already halted, nop");
         } else {
             loop {
                 self.send_command(DmiOp::write(0x10, 0x80000001))?;
@@ -180,7 +180,7 @@ impl WchLink {
                 if dmstatus.anyhalted() && dmstatus.allhalted() {
                     break;
                 } else {
-                    log::warn!("not halt, try send");
+                    log::warn!("Not halt, try send");
                     sleep(Duration::from_millis(10));
                 }
             }
@@ -197,7 +197,7 @@ impl WchLink {
         self.clear_dmstatus_havereset()?;
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allrunning() && dmstatus.anyrunning() {
-            log::debug!("already running, nop");
+            log::debug!("Already running, nop");
             return Ok(());
         }
 
@@ -208,10 +208,10 @@ impl WchLink {
 
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allresumeack() && dmstatus.anyresumeack() {
-            log::debug!("resumed");
+            log::debug!("Resumed");
             Ok(())
         } else {
-            log::warn!("resume fails");
+            log::warn!("Resume fails");
             Ok(())
         }
     }
@@ -297,18 +297,18 @@ impl WchLink {
         println!("{:?}", dmstatus);
         if dmstatus.allhavereset() && dmstatus.anyhavereset() {
             // reseted
-            log::debug!("reseted");
+            log::debug!("Reseted");
         } else {
-            log::warn!("reset failed");
+            log::warn!("Reset failed");
         }
 
         // Clear the reset status signal
         self.send_command(DmiOp::write(0x10, 0x10000001))?; // ackhavereset
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
-            log::debug!("reset status cleared");
+            log::debug!("Reset status cleared");
         } else {
-            log::warn!("reset status clear failed");
+            log::warn!("Reset status clear failed");
         }
         Ok(())
     }
@@ -321,19 +321,19 @@ impl WchLink {
         self.send_command(DmiOp::write(0x10, 0x80000003))?;
         let dmstatus = self.dmi_read::<Dmstatus>()?;
         if dmstatus.allhavereset() && dmstatus.anyhavereset() {
-            log::debug!("reseted");
+            log::debug!("Reseted");
         } else {
-            log::debug!("reset failed")
+            log::debug!("Reset failed")
         }
         // Clear the reset status signal and hold the halt request
         loop {
             self.send_command(DmiOp::write(0x10, 0x90000001))?;
             let dmstatus = self.dmi_read::<Dmstatus>()?;
             if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
-                log::debug!("reset status cleared");
+                log::debug!("Reset status cleared");
                 break;
             } else {
-                log::warn!("reset status clear failed")
+                log::warn!("Reset status clear failed")
             }
 
         }
@@ -417,7 +417,7 @@ impl WchLink {
         if !dmcontrol.ndmreset() {
             Ok(())
         } else {
-            log::warn!("reset is not successful");
+            log::warn!("Reset is not successful");
             Ok(())
         }
     }

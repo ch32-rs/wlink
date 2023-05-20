@@ -48,14 +48,14 @@
 ## Usage
 
 ```console
-> # Flash firmware.bin to Code FLASH
-> cargo run -- flash ./firmware.bin`
-16:55:56 [INFO] WCH-Link v2.7 (WCH-Link-CH549)
-16:55:56 [INFO] attached chip: CH32V20x(0x20360510)
-16:55:56 [INFO] flash 860 bytes
-16:55:57 [INFO] flash done
-16:55:58 [INFO] now reset...
-16:55:59 [INFO] resume executing...
+> # Flash firmware.bin to Code FLASH at address 0x08000000
+> cargo run -- flash 0x08000000 ./firmware.bin`
+12:10:26 [INFO] WCH-Link v2.8 (WCH-Link-CH549)
+12:10:26 [INFO] Attached chip: CH32V30x(0x30700518)
+12:10:26 [INFO] Flashing 8068 bytes to 0x08000000
+12:10:27 [INFO] Flash done
+12:10:28 [INFO] Now reset...
+12:10:28 [INFO] Resume executing...
 
 > # Dump Code FLASH, for verification
 > cargo run -- -v dump 0x08000000 100`
