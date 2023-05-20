@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
-use wlink::{commands, device::WchLink, regs};
+use wlink::{commands, device::WchLink, regs, format::read_firmware_from_file};
 
 use clap::{Parser, Subcommand};
 
@@ -43,7 +43,7 @@ enum Commands {
     /// Program the flash
     Flash {
         /// Address in u32
-        #[arg(value_parser = parse_number)]
+        #[arg(short, long, default_value_t=0x0800_0000, value_parser = parse_number)]
         address: u32,
         /// Path to the binary file to flash
         path: String,
@@ -144,7 +144,8 @@ fn main() -> Result<()> {
                     probe.erase_flash()?;
                 }
                 Flash { address, path } => {
-                    let firmware = std::fs::read(path)?;
+                    let firmware = read_firmware_from_file(path)?;
+
                     log::info!("Flashing {} bytes to 0x{:08x}", firmware.len(), address);
                     probe.write_flash(&firmware, address)?;
                     log::info!("Flash done");

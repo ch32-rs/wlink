@@ -7,6 +7,7 @@ pub mod flash_op;
 mod operations;
 pub mod regs;
 pub mod transport;
+pub mod format;
 
 pub use crate::error::{Error, Result};
 
