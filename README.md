@@ -49,7 +49,7 @@
 
 ```console
 > # Flash firmware.bin to Code FLASH at address 0x08000000
-> cargo run -- flash 0x08000000 ./firmware.bin`
+> cargo run -- flash --address 0x08000000 ./firmware.bin`
 12:10:26 [INFO] WCH-Link v2.8 (WCH-Link-CH549)
 12:10:26 [INFO] Attached chip: CH32V30x(0x30700518)
 12:10:26 [INFO] Flashing 8068 bytes to 0x08000000
