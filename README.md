@@ -100,6 +100,4 @@ x5     t0: 0xb4a9b38a
 
 ## References
 
-- <https://github.com/openwch/ch32v003> RISC-V QingKeV2 Microprocessor Debug Manual
-- <https://github.com/cnlohr/ch32v003fun> A miniwchlink implementation
-- <https://github.com/blackmagic-debug/blackmagic/pull/1399>
+- [docs/references.md](docs/references.md)
