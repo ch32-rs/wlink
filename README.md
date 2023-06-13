@@ -49,7 +49,7 @@
 
 ```console
 > # Flash firmware.bin to Code FLASH at address 0x08000000
-> cargo run -- flash --address 0x08000000 ./firmware.bin`
+> cargo run -- flash --address 0x08000000 ./firmware.bin
 12:10:26 [INFO] WCH-Link v2.8 (WCH-Link-CH549)
 12:10:26 [INFO] Attached chip: CH32V30x(0x30700518)
 12:10:26 [INFO] Flashing 8068 bytes to 0x08000000
@@ -58,7 +58,7 @@
 12:10:28 [INFO] Resume executing...
 
 > # Dump Code FLASH, for verification
-> cargo run -- -v dump 0x08000000 100`
+> cargo run -- -v dump 0x08000000 100
 18:31:18 [DEBUG] (1) wlink::device: Acquired libusb context.
 18:31:18 [DEBUG] (1) wlink::device: Claimed interface 0 of USB device.
 18:31:18 [INFO] WCH-Link v2.8 (WCH-LinkE-CH32V305)
@@ -96,7 +96,7 @@ x5     t0: 0xb4a9b38a
 > # Set dpc(pc) to System Flash and Run - Not working :(
 > cargo run -- write-reg 0x7b1 0x1fff8000
 
-````
+```
 
 ## References
 
