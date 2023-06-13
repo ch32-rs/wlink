@@ -17,20 +17,20 @@ const ENDPOINT_IN: u8 = 0x81;
 
 Request packet:
 
-| 0    | 1   | 2   | 3 ... n |
-| ---- | --- | --- | ------- |
+| 0    | 1   | 2   | 3 ... n     |
+| ---- | --- | --- | ----------- |
 | 0x81 | CMD | LEN | PAYLOAD ... |
 
 Success response packet:
 
-| 0    | 1   | 2   | 3 ... n |
-| ---- | --- | --- | ------- |
+| 0    | 1   | 2   | 3 ... n     |
+| ---- | --- | --- | ----------- |
 | 0x82 | CMD | LEN | PAYLOAD ... |
 
 Error response packet:
 
-| 0    | 1      | 2   | 3 ... n |
-| ---- | ------ | --- | ------- |
+| 0    | 1      | 2   | 3 ... n     |
+| ---- | ------ | --- | ----------- |
 | 0x81 | REASON | LEN | PAYLOAD ... |
 
 where:
@@ -85,12 +85,12 @@ Set subcommand requires quitreset for riscvchip 1
 PAYLOAD
 
 | iAddr_u8 | iData_u32_be | iOp_u8 |
-| ---------| ------------ | ------ |
+| -------- | ------------ | ------ |
 
 Response PAYLOAD
 
 | oAddr_u8 | oData_u32_be | oOp_u8 |
-| ---------| ------------ | ------ |
+| -------- | ------------ | ------ |
 
 where:
 
@@ -152,17 +152,19 @@ MRS IDE v2.7
 
 ## Variants
 
-| MCU       | Variant            | Description |
-| --------- | ------------------ | ----------- |
-| CH549     | WCH-Link-R1-1v1    | Swith mode by changing firmware |
+| MCU       | Variant            | Description                            |
+| --------- | ------------------ | -------------------------------------- |
+| CH549     | WCH-Link-R1-1v1    | Swith mode by changing firmware        |
 | CH32V305F | WCH-LinkE-R0-1v3   | Swith mode by button or EEPROM setting |
-| CH32V203  | WCH-LinkS-CH32V203 | |
-| ??        | WCH-LinkB          | |
+| CH32V203  | WCH-LinkS-CH32V203 |                                        |
+| ??        | WCH-LinkB          |                                        |
 
-## Ref
+## References
 
-- Official WCH-Link Homepage(English) <http://www.wch-ic.com/products/WCH-Link.html>
-- Official WCH-Link Homepage(中文) <https://www.wch.cn/products/WCH-Link.html>
+- Official WCH-Link Homepage(English) \
+  <http://www.wch-ic.com/products/WCH-Link.html>
+- Official WCH-Link Homepage(Chinese) \
+  <https://www.wch.cn/products/WCH-Link.html>
 
 ### WCH-OpenOCD
 
