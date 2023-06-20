@@ -6,25 +6,25 @@
 
 ## Feature matrix
 
-| Feature                        | WCH-Link | WCH-LinkE | WCH-LinkW | WCH-DAPLink |
-| ------------------------------ | :------: | :-------: | :-------: | :---------: |
-| RISC-V mode                    | &check;  |  &check;  |  &check;  |             |
-| ARM-SWD mode (HID device)      |          |           |           |   &check;   |
-| ARM-SWD mode (WinUSB device)   | &check;  |  &check;  |  &check;  |   &check;   |
-| ARM-JTAG mode (HID device)     |          |           |           |   &check;   |
-| ARM-JTAG mode (WinUSB device)  |          |  &check;  |  &check;  |   &check;   |
-| ModeS button                   |          |  &check;  |  &check;  |   &check;   |
-| DFU via 2-wire                 | &check;  |           |           |             |
-| DFU via serial-port            | &check;  |           |           |             |
-| DFU via USB                    | &check;  |           |  &check;  |   &check;   |
-| Power Supply (3.3v)            | &check;  |  &check;  |  &check;  |   &check;   |
-| Power Supply (5.0v)            | &check;  |  &check;  |  &check;  |   &check;   |
-| Power Supply (Configurable)    |          |  &check;  |  &check;  |   &check;   |
-| USB 2.0 to JTAG                |          |  &check;  |           |             |
-| Wireless mode                  |          |           |  &check;  |             |
-| Download via [MRS]             | &check;  |  &check;  |  &check;  |   &check;   |
-| Download via [WCH-LinkUtility] | &check;  |  &check;  |  &check;  |             |
-| Download via [Keil]            | >= v5.25 | >= v5.25  | >= v5.25  |   &check;   |
+| Feature                         |  WCH-Link  | WCH-LinkE  | WCH-LinkW  | WCH-DAPLink |
+| ------------------------------- | :--------: | :--------: | :--------: | :---------: |
+| RISC-V mode                     |  &check;   |  &check;   |  &check;   |             |
+| ARM-SWD mode (HID device)       |            |            |            |   &check;   |
+| ARM-SWD mode (WinUSB device)    |  &check;   |  &check;   |  &check;   |   &check;   |
+| ARM-JTAG mode (HID device)      |            |            |            |   &check;   |
+| ARM-JTAG mode (WinUSB device)   |            |  &check;   |  &check;   |   &check;   |
+| ModeS button                    |            |  &check;   |  &check;   |   &check;   |
+| DFU via 2-wire                  |  &check;   |            |            |             |
+| DFU via serial-port             |  &check;   |            |            |             |
+| DFU via USB                     |  &check;   |            |  &check;   |   &check;   |
+| Power Supply (3.3v)             |  &check;   |  &check;   |  &check;   |   &check;   |
+| Power Supply (5.0v)             |  &check;   |  &check;   |  &check;   |   &check;   |
+| Power Supply (Configurable)     |            |  &check;   |  &check;   |   &check;   |
+| USB 2.0 to JTAG                 |            |  &check;   |            |             |
+| Wireless mode                   |            |            |  &check;   |             |
+| Download via [MounRiver Studio] |  &check;   |  &check;   |  &check;   |   &check;   |
+| Download via [WCH-LinkUtility]  |  &check;   |  &check;   |  &check;   |             |
+| Download via [Keil]             | &ge; v5.25 | &ge; v5.25 | &ge; v5.25 |   &check;   |
 
 ## Supported Chip matrix
 
@@ -101,9 +101,9 @@
 - <https://github.com/openwch/ch32v003> RISC-V QingKeV2 Microprocessor Debug Manual
 - <https://github.com/cnlohr/ch32v003fun> A miniwchlink implementation
 - <https://github.com/blackmagic-debug/blackmagic/pull/1399>
-- [MRS] compatible WCH-Link OpenOCD source code <https://github.com/xu7wong/openocd_wchlink> \
+- [MounRiver Studio] compatible WCH-Link OpenOCD source code <https://github.com/xu7wong/openocd_wchlink> \
    from <https://www.wch.cn/bbs/thread-91946-1.html>
 
-[mrs]: http://www.mounriver.com "MounRiver Studio"
-[WCH-LinkUtility]: https://web.archive.org/web/20230613114515if_/https://www.wch.cn/downloads/file/418.html?time=2023-06-13%2019:44:31&code=z88GXEXY3kNBV9rTwDe0iWerDk5iKHB50lkst8j8
-[keil]: https://www.keil.com "Keil Embedded Development Tools"
+[MounRiver Studio]: http://www.mounriver.com "MounRiver Studio"
+[WCH-LinkUtility]: https://web.archive.org/web/20230613114515if_/https://www.wch.cn/downloads/file/418.html?time=2023-06-13%2019:44:31&code=z88GXEXY3kNBV9rTwDe0iWerDk5iKHB50lkst8j8 "WCH LinkUtility"
+[Keil]: https://www.keil.com "Keil Embedded Development Tools"
