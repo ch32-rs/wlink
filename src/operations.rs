@@ -22,13 +22,29 @@ impl WchLink {
         if self.chip.is_some() {
             log::warn!("Chip already attached");
         }
-        let chip_info = self.send_command(commands::control::AttachChip)?;
-        log::info!("Attached chip: {}", chip_info);
+
+        let mut chip_info = None;
+        for _ in 0..3 {
+            self.send_command(commands::control::GetProbeInfo)?;
+            self.send_command(commands::control::DetachChip)?;
+
+            let dummy = self.send_command(commands::RawCommand::<0x0c>(vec![0x07, 0x01]))?;
+            log::debug!("Dummy command: {:?}", dummy);
+
+            if let Ok(resp) = self.send_command(commands::control::AttachChip) {
+                log::info!("Attached chip: {}", resp);
+                chip_info = Some(resp);
+                break;
+            } else {
+                log::debug!("retrying...");
+                sleep(Duration::from_millis(100));
+            }
+        }
+        let chip_info = chip_info.ok_or(Error::NotAttached)?;
 
         let uid = self.send_command(commands::GetChipId)?;
         log::debug!("Chip UID: {uid}");
 
-        self.send_command(commands::GetFlashProtected)?;
         let flash_protected = self.send_command(commands::GetFlashProtected)?;
         log::debug!("Flash protected: {}", flash_protected);
 
@@ -335,7 +351,6 @@ impl WchLink {
             } else {
                 log::warn!("Reset status clear failed")
             }
-
         }
         // Clear the halt request when the processor is reset and haltedd again
         self.send_command(DmiOp::write(0x10, 0x00000001))?;

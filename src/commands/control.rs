@@ -7,6 +7,7 @@ use crate::{RiscvChip, WchLinkVariant};
 
 use super::*;
 
+/// (0x0d, 0x01)
 pub struct GetProbeInfo;
 impl Command for GetProbeInfo {
     type Response = ProbeInfo;
@@ -48,7 +49,7 @@ impl fmt::Display for ProbeInfo {
     }
 }
 
-/// _ 0d _ 02
+/// (0x0d, 0x02)
 pub struct AttachChip;
 impl Command for AttachChip {
     type Response = AttachChipResponse;
@@ -85,6 +86,7 @@ impl fmt::Display for AttachChipResponse {
 }
 
 // ?? close out
+/// (0x0d, 0xff)
 pub struct DetachChip;
 impl Command for DetachChip {
     type Response = ();
@@ -102,5 +104,16 @@ impl Command for GetChipRomRamSplit {
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         vec![0x04]
+    }
+}
+
+/// Special command for CH32V20x, CH32V30x, CH32V003, CH32V103
+/// After attach chip
+pub struct Unknown3;
+impl Command for Unknown3 {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        vec![0x03]
     }
 }

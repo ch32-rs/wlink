@@ -4,10 +4,10 @@ pub mod commands;
 pub mod device;
 pub mod error;
 pub mod flash_op;
+pub mod format;
 mod operations;
 pub mod regs;
 pub mod transport;
-pub mod format;
 
 pub use crate::error::{Error, Result};
 
@@ -63,13 +63,24 @@ pub enum RiscvChip {
     CH32V20x = 0x05,
     /// CH32V30x RISC-V4C/V4F series
     CH32V30x = 0x06,
-    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, failback as CH57x
+    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, always failback as CH57x
     CH58x = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
 }
 
 impl RiscvChip {
+    fn can_disable_debug(&self) -> bool {
+        matches!(self, RiscvChip::CH57x | RiscvChip::CH56x | RiscvChip::CH58x)
+    }
+
+    fn reset_command(&self) -> crate::commands::Reset {
+        match self {
+            RiscvChip::CH57x | RiscvChip::CH58x => crate::commands::Reset::Normal2,
+            _ => crate::commands::Reset::Normal,
+        }
+    }
+
     fn flash_op(&self) -> &[u8] {
         match self {
             RiscvChip::CH32V103 => &flash_op::CH32V103,

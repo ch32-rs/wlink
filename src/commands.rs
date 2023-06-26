@@ -73,6 +73,15 @@ impl Response for u8 {
     }
 }
 
+pub struct RawCommand<const N: u8>(pub Vec<u8>);
+impl<const N: u8> Command for RawCommand<N> {
+    type Response = Vec<u8>;
+    const COMMAND_ID: u8 = N;
+    fn payload(&self) -> Vec<u8> {
+        self.0.clone()
+    }
+}
+
 /// Set RAM address (0x08000000)
 pub struct SetRamAddress {
     // 0x08000000 or 0x00000000
@@ -229,6 +238,7 @@ pub enum Reset {
     /// wlink_quitreset
     Quit,
     Normal,
+    Normal2,
 }
 impl Command for Reset {
     type Response = ();
@@ -236,7 +246,8 @@ impl Command for Reset {
     fn payload(&self) -> Vec<u8> {
         match self {
             Reset::Quit => vec![0x01],
-            Reset::Normal => vec![0x03], // TODO: 0x02
+            Reset::Normal => vec![0x03],
+            Reset::Normal2 => vec![0x02],
         }
     }
 }

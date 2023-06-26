@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
-use wlink::{commands, device::WchLink, regs, format::read_firmware_from_file};
+use wlink::{commands, device::WchLink, format::read_firmware_from_file, regs};
 
 use clap::{Parser, Subcommand};
 
@@ -43,7 +43,7 @@ enum Commands {
     /// Program the flash
     Flash {
         /// Address in u32
-        #[arg(short, long, default_value_t=0x0800_0000, value_parser = parse_number)]
+        #[arg(short, long, value_parser = parse_number)]
         address: u32,
         /// Path to the binary file to flash
         path: String,

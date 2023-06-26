@@ -46,6 +46,7 @@ where:
 - 0x06 - Flash Read Protect
 - 0x08 - DMI OP
 - 0x0b - Reset
+- 0x0c - ???
 - 0x0d - Info
 - 0x0e - Disable debug for riscvchip 2, 3
 - 0x0f - ? beigin verify

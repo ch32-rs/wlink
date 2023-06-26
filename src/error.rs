@@ -15,7 +15,7 @@ pub enum Error {
     UnknownChip(u8),
     #[error("Probe is not attached to an MCU")]
     NotAttached,
-    #[error("WCH-Link underlying protocol error: {0:02x} {1:02x?}")]
+    #[error("WCH-Link underlying protocol error: {0:#04x} {1:#04x?}")]
     Protocol(u8, Vec<u8>),
     #[error("Invalid payload length")]
     InvalidPayloadLength,
