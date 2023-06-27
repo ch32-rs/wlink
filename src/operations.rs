@@ -191,6 +191,7 @@ impl WchLink {
             log::trace!("Already halted, nop");
         } else {
             loop {
+                // Initiate a halt request
                 self.send_command(DmiOp::write(0x10, 0x80000001))?;
                 let dmstatus = self.dmi_read::<Dmstatus>()?;
                 if dmstatus.anyhalted() && dmstatus.allhalted() {
@@ -372,16 +373,19 @@ impl WchLink {
     /// CSR: 0x0000 - 0x0fff
     /// GPR: 0x1000 - 0x101f
     /// FPR: 0x1020 - 0x103f
+    // ref: QingKeV2 Microprocessor Debug Manual
     pub fn read_reg(&mut self, regno: u16) -> Result<u32> {
         self.ensure_mcu_halt()?;
 
+        self.send_command(DmiOp::write(0x16, 0x00000700))?; // Clear cmderr
+
         let reg = regno as u32;
-        self.send_command(DmiOp::write(0x04, 0x00000000))?;
-        self.send_command(DmiOp::write(0x17, 0x00220000 | reg))?;
+        self.send_command(DmiOp::write(0x04, 0x00000000))?; // Clear the Data0 register
+        self.send_command(DmiOp::write(0x17, 0x00220000 | (reg & 0xFFFF)))?;
 
         let abstractcs = self.dmi_read::<Abstractcs>()?;
         if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); // resue busy
         }
         if abstractcs.cmderr() != 0 {
             AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
@@ -397,7 +401,7 @@ impl WchLink {
 
         let reg = regno as u32;
         self.send_command(DmiOp::write(0x04, value))?;
-        self.send_command(DmiOp::write(0x17, 0x00230000 | reg))?;
+        self.send_command(DmiOp::write(0x17, 0x00230000 | (reg & 0xFFFF)))?;
 
         let abstractcs = self.dmi_read::<Abstractcs>()?;
         if abstractcs.busy() {

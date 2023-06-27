@@ -137,6 +137,7 @@ impl DMReg for Hartinfo {
 
 bitfield! {
     /// Abstract command status register, 0x16
+    #[derive(Clone, Copy)]
     pub struct Abstractcs(u32);
     impl Debug;
     pub progbufsize, _: 28, 24;
