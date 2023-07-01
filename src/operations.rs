@@ -375,7 +375,8 @@ impl WchLink {
     /// FPR: 0x1020 - 0x103f
     // ref: QingKeV2 Microprocessor Debug Manual
     pub fn read_reg(&mut self, regno: u16) -> Result<u32> {
-        self.ensure_mcu_halt()?;
+        // no need to halt when read register
+        // self.ensure_mcu_halt()?;
 
         self.send_command(DmiOp::write(0x16, 0x00000700))?; // Clear cmderr
 
@@ -397,7 +398,7 @@ impl WchLink {
     }
 
     pub fn write_reg(&mut self, regno: u16, value: u32) -> Result<()> {
-        self.ensure_mcu_halt()?;
+        // self.ensure_mcu_halt()?;
 
         let reg = regno as u32;
         self.send_command(DmiOp::write(0x04, value))?;

@@ -154,6 +154,9 @@ fn main() -> Result<()> {
                 Resume {} => {
                     log::info!("Resume MCU");
                     probe.ensure_mcu_resume()?;
+
+                    let dmstatus: regs::Dmstatus = probe.dmi_read()?;
+                    log::info!("{dmstatus:?}");
                 }
                 Erase {} => {
                     log::info!("Erase Flash");
@@ -194,7 +197,7 @@ fn main() -> Result<()> {
                 }
                 Status {} => {
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
-                    println!("=> {dmstatus:?}");
+                    log::info!("{dmstatus:?}");
                 }
                 _ => unreachable!("unimplemented command"),
             }
