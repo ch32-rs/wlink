@@ -15,12 +15,22 @@
 
 **NOTE**: This tool is still in development and not ready for production use.
 
+## Feature Support
+
+- [x] Flash firmware
+- [x] Reset chip
+- [x] Read chip info
+- [x] Read chip memory
+- [x] Read chip register
+
 ## Tested On
 
 ### Probes
 
-- WCH-Link [CH549]
+- WCH-Link [CH549] - the first version, reflash required when switching mode
 - WCH-LinkE [CH32V305][CH32V307]
+- [ ] WCH-Link? [CH32V203][CH32V203]
+- [ ] WCH-Link? [CH32V208][CH32V308] - wireless version
 
 [CH549]: http://www.wch-ic.com/products/CH549.html
 
@@ -35,6 +45,7 @@
 [CH32V003]: http://www.wch-ic.com/products/CH32V003.html
 [CH32V103]: http://www.wch-ic.com/products/CH32V103.html
 [CH32V203]: http://www.wch-ic.com/products/CH32V203.html
+[CH32V308]: http://www.wch-ic.com/products/CH32V208.html
 [CH32V307]: http://www.wch-ic.com/products/CH32V307.html
 
 ## Install

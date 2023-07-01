@@ -21,7 +21,9 @@ pub enum WchLinkVariant {
     ECh32v305 = 2,
     /// WCH-LinkS-CH32V203
     SCh32v203 = 3,
-    /// WCH-LinkB,
+    /// WCH-LinkW-CH32V208
+    WCh32v208 = 5,
+    /// WCH-LinkB, CH32V203
     B = 4,
 }
 
@@ -32,7 +34,8 @@ impl WchLinkVariant {
             2 => Ok(Self::ECh32v305),
             3 => Ok(Self::SCh32v203),
             4 => Ok(Self::B),
-            18 => Ok(Self::ECh32v305),
+            5 => Ok(Self::WCh32v208),
+            0x12 => Ok(Self::ECh32v305),
             _ => Err(Error::UnknownLinkVariant(value)),
         }
     }
@@ -44,6 +47,7 @@ impl fmt::Display for WchLinkVariant {
             WchLinkVariant::Ch549 => write!(f, "WCH-Link-CH549"),
             WchLinkVariant::ECh32v305 => write!(f, "WCH-LinkE-CH32V305"),
             WchLinkVariant::SCh32v203 => write!(f, "WCH-LinkS-CH32V203"),
+            WchLinkVariant::WCh32v208 => write!(f, "WCH-LinkW-CH32V208"),
             WchLinkVariant::B => write!(f, "WCH-LinkB"),
         }
     }
