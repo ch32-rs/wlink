@@ -22,6 +22,8 @@
 - [x] Read chip info
 - [x] Read chip memory
 - [x] Read chip register
+- [x] Write chip register
+
 
 ## Tested On
 
@@ -29,8 +31,8 @@
 
 - WCH-Link [CH549] - the first version, reflash required when switching mode
 - WCH-LinkE [CH32V305][CH32V307]
-- [ ] WCH-Link? [CH32V203][CH32V203]
-- [ ] WCH-Link? [CH32V208][CH32V308] - wireless version
+- WCH-LinkW [CH32V208][CH32V208] - wireless version
+- WCH-Link? [CH32V203][CH32V203]
 
 [CH549]: http://www.wch-ic.com/products/CH549.html
 
@@ -45,7 +47,7 @@
 [CH32V003]: http://www.wch-ic.com/products/CH32V003.html
 [CH32V103]: http://www.wch-ic.com/products/CH32V103.html
 [CH32V203]: http://www.wch-ic.com/products/CH32V203.html
-[CH32V308]: http://www.wch-ic.com/products/CH32V208.html
+[CH32V208]: http://www.wch-ic.com/products/CH32V208.html
 [CH32V307]: http://www.wch-ic.com/products/CH32V307.html
 
 ## Install
