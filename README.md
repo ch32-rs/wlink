@@ -15,10 +15,6 @@
 
 **NOTE**: This tool is still in development and not ready for production use.
 
-**Known issues**:
-
-- Only support binary firmware file
-
 ## Tested On
 
 ### Probes
@@ -43,13 +39,13 @@
 
 ## Install
 
-`cargo install --git` or download a binary from the [Nightly Release page](https://github.com/ch32-rs/wlink/releases/tag/nightly).
+`cargo install --git https://github.com/ch32-rs/wlink` or download a binary from the [Nightly Release page](https://github.com/ch32-rs/wlink/releases/tag/nightly).
 
 ## Usage
 
 ```console
 > # Flash firmware.bin to Code FLASH at address 0x08000000
-> cargo run -- flash --address 0x08000000 ./firmware.bin
+> wlink flash --address 0x08000000 ./firmware.bin
 12:10:26 [INFO] WCH-Link v2.8 (WCH-Link-CH549)
 12:10:26 [INFO] Attached chip: CH32V30X(0x30700518)
 12:10:26 [INFO] Flashing 8068 bytes to 0x08000000
@@ -58,7 +54,8 @@
 12:10:28 [INFO] Resume executing...
 
 > # Dump Code FLASH, for verification
-> cargo run -- -v dump 0x08000000 100
+> # use `-v` or `-vv` for more logs
+> wlink -v dump 0x08000000 100
 18:31:18 [DEBUG] (1) wlink::device: Acquired libusb context.
 18:31:18 [DEBUG] (1) wlink::device: Claimed interface 0 of USB device.
 18:31:18 [INFO] WCH-Link v2.8 (WCH-LinkE-CH32V305)
@@ -77,11 +74,11 @@
 08000060:   6f 00 c0 29                                          o0×)
 
 > # Dump System FLASH, BOOT_28KB
-> cargo run -- dump 0x1FFF8000 0x7000
+> wlink dump 0x1FFF8000 0x7000
 ....
 
 > # Dump all general purpose registers
-> cargo run -- regs
+> wlink regs
 16:24:20 [INFO] Dump GPRs
 dpc(pc):   0x2000011a
 x0   zero: 0x00000000
@@ -93,8 +90,8 @@ x5     t0: 0xb4a9b38a
 ....
 
 
-> # Set dpc(pc) to System Flash and Run - Not working :(
-> cargo run -- write-reg 0x7b1 0x1fff8000
+> # Set dpc(pc) to System Flash
+> wlink write-reg 0x7b1 0x000009a8
 
 ```
 
