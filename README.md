@@ -51,7 +51,7 @@
 > # Flash firmware.bin to Code FLASH at address 0x08000000
 > cargo run -- flash --address 0x08000000 ./firmware.bin
 12:10:26 [INFO] WCH-Link v2.8 (WCH-Link-CH549)
-12:10:26 [INFO] Attached chip: CH32V30x(0x30700518)
+12:10:26 [INFO] Attached chip: CH32V30X(0x30700518)
 12:10:26 [INFO] Flashing 8068 bytes to 0x08000000
 12:10:27 [INFO] Flash done
 12:10:28 [INFO] Now reset...
@@ -62,7 +62,7 @@
 18:31:18 [DEBUG] (1) wlink::device: Acquired libusb context.
 18:31:18 [DEBUG] (1) wlink::device: Claimed interface 0 of USB device.
 18:31:18 [INFO] WCH-Link v2.8 (WCH-LinkE-CH32V305)
-18:31:18 [DEBUG] (1) wlink::operations: attached chip: ChipInfo { chip_family: CH32V20x, chip_type: "0x20360510" }
+18:31:18 [DEBUG] (1) wlink::operations: attached chip: ChipInfo { chip_family: CH32V20X, chip_type: "0x20360510" }
 18:31:18 [DEBUG] (1) wlink::operations: Chip UID: cd-ab-b4-ae-45-bc-c6-16
 18:31:18 [DEBUG] (1) wlink::operations: flash protected: false
 18:31:18 [DEBUG] (1) wlink::operations: SRAM CODE mode: 3

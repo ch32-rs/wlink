@@ -74,14 +74,21 @@ enum Commands {
     Reset {},
     /// Debug, check status
     Status {},
+    /// Swifth mode from RV to DAP or vice versa
+    ModeSwitch {
+        #[arg(long)]
+        rv: bool,
+        #[arg(long)]
+        dap: bool,
+    },
 }
 
 fn main() -> Result<()> {
     use Commands::*;
 
     let cli = Cli::parse();
-    // init simplelogger
 
+    // init simplelogger
     if cli.verbose >= 2 {
         let _ = simplelog::TermLogger::init(
             simplelog::LevelFilter::Trace,
@@ -107,16 +114,25 @@ fn main() -> Result<()> {
 
     let device_index = cli.device.unwrap_or(0);
 
-    let mut probe = WchLink::open_nth(device_index)?;
-    probe.probe_info()?;
-
     match cli.command {
         None => {
+            wlink::device::check_usb_device()?;
             println!("No command given, use --help for help.");
-            //probe.attach_chip()?;
-            //probe.reset_mcu_and_halt()?;
+        }
+        Some(ModeSwitch { rv, dap }) => {
+            wlink::device::check_usb_device()?; // list all connected devices
+            log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
+            if !(rv ^ dap) {
+                println!("Please choose one mode to switch, either --rv or --dap");
+            } else if dap {
+                wlink::device::try_switch_from_rv_to_dap(device_index)?;
+            } else {
+                wlink::device::try_switch_from_dap_to_rv(device_index)?;
+            }
         }
         Some(command) => {
+            let mut probe = WchLink::open_nth(device_index)?;
+            probe.probe_info()?;
             probe.attach_chip()?;
             match command {
                 Dump { address, length } => {
@@ -180,43 +196,13 @@ fn main() -> Result<()> {
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
                     println!("=> {dmstatus:?}");
                 }
+                _ => unreachable!("unimplemented command"),
+            }
+            if cli.detach {
+                probe.detach_chip()?;
             }
         }
     }
-
-    if cli.detach {
-        probe.detach_chip()?;
-    }
-
-    /*
-
-    let dmcontrol: Dmcontrol = probe.dmi_read()?;
-    println!("=> {:?}", dmcontrol);
-
-    //println!("resume");
-    // probe.resume_mcu()?;
-    let dmstatus: Dmstatus = probe.dmi_read()?;
-    println!("=> {:?}", dmstatus);
-
-    let dmcontrol: Dmcontrol = probe.dmi_read()?;
-    println!("=> {:?}", dmcontrol);
-    */
-
-    // probe.resume_mcu()?;
-
-    //probe.reset_mcu_and_run()?;
-
-    // probe.read_flash_size_kb()?;
-
-    // println!("{}", nu_pretty_hex::pretty_hex(&mem));
-
-    //link.reset_mcu_and_run()?;
-    //log::info!("reset dm");
-    //probe.reset_debug_module()?;
-
-    //link.send_command(commands::Reset::Quit)?;
-
-    // link.send_command(commands::control::DetachChip)?;
 
     Ok(())
 }

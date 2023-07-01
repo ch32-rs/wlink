@@ -1,10 +1,10 @@
-//! WCH-Link commands and response types
+//! WCH-Link commands and response types.
 
 use std::fmt;
 
 use crate::error::{Error, Result};
 
-// 0x0d
+// 0x0d subset
 pub mod control;
 
 /// Command to call the WCH-Link

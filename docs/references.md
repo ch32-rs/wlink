@@ -36,8 +36,8 @@
 | CH32F20x       | &check;  |  &check;  |  &check;  |   &check;   |
 | CH32V003       |          |  &check;  |  &check;  |             |
 | CH32V10x       | &check;  |  &check;  |  &check;  |             |
-| CH32V20x       | &check;  |  &check;  |  &check;  |             |
-| CH32V30x       | &check;  |  &check;  |  &check;  |             |
+| CH32V20X       | &check;  |  &check;  |  &check;  |             |
+| CH32V30X       | &check;  |  &check;  |  &check;  |             |
 | CH569          | &check;  |  &check;  |           |             |
 | CH573          | &check;  |  &check;  |           |             |
 | CH579          | &check;  |  &check;  |  &check;  |   &check;   |
@@ -68,8 +68,8 @@
 | CH32F20x | PA13  | PA14  |
 | CH32V003 |  PD1  |       |
 | CH32V10x | PA13  | PA14  |
-| CH32V20x | PA13  | PA14  |
-| CH32V30x | PA13  | PA14  |
+| CH32V20X | PA13  | PA14  |
+| CH32V30X | PA13  | PA14  |
 | CH32X035 | PC18  | PC19  |
 | CH569    | PA11  | PA10  |
 | CH573    | PB14  | PB15  |

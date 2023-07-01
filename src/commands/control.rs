@@ -96,7 +96,7 @@ impl Command for DetachChip {
     }
 }
 
-/// Only avaliable for CH32V2, CH32V3, CH56x
+/// Only avaliable for CH32V2, CH32V3, CH56X
 /// 0, 1, 2, 3
 pub struct GetChipRomRamSplit;
 impl Command for GetChipRomRamSplit {
@@ -107,7 +107,7 @@ impl Command for GetChipRomRamSplit {
     }
 }
 
-/// Special command for CH32V20x, CH32V30x, CH32V003, CH32V103
+/// Special command for CH32V20X, CH32V30X, CH32V003, CH32V103
 /// After attach chip
 pub struct Unknown3;
 impl Command for Unknown3 {

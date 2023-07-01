@@ -12,7 +12,7 @@ const ENDPOINT_IN: u8 = 0x81;
 const RAW_ENDPOINT_OUT: u8 = 0x02;
 const RAW_ENDPOINT_IN: u8 = 0x82;
 
-//  1a86:8010 1a86 WCH-Link  Serial: 0001A0000000
+// 1a86:8010 1a86 WCH-Link  Serial: 0001A0000000
 const USB_TIMEOUT_MS: u64 = 5000;
 
 /// A Transport type represents the USB connection to the WCH-Link.

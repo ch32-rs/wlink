@@ -5,10 +5,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("error: {0}")]
+    #[error("{0}")]
     Custom(String),
     #[error("USB error: {0}")]
     Rusb(#[from] rusb::Error),
+    #[error("WCH-Link not found or not in RV mode, please check your connection or use mode-switch tool to switch to RV mode")]
+    ProbeNotFound,
     #[error("Unknown WCH-Link variant: {0}")]
     UnknownLinkVariant(u8),
     #[error("Unknown RISC-V Chip: 0x{0:02x}")]

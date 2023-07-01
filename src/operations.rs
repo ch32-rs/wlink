@@ -3,7 +3,7 @@
 use std::{thread::sleep, time::Duration};
 
 use crate::{
-    commands::{self, DmiOp, Program, ReadMemory, SetRamAddress},
+    commands::{self, control::ProbeInfo, DmiOp, Program, ReadMemory, SetRamAddress},
     device::{ChipInfo, WchLink},
     error::AbstractcsCmdErr,
     regs::{self, Abstractcs, DMReg, Dmcontrol, Dmstatus},
@@ -12,10 +12,10 @@ use crate::{
 };
 
 impl WchLink {
-    pub fn probe_info(&mut self) -> Result<()> {
+    pub fn probe_info(&mut self) -> Result<ProbeInfo> {
         let info = self.send_command(commands::control::GetProbeInfo)?;
         log::info!("{}", info);
-        Ok(())
+        Ok(info)
     }
     /// Attach chip and get chip info
     pub fn attach_chip(&mut self) -> Result<()> {
@@ -28,8 +28,8 @@ impl WchLink {
             self.send_command(commands::control::GetProbeInfo)?;
             self.send_command(commands::control::DetachChip)?;
 
-            let dummy = self.send_command(commands::RawCommand::<0x0c>(vec![0x07, 0x01]))?;
-            log::debug!("Dummy command: {:?}", dummy);
+            // unknown command
+            self.send_command(commands::RawCommand::<0x0c>(vec![0x07, 0x01]))?;
 
             if let Ok(resp) = self.send_command(commands::control::AttachChip) {
                 log::info!("Attached chip: {}", resp);
@@ -71,8 +71,8 @@ impl WchLink {
             memory_start_addr: flash_addr,
             sram_code_mode,
             page_size,
-            rom_kb: 0, // TODO:
-            ram_kb: 0, // TODO:
+            //rom_kb: 0, // TODO:
+            //ram_kb: 0, // TODO:
         };
 
         self.chip = Some(info);

@@ -56,27 +56,27 @@ pub enum RiscvChip {
     /// CH32V103 RISC-V3A series
     CH32V103 = 0x01,
     /// CH571/CH573 RISC-V3A BLE 4.2 series
-    CH57x = 0x02,
+    CH57X = 0x02,
     /// CH565/CH569 RISC-V3A series
-    CH56x = 0x03,
-    /// CH32V20x RISC-V4B/V4C series
-    CH32V20x = 0x05,
-    /// CH32V30x RISC-V4C/V4F series
-    CH32V30x = 0x06,
-    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, always failback as CH57x
-    CH58x = 0x07,
+    CH56X = 0x03,
+    /// CH32V20X RISC-V4B/V4C series
+    CH32V20X = 0x05,
+    /// CH32V30X RISC-V4C/V4F series
+    CH32V30X = 0x06,
+    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, always failback as CH57X
+    CH58X = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
 }
 
 impl RiscvChip {
     fn can_disable_debug(&self) -> bool {
-        matches!(self, RiscvChip::CH57x | RiscvChip::CH56x | RiscvChip::CH58x)
+        matches!(self, RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X)
     }
 
     fn reset_command(&self) -> crate::commands::Reset {
         match self {
-            RiscvChip::CH57x | RiscvChip::CH58x => crate::commands::Reset::Normal2,
+            RiscvChip::CH57X | RiscvChip::CH58X => crate::commands::Reset::Normal2,
             _ => crate::commands::Reset::Normal,
         }
     }
@@ -85,21 +85,21 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V103 => &flash_op::CH32V103,
             RiscvChip::CH32V003 => &flash_op::CH32V003,
-            RiscvChip::CH57x => &flash_op::CH573,
-            RiscvChip::CH56x => &flash_op::CH569,
-            RiscvChip::CH32V20x => &flash_op::CH32V307,
-            RiscvChip::CH32V30x => &flash_op::CH32V307,
-            RiscvChip::CH58x => &flash_op::CH573,
+            RiscvChip::CH57X => &flash_op::CH573,
+            RiscvChip::CH56X => &flash_op::CH569,
+            RiscvChip::CH32V20X => &flash_op::CH32V307,
+            RiscvChip::CH32V30X => &flash_op::CH32V307,
+            RiscvChip::CH58X => &flash_op::CH573,
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {
         match value {
             0x01 => Ok(RiscvChip::CH32V103),
-            0x02 => Ok(RiscvChip::CH57x),
-            0x03 => Ok(RiscvChip::CH56x),
-            0x05 => Ok(RiscvChip::CH32V20x),
-            0x06 => Ok(RiscvChip::CH32V30x),
-            0x07 => Ok(RiscvChip::CH58x),
+            0x02 => Ok(RiscvChip::CH57X),
+            0x03 => Ok(RiscvChip::CH56X),
+            0x05 => Ok(RiscvChip::CH32V20X),
+            0x06 => Ok(RiscvChip::CH32V30X),
+            0x07 => Ok(RiscvChip::CH58X),
             0x09 => Ok(RiscvChip::CH32V003),
             _ => Err(Error::UnknownChip(value)),
         }
@@ -115,9 +115,9 @@ impl RiscvChip {
 
     pub fn code_flash_start(&self) -> u32 {
         match self {
-            RiscvChip::CH56x => 0x0000_0000,
-            RiscvChip::CH57x => 0x0000_0000,
-            RiscvChip::CH58x => 0x0000_0000,
+            RiscvChip::CH56X => 0x0000_0000,
+            RiscvChip::CH57X => 0x0000_0000,
+            RiscvChip::CH58X => 0x0000_0000,
             _ => 0x0800_0000,
         }
     }
