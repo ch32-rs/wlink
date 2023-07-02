@@ -164,7 +164,7 @@ fn main() -> Result<()> {
                     probe.ensure_mcu_resume()?;
 
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
-                    log::info!("{dmstatus:?}");
+                    log::info!("{dmstatus:#?}");
                 }
                 Erase {} => {
                     log::info!("Erase Flash");

@@ -64,12 +64,13 @@ impl WchLink {
             } else {
                 self.send_command(commands::QueryChipInfo::V1)?
             };
-            log::debug!("Chip UID: {chip_id}");
+            log::info!("Chip UID: {chip_id}");
             uid = Some(chip_id);
 
             let flash_protected = self.send_command(commands::FlashProtect::Query)?;
-            log::debug!("Flash protected: {}", flash_protected);
-            if flash_protected == commands::FlashProtect::FLAG_PROTECTED {
+            let protected = flash_protected == commands::FlashProtect::FLAG_PROTECTED;
+            log::info!("Flash protected: {}", protected);
+            if protected {
                 log::warn!("Flash is protected, debug access is not available");
             }
             sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
@@ -99,11 +100,17 @@ impl WchLink {
     }
 
     pub fn dump_info(&mut self) -> Result<()> {
+        let misa = self.read_reg(regs::MISA)?;
+        log::trace!("Read csr misa: {misa:08x}");
+        let misa = parse_misa(misa);
+        log::info!("RISC-V ISA: {misa:?}");
+
         // detect chip's RISC-V core version, QingKe cores
         let marchid = self.read_reg(regs::MARCHID)?;
         log::trace!("Read csr marchid: {marchid:08x}");
         let core_type = parse_marchid(marchid);
-        log::info!("RISC-V core version: {core_type:?}");
+        log::info!("RISC-V arch: {core_type:?}");
+
         Ok(())
     }
 
@@ -578,4 +585,21 @@ fn parse_marchid(marchid: u32) -> Option<String> {
             ((marchid & 0x1F) + 64) as u8 as char,
         ))
     }
+}
+
+fn parse_misa(misa: u32) -> Option<String> {
+    let mut s = String::new();
+    let mxl = (misa >> 30) & 0x3;
+    s.push_str(match mxl {
+        1 => "RV32",
+        2 => "RV64",
+        3 => "RV128",
+        _ => return None,
+    });
+    for i in 0..26 {
+        if (misa >> i) & 1 == 1 {
+            s.push((b'A' + i as u8) as char);
+        }
+    }
+    Some(s)
 }

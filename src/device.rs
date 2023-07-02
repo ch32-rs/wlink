@@ -66,7 +66,7 @@ impl WchLink {
         let device = match device {
             Ok(device) => device,
             Err(e) => {
-                if let Ok(_) = open_usb_device(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth) {
+                if open_usb_device(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth).is_ok() {
                     return Err(crate::error::Error::ProbeModeNotSupported);
                 }
                 return Err(e);

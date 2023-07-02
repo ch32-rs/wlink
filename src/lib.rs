@@ -41,10 +41,7 @@ impl WchLinkVariant {
     }
 
     pub fn can_switch_mode(&self) -> bool {
-        match self {
-            WchLinkVariant::Ch549 => false,
-            _ => true,
-        }
+        !matches!(self, WchLinkVariant::Ch549)
     }
 }
 
