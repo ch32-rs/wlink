@@ -146,9 +146,9 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
         Ok(())
     } else {
         log::error!("Cannot switch mode for WCH-LinkRV: not supported");
-        return Err(crate::Error::Custom(
+        Err(crate::Error::Custom(
             "WCH-Link-CH549 does not support mode switch".into(),
-        ));
+        ))
     }
 }
 

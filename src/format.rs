@@ -73,7 +73,7 @@ pub fn read_ihex(data: &str) -> Result<Vec<u8>> {
     let mut base_address = 0;
 
     let mut records = vec![];
-    for record in ihex::Reader::new(&data) {
+    for record in ihex::Reader::new(data) {
         let record = record?;
         use Record::*;
         match record {
