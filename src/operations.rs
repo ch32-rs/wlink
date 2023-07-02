@@ -90,7 +90,7 @@ impl WchLink {
         let marchid = self.read_reg(regs::MARCHID)?;
         log::trace!("Read csr marchid: {marchid:08x}");
         let core_type = parse_marchid(marchid);
-        log::debug!("RISC-V core version: {core_type:?}");
+        log::info!("RISC-V core version: {core_type:?}");
         Ok(())
     }
 

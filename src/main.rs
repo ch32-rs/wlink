@@ -208,6 +208,7 @@ fn main() -> Result<()> {
                     probe.write_memory_word(address, value)?;
                 }
                 Status {} => {
+                    probe.dump_info()?;
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
                     log::info!("{dmstatus:?}");
                 }
