@@ -23,7 +23,8 @@
 - [x] Read chip memory
 - [x] Read chip register
 - [x] Write chip register
-
+- [x] Code-Protect & Code-Unprotect for CH32V003/V103/V20X/V30X
+- [ ] [CH32X035] support
 
 ## Tested On
 
