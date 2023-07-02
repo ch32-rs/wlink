@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support WCH-LinkW, a CH32V208 flasher with wireless connection
 - Support WCH-Link firmware 2.9, some raw commands are changed
 - Support Flash protect and unprotect (#14)
+- Fix stuck for CH5xx devices, due to unsppported read ram rom split command
 
 ### Fixed
 

@@ -44,6 +44,7 @@ impl WchLink {
         let chip_info = chip_info.ok_or(Error::NotAttached)?;
 
         let mut uid = None;
+        let mut sram_code_mode = 0;
         if chip_info.chip_family.support_flash_protect() {
             let chip_id = if probe_info.version() >= (2, 9) {
                 self.send_command(commands::QueryChipInfo::V2)?
@@ -58,10 +59,9 @@ impl WchLink {
             if flash_protected == commands::FlashProtect::FLAG_PROTECTED {
                 log::warn!("Flash is protected, debug access is not available");
             }
+            sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
+            log::debug!("SRAM CODE mode: {}", sram_code_mode);
         }
-
-        let sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
-        log::debug!("SRAM CODE mode: {}", sram_code_mode);
 
         // riscvchip = 7 => 2
         let flash_addr = chip_info.chip_family.code_flash_start();
@@ -451,7 +451,7 @@ impl WchLink {
         // no need to halt when read register
         // self.ensure_mcu_halt()?;
 
-        self.send_command(DmiOp::write(0x16, 0x00000700))?; // Clear cmderr
+        self.clear_abstractcs_cmderr()?;
 
         let reg = regno as u32;
         self.send_command(DmiOp::write(0x04, 0x00000000))?; // Clear the Data0 register

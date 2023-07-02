@@ -210,7 +210,7 @@ fn main() -> Result<()> {
                 Status {} => {
                     probe.dump_info()?;
                     let dmstatus: regs::Dmstatus = probe.dmi_read()?;
-                    log::info!("{dmstatus:?}");
+                    log::info!("{dmstatus:#?}");
                 }
                 _ => unreachable!("unimplemented command"),
             }

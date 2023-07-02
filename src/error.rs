@@ -15,7 +15,7 @@ pub enum Error {
     UnknownLinkVariant(u8),
     #[error("Unknown RISC-V Chip: 0x{0:02x}")]
     UnknownChip(u8),
-    #[error("Probe is not attached to an MCU")]
+    #[error("Probe is not attached to an MCU, or debug is not enabled. (hint: use wchisp to enable debug)")]
     NotAttached,
     #[error("WCH-Link underlying protocol error: {0:#04x} {1:#04x?}")]
     Protocol(u8, Vec<u8>),
