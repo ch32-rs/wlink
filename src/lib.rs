@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 pub mod commands;
 pub mod device;
@@ -37,6 +37,13 @@ impl WchLinkVariant {
             5 => Ok(Self::WCh32v208),
             0x12 => Ok(Self::ECh32v305),
             _ => Err(Error::UnknownLinkVariant(value)),
+        }
+    }
+
+    pub fn can_switch_mode(&self) -> bool {
+        match self {
+            WchLinkVariant::Ch549 => false,
+            _ => true,
         }
     }
 }
@@ -86,11 +93,14 @@ impl RiscvChip {
             RiscvChip::CH32V103 | RiscvChip::CH32V003 | RiscvChip::CH32V20X | RiscvChip::CH32V30X
         )
     }
-    fn can_disable_debug(&self) -> bool {
+
+    /// Very unsafe. This disables the debug interface of the chip.
+    /// Command sequence is 810e0101
+    pub fn can_disable_debug(&self) -> bool {
         matches!(self, RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X)
     }
 
-    fn reset_command(&self) -> crate::commands::Reset {
+    pub fn reset_command(&self) -> crate::commands::Reset {
         match self {
             RiscvChip::CH57X | RiscvChip::CH58X => crate::commands::Reset::Normal2,
             _ => crate::commands::Reset::Normal,
@@ -143,6 +153,24 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V003 => 1024,
             _ => 4096,
+        }
+    }
+}
+
+// for clap parser
+impl FromStr for RiscvChip {
+    type Err = Error;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match &*s.to_ascii_uppercase() {
+            "CH32V103" => Ok(RiscvChip::CH32V103),
+            "CH32V20X" => Ok(RiscvChip::CH32V20X),
+            "CH32V30X" => Ok(RiscvChip::CH32V30X),
+            "CH32V003" => Ok(RiscvChip::CH32V003),
+            "CH56X" => Ok(RiscvChip::CH56X),
+            "CH57X" => Ok(RiscvChip::CH57X),
+            "CH58X" => Ok(RiscvChip::CH58X),
+            _ => Err(Error::UnknownChip(0)),
         }
     }
 }

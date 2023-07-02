@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
-use wlink::{commands, device::WchLink, format::read_firmware_from_file, regs};
+use wlink::{commands, device::WchLink, format::read_firmware_from_file, regs, RiscvChip};
 
 use clap::{Parser, Subcommand};
 
@@ -19,6 +19,10 @@ struct Cli {
     /// Detach chip after operation
     #[arg(long, global = true)]
     detach: bool,
+
+    /// Specify the chip type, e.g. CH32V30X
+    #[arg(long, global = true)]
+    chip: Option<RiscvChip>,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -137,7 +141,7 @@ fn main() -> Result<()> {
         Some(command) => {
             let mut probe = WchLink::open_nth(device_index)?;
             probe.probe_info()?;
-            probe.attach_chip()?;
+            probe.attach_chip(cli.chip)?;
             match command {
                 Dump { address, length } => {
                     log::info!(

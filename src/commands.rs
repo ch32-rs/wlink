@@ -181,6 +181,7 @@ impl Command for SetFlashProtected {
 }
 
 /// Get Chip UID, the UID is also avaliable in the `wchisp` command.
+// ??? 0x11, 0x01, _ (riscvchip)
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum QueryChipInfo {
     V1 = 0x09,
@@ -258,6 +259,29 @@ impl Command for Reset {
             Reset::Normal => vec![0x03],
             Reset::Normal2 => vec![0x02],
         }
+    }
+}
+
+/// (0x0c, [riscvchip, 1/2/3])
+pub struct SetTwoLineMode {
+    pub riscvchip: u8,
+    pub speed: u8, // 1, 2, 3
+}
+
+impl Command for SetTwoLineMode {
+    type Response = bool;
+    const COMMAND_ID: u8 = 0x0c;
+    fn payload(&self) -> Vec<u8> {
+        vec![self.riscvchip, self.speed]
+    }
+}
+
+impl Response for bool {
+    fn from_payload(resp: &[u8]) -> Result<Self> {
+        if resp.len() != 1 {
+            return Err(Error::InvalidPayloadLength);
+        }
+        Ok(resp[0] == 0x01) // 1 means success
     }
 }
 

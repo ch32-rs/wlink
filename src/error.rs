@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::RiscvChip;
+
 /// Alias for a `Result` with the error type `wlink::Error`.
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -9,14 +11,18 @@ pub enum Error {
     Custom(String),
     #[error("USB error: {0}")]
     Rusb(#[from] rusb::Error),
-    #[error("WCH-Link not found or not in RV mode, please check your connection or use mode-switch tool to switch to RV mode")]
+    #[error("WCH-Link not found, please check your connection")]
     ProbeNotFound,
+    #[error("WCH-Link is connected, but is not in RV mode")]
+    ProbeModeNotSupported,
     #[error("Unknown WCH-Link variant: {0}")]
     UnknownLinkVariant(u8),
     #[error("Unknown RISC-V Chip: 0x{0:02x}")]
     UnknownChip(u8),
     #[error("Probe is not attached to an MCU, or debug is not enabled. (hint: use wchisp to enable debug)")]
     NotAttached,
+    #[error("Chip mismatch: expected {0:?}, got {1:?}")]
+    ChipMismatch(RiscvChip, RiscvChip),
     #[error("WCH-Link underlying protocol error: {0:#04x} {1:#04x?}")]
     Protocol(u8, Vec<u8>),
     #[error("Invalid payload length")]

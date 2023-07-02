@@ -13,10 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support WCH-Link firmware 2.9, some raw commands are changed
 - Support Flash protect and unprotect (#14)
 - Fix stuck for CH5xx devices, due to unsppported read ram rom split command
+- Add `--chip` option to specify chip type
+- Check probe type when doing mode-switch
 
 ### Fixed
 
 - Constraint regs for riscv32ec variant
+- Wrong 0x0c command interpretation, this should be a set chip speed command
+
+### Changed
+
+- Refine error messages
 
 ## [0.0.4] - 2023-07-01
 

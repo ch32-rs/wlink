@@ -60,7 +60,18 @@ impl WchLink {
                     .unwrap_or(false)
             })
             .nth(nth)
-            .map_or(Err(crate::error::Error::ProbeNotFound), Ok)?;
+            .map_or(Err(crate::error::Error::ProbeNotFound), Ok);
+
+        // check if there's a device with the DAP VID/PID
+        let device = match device {
+            Ok(device) => device,
+            Err(e) => {
+                if let Ok(_) = open_usb_device(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth) {
+                    return Err(crate::error::Error::ProbeModeNotSupported);
+                }
+                return Err(e);
+            }
+        };
 
         let mut device_handle = device.open()?;
 
@@ -130,9 +141,15 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
     };
     let info = dev.probe_info()?;
     info!("probe info: {:?}", info);
-
-    let _ = dev.send_command(RawCommand::<0xff>(vec![0x41]));
-    Ok(())
+    if info.variant.can_switch_mode() {
+        let _ = dev.send_command(RawCommand::<0xff>(vec![0x41]));
+        Ok(())
+    } else {
+        log::error!("Cannot switch mode for WCH-LinkRV: not supported");
+        return Err(crate::Error::Custom(
+            "WCH-Link-CH549 does not support mode switch".into(),
+        ));
+    }
 }
 
 /// Switch from RV mode to DAP mode

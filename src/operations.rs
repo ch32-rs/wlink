@@ -18,23 +18,36 @@ impl WchLink {
         Ok(info)
     }
     /// Attach chip and get chip info
-    pub fn attach_chip(&mut self) -> Result<()> {
+    pub fn attach_chip(&mut self, expected_chip: Option<RiscvChip>) -> Result<()> {
         if self.chip.is_some() {
             log::warn!("Chip already attached");
         }
 
-        let mut chip_info = None;
         let probe_info = self.send_command(commands::control::GetProbeInfo)?;
+
+        let mut chip_info = None;
         for _ in 0..3 {
             // self.send_command(commands::control::DetachChip)?;
 
-            // unknown command
-            // 0x07 seems to be the expected richvchip id
-            self.send_command(commands::RawCommand::<0x0c>(vec![0x07, 0x01]))?;
+            self.send_command(commands::SetTwoLineMode {
+                riscvchip: expected_chip.unwrap_or(RiscvChip::CH32V30X) as u8,
+                speed: 1, // 1 high, 2, medium, 3 low
+            })?;
 
             if let Ok(resp) = self.send_command(commands::control::AttachChip) {
                 log::info!("Attached chip: {}", resp);
                 chip_info = Some(resp);
+
+                if let Some(expected_chip) = expected_chip {
+                    if resp.chip_family != expected_chip {
+                        log::error!(
+                            "Attached chip type ({:?}) does not match expected chip type ({:?})",
+                            resp.chip_family,
+                            expected_chip
+                        );
+                        return Err(Error::ChipMismatch(expected_chip, resp.chip_family));
+                    }
+                }
                 break;
             } else {
                 log::debug!("retrying...");

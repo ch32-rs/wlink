@@ -54,7 +54,7 @@ impl fmt::Display for ProbeInfo {
     }
 }
 
-/// (0x0d, 0x02)
+/// ?SetChipType (0x0d, 0x02)
 pub struct AttachChip;
 impl Command for AttachChip {
     type Response = AttachChipResponse;
@@ -64,7 +64,7 @@ impl Command for AttachChip {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AttachChipResponse {
     pub chip_family: RiscvChip,
     pub riscvchip: u8,
