@@ -24,8 +24,7 @@ const ENDPOINT_OUT_DAP: u8 = 0x02;
 /// Attached chip information
 #[derive(Debug)]
 pub struct ChipInfo {
-    pub uid: ChipId,
-    pub flash_protected: bool,
+    pub uid: Option<ChipId>,
     pub chip_family: RiscvChip,
     pub chip_type: u32,
     /// parsed marchid: WCH-V4B, WCH-V4F...

@@ -24,11 +24,12 @@ impl WchLink {
         }
 
         let mut chip_info = None;
+        let probe_info = self.send_command(commands::control::GetProbeInfo)?;
         for _ in 0..3 {
-            self.send_command(commands::control::GetProbeInfo)?;
-            self.send_command(commands::control::DetachChip)?;
+            // self.send_command(commands::control::DetachChip)?;
 
             // unknown command
+            // 0x07 seems to be the expected richvchip id
             self.send_command(commands::RawCommand::<0x0c>(vec![0x07, 0x01]))?;
 
             if let Ok(resp) = self.send_command(commands::control::AttachChip) {
@@ -42,20 +43,25 @@ impl WchLink {
         }
         let chip_info = chip_info.ok_or(Error::NotAttached)?;
 
-        let uid = self.send_command(commands::GetChipId)?;
-        log::debug!("Chip UID: {uid}");
+        let mut uid = None;
+        if chip_info.chip_family.support_flash_protect() {
+            let chip_id = if probe_info.version() >= (2, 9) {
+                self.send_command(commands::QueryChipInfo::V2)?
+            } else {
+                self.send_command(commands::QueryChipInfo::V1)?
+            };
+            log::debug!("Chip UID: {chip_id}");
+            uid = Some(chip_id);
 
-        let flash_protected = self.send_command(commands::GetFlashProtected)?;
-        log::debug!("Flash protected: {}", flash_protected);
+            let flash_protected = self.send_command(commands::FlashProtect::Query)?;
+            log::debug!("Flash protected: {}", flash_protected);
+            if flash_protected == commands::FlashProtect::FLAG_PROTECTED {
+                log::warn!("Flash is protected, debug access is not available");
+            }
+        }
 
         let sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
         log::debug!("SRAM CODE mode: {}", sram_code_mode);
-
-        // detect chip's RISC-V core version, QingKe cores
-        let marchid = self.read_reg(regs::MARCHID)?;
-        log::trace!("Read csr marchid: {marchid:08x}");
-        let core_type = parse_marchid(marchid);
-        log::debug!("RISC-V core version: {core_type:?}");
 
         // riscvchip = 7 => 2
         let flash_addr = chip_info.chip_family.code_flash_start();
@@ -63,10 +69,9 @@ impl WchLink {
 
         let info = ChipInfo {
             uid,
-            flash_protected,
             chip_family: chip_info.chip_family,
             chip_type: chip_info.chip_type,
-            march: core_type,
+            march: None,
             flash_size: 0, // TODO: read flash size
             memory_start_addr: flash_addr,
             sram_code_mode,
@@ -76,6 +81,62 @@ impl WchLink {
         };
 
         self.chip = Some(info);
+
+        Ok(())
+    }
+
+    pub fn dump_info(&mut self) -> Result<()> {
+        // detect chip's RISC-V core version, QingKe cores
+        let marchid = self.read_reg(regs::MARCHID)?;
+        log::trace!("Read csr marchid: {marchid:08x}");
+        let core_type = parse_marchid(marchid);
+        log::debug!("RISC-V core version: {core_type:?}");
+        Ok(())
+    }
+
+    pub fn protect_flash(&mut self, protect: bool) -> Result<()> {
+        // HACK: requires a fresh attach
+        self.send_command(commands::control::DetachChip)?;
+
+        let probe_info = self.send_command(commands::control::GetProbeInfo)?;
+
+        self.send_command(commands::control::AttachChip)?;
+
+        let flash_protected_flag = self.send_command(commands::FlashProtect::Query)?;
+        let protected = flash_protected_flag == commands::FlashProtect::FLAG_PROTECTED;
+        if protect == protected {
+            log::info!(
+                "Flash already {}",
+                if protected {
+                    "protected"
+                } else {
+                    "unprotected"
+                }
+            );
+            return Ok(());
+        }
+
+        let use_v2 = probe_info.version() >= (2, 9);
+        let cmd = match (protect, use_v2) {
+            (true, true) => commands::FlashProtect::ProtectV2,
+            (false, true) => commands::FlashProtect::UnprotectV2,
+            (true, false) => commands::FlashProtect::Protect,
+            (false, false) => commands::FlashProtect::Unprotect,
+        };
+
+        self.send_command(cmd)?;
+
+        self.send_command(commands::Reset::Quit)?; // quit reset
+        self.send_command(commands::control::DetachChip)?;
+
+        self.send_command(commands::control::GetProbeInfo)?;
+        self.send_command(commands::control::AttachChip)?;
+
+        let flash_protected = self.send_command(commands::FlashProtect::Query)?;
+        log::info!(
+            "Flash protected: {}",
+            flash_protected == commands::FlashProtect::FLAG_PROTECTED
+        );
 
         Ok(())
     }

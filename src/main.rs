@@ -48,6 +48,10 @@ enum Commands {
         /// Path to the binary file to flash
         path: String,
     },
+    /// Unlock flash, enable debugging
+    Unprotect {},
+    /// Protect flash
+    Protect {},
     /// Force set register
     WriteReg {
         /// Reg in u16
@@ -176,6 +180,14 @@ fn main() -> Result<()> {
                     sleep(Duration::from_millis(500));
                     log::info!("Resume executing...");
                     probe.ensure_mcu_resume()?;
+                }
+                Unprotect {} => {
+                    log::info!("Unprotect Flash");
+                    probe.protect_flash(false)?;
+                }
+                Protect {} => {
+                    log::info!("Protect Flash");
+                    probe.protect_flash(true)?;
                 }
                 Reset {} => {
                     // probe.send_command(commands::Reset::Quit)?;

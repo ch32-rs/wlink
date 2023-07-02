@@ -22,6 +22,11 @@ pub struct ProbeInfo {
     pub minor_version: u8,
     pub variant: WchLinkVariant,
 }
+impl ProbeInfo {
+    pub fn version(&self) -> (u8, u8) {
+        (self.major_version, self.minor_version)
+    }
+}
 impl Response for ProbeInfo {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 3 {

@@ -137,25 +137,30 @@ impl Command for ReadMemory {
     }
 }
 
-pub struct GetFlashProtected;
-impl Command for GetFlashProtected {
-    type Response = bool;
+/// (0x06, _)
+// query -> check -> set
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum FlashProtect {
+    Query = 0x01,   // 1 for protected, 2 for unprotected
+    QueryV2 = 0x04, // 1 for protected, 0 for unprotected,
+    Protect = 0x03,
+    // dummy 0xf0 mask
+    ProtectV2 = 0xf3, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    Unprotect = 0x02,
+    // dummy 0xf0 mask
+    UnprotectV2 = 0xf2, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+}
+impl FlashProtect {
+    pub const FLAG_PROTECTED: u8 = 0x01;
+}
+impl Command for FlashProtect {
+    type Response = u8;
     const COMMAND_ID: u8 = 0x06;
     fn payload(&self) -> Vec<u8> {
-        vec![0x01]
-    }
-}
-impl Response for bool {
-    fn from_payload(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() != 1 {
-            return Err(Error::InvalidPayloadLength);
-        }
-        if bytes[0] == 0x01 {
-            Ok(true)
-        } else if bytes[0] == 0x02 {
-            Ok(false)
-        } else {
-            Err(Error::InvalidPayload)
+        match *self {
+            FlashProtect::ProtectV2 => vec![0x03, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            FlashProtect::UnprotectV2 => vec![0x02, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            _ => vec![*self as u8],
         }
     }
 }
@@ -176,12 +181,17 @@ impl Command for SetFlashProtected {
 }
 
 /// Get Chip UID, the UID is also avaliable in the `wchisp` command.
-pub struct GetChipId;
-impl Command for GetChipId {
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum QueryChipInfo {
+    V1 = 0x09,
+    // spot on WCH-LinkUtility v1.70
+    V2 = 0x06,
+}
+impl Command for QueryChipInfo {
     type Response = ChipId;
     const COMMAND_ID: u8 = 0x11;
     fn payload(&self) -> Vec<u8> {
-        vec![0x09]
+        vec![*self as u8]
     }
 }
 
@@ -205,8 +215,7 @@ impl Response for ChipId {
             );
             Ok(Self(bytes))
         } else {
-            // Err(Error::InvalidPayload)
-            log::debug!("TODO: cannot read chip id");
+            log::warn!("cannot read chip id");
             Ok(Self(Default::default()))
         }
     }
@@ -233,7 +242,7 @@ impl fmt::Debug for ChipId {
     }
 }
 
-/// Device reset
+/// Device reset (0x0b, _)
 pub enum Reset {
     /// wlink_quitreset
     Quit,
