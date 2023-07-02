@@ -38,10 +38,14 @@
 
 ### MCU
 
-- [CH32V003] - flash ok, reset not work
-- [CH32V103] - flash ok
-- [CH32V203] - flash & reset ok
-- [CH32V307] - flash & reset ok
+- [CH32V003]
+- [CH32V103]
+- [CH32V203]
+- [CH32V307]
+- [ ] [CH569]/CH565
+- [ ] [CH573]/CH571
+- [ ] [CH583]/CH582/CH581
+- [ ] [CH32X035] - I haven't got one yet, help wanted
 - ... (Feel free to open an issue if you have tested on other chips)
 
 [CH32V003]: http://www.wch-ic.com/products/CH32V003.html
@@ -49,6 +53,10 @@
 [CH32V203]: http://www.wch-ic.com/products/CH32V203.html
 [CH32V208]: http://www.wch-ic.com/products/CH32V208.html
 [CH32V307]: http://www.wch-ic.com/products/CH32V307.html
+[CH32X035]: http://www.wch-ic.com/products/CH32X035.html
+[CH569]: http://www.wch-ic.com/products/CH569.html
+[CH573]: http://www.wch-ic.com/products/CH573.html
+[CH583]: http://www.wch-ic.com/products/CH583.html
 
 ## Install
 
