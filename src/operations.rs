@@ -8,7 +8,7 @@ use crate::{
     error::AbstractcsCmdErr,
     regs::{self, Abstractcs, DMReg, Dmcontrol, Dmstatus},
     transport::Transport,
-    Error, Result,
+    Error, Result, RiscvChip,
 };
 
 impl WchLink {
@@ -362,8 +362,20 @@ impl WchLink {
     pub fn dump_regs(&mut self) -> Result<()> {
         let dpc = self.read_reg(regs::DPC)?;
         println!("dpc(pc):   0x{dpc:08x}");
-        for (reg, name, regno) in regs::GPRS {
-            let val = self.read_reg(regno)?;
+
+        let gprs = if self
+            .chip
+            .as_ref()
+            .map(|chip| chip.chip_family == RiscvChip::CH32V003)
+            .unwrap_or(false)
+        {
+            &regs::GPRS_RV32EC[..]
+        } else {
+            &regs::GPRS[..]
+        };
+
+        for (reg, name, regno) in gprs {
+            let val = self.read_reg(*regno)?;
             println!("{reg:<4}{name:>5}: 0x{val:08x}");
         }
         Ok(())

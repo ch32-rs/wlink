@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support WCH-LinkW, a CH32V208 flasher with wireless connection
 
+### Fixed
+
+- Constraint regs for riscv32ec variant
+
 ## [0.0.4] - 2023-07-01
 
 ### Added

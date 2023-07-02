@@ -50,6 +50,26 @@ pub const GPRS: [(&str, &str, u16); 32] = [
     ("x31", "t6", 0x101f),
 ];
 
+/// Gereral Purpose Register for riscv32ec
+pub const GPRS_RV32EC: [(&str, &str, u16); 16] = [
+    ("x0", "zero", 0x1000),
+    ("x1", "ra", 0x1001),
+    ("x2", "sp", 0x1002),
+    ("x3", "gp", 0x1003),
+    ("x4", "tp", 0x1004),
+    ("x5", "t0", 0x1005),
+    ("x6", "t1", 0x1006),
+    ("x7", "t2", 0x1007),
+    ("x8", "s0", 0x1008),
+    ("x9", "s1", 0x1009),
+    ("x10", "a0", 0x100a),
+    ("x11", "a1", 0x100b),
+    ("x12", "a2", 0x100c),
+    ("x13", "a3", 0x100d),
+    ("x14", "a4", 0x100e),
+    ("x15", "a5", 0x100f),
+];
+
 // FPR: 0x1020-0x103f
 
 /// Debug Module Register
