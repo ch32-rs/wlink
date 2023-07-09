@@ -31,7 +31,7 @@ impl WchLink {
 
             self.send_command(commands::SetTwoLineMode {
                 riscvchip: expected_chip.unwrap_or(RiscvChip::CH32V30X) as u8,
-                speed: 1, // 1 high, 2, medium, 3 low
+                speed: Default::default(), // 1 high, 2, medium, 3 low
             })?;
 
             if let Ok(resp) = self.send_command(commands::control::AttachChip) {

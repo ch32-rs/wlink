@@ -262,17 +262,32 @@ impl Command for Reset {
     }
 }
 
+/// Speed settings
+#[derive(Debug, Copy, Clone)]
+pub enum Speed {
+    Low = 0x03,
+    Medium = 0x02,
+    High = 0x01,
+    VeryHigh = 0x00,
+}
+
+impl Default for Speed {
+    fn default() -> Self {
+        Speed::High
+    }
+}
+
 /// (0x0c, [riscvchip, 1/2/3])
 pub struct SetTwoLineMode {
     pub riscvchip: u8,
-    pub speed: u8, // 1, 2, 3
+    pub speed: Speed,
 }
 
 impl Command for SetTwoLineMode {
     type Response = bool;
     const COMMAND_ID: u8 = 0x0c;
     fn payload(&self) -> Vec<u8> {
-        vec![self.riscvchip, self.speed]
+        vec![self.riscvchip, self.speed as u8]
     }
 }
 
