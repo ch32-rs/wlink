@@ -23,8 +23,6 @@ pub enum WchLinkVariant {
     SCh32v203 = 3,
     /// WCH-LinkW-CH32V208
     WCh32v208 = 5,
-    /// WCH-LinkB, CH32V203
-    B = 4,
 }
 
 impl WchLinkVariant {
@@ -33,9 +31,8 @@ impl WchLinkVariant {
             1 => Ok(Self::Ch549),
             2 => Ok(Self::ECh32v305),
             3 => Ok(Self::SCh32v203),
-            4 => Ok(Self::B),
             5 => Ok(Self::WCh32v208),
-            0x12 => Ok(Self::ECh32v305),
+            0x12 => Ok(Self::ECh32v305), // ??
             _ => Err(Error::UnknownLinkVariant(value)),
         }
     }
@@ -52,7 +49,6 @@ impl fmt::Display for WchLinkVariant {
             WchLinkVariant::ECh32v305 => write!(f, "WCH-LinkE-CH32V305"),
             WchLinkVariant::SCh32v203 => write!(f, "WCH-LinkS-CH32V203"),
             WchLinkVariant::WCh32v208 => write!(f, "WCH-LinkW-CH32V208"),
-            WchLinkVariant::B => write!(f, "WCH-LinkB"),
         }
     }
 }
@@ -69,16 +65,18 @@ pub enum RiscvChip {
     CH56X = 0x03,
     /// CH32V20X RISC-V4B/V4C series
     CH32V20X = 0x05,
-    /// CH32V30X RISC-V4C/V4F series
+    /// CH32V30X RISC-V4C/V4F series, The same as type 5
     CH32V30X = 0x06,
     /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, always failback as CH57X
     CH58X = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
-    // It should be CH643, guess from the WCH-LinkUtility UI
+    // It should be CH643, guess from the WCH-LinkUtility UI. aka. CH8571
     _Unkown0A = 0x0A,
-    // It should be CH32X035, need more verification
+    // CH59x?, The same as type 2
     _Unkown0B = 0x0B,
+    /// 12, It should be CH32X035,
+    _Unkown0C = 0x0C,
 }
 
 impl RiscvChip {
@@ -108,11 +106,11 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V103 => &flash_op::CH32V103,
             RiscvChip::CH32V003 => &flash_op::CH32V003,
-            RiscvChip::CH57X => &flash_op::CH573,
+            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::_Unkown0B => &flash_op::CH573,
             RiscvChip::CH56X => &flash_op::CH569,
-            RiscvChip::CH32V20X => &flash_op::CH32V307,
-            RiscvChip::CH32V30X => &flash_op::CH32V307,
-            RiscvChip::CH58X => &flash_op::CH573,
+            RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
+            RiscvChip::_Unkown0A => &flash_op::UNKNOWN_10,
+            RiscvChip::_Unkown0C => &flash_op::UNKNOWN_12,
             _ => unimplemented!(),
         }
     }
