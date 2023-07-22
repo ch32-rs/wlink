@@ -24,11 +24,12 @@
 - [x] Read chip register
 - [x] Write chip register
 - [x] Code-Protect & Code-Unprotect for CH32V003/V103/V20X/V30X
-- [ ] [CH32X035] support
 
 ## Tested On
 
 ### Probes
+
+Current firmware version: 2.9
 
 - WCH-Link [CH549] - the first version, reflash required when switching mode
 - WCH-LinkE [CH32V305][CH32V307]
@@ -43,10 +44,12 @@
 - [CH32V103]
 - [CH32V203]
 - [CH32V307]
-- [ ] [CH569]/CH565
-- [ ] [CH573]/CH571
-- [ ] [CH583]/CH582/CH581
-- [ ] [CH32X035] - I haven't got one yet, help wanted
+- [CH569]/CH565
+- [CH573]/CH571
+- [CH583]/CH582/CH581
+- [CH592]/CH591
+- [ ] [CH643] - I don't have this chip, help wanted
+- [CH32X035]
 - ... (Feel free to open an issue if you have tested on other chips)
 
 [CH32V003]: http://www.wch-ic.com/products/CH32V003.html
@@ -58,6 +61,8 @@
 [CH569]: http://www.wch-ic.com/products/CH569.html
 [CH573]: http://www.wch-ic.com/products/CH573.html
 [CH583]: http://www.wch-ic.com/products/CH583.html
+[CH592]: https://www.wch-ic.com/products/CH592.html
+[CH643]: https://www.wch-ic.com/products/CH643.html
 
 ## Install
 
@@ -114,7 +119,6 @@ x5     t0: 0xb4a9b38a
 
 > # Set dpc(pc) to System Flash
 > wlink write-reg 0x7b1 0x000009a8
-
 ```
 
 ## References
