@@ -72,7 +72,7 @@ pub enum RiscvChip {
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
     _Unkown0A = 0x0A,
-    _Unkown0B = 0x0B,
+    CH59X = 0x0B,
     _Unkown0C = 0x0C,
     CH32X035 = 0x0D,
 }
@@ -94,12 +94,17 @@ impl RiscvChip {
     /// Very unsafe. This disables the debug interface of the chip.
     /// Command sequence is 810e0101
     pub fn can_disable_debug(&self) -> bool {
-        matches!(self, RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X)
+        matches!(
+            self,
+            RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X | RiscvChip::CH59X
+        )
     }
 
     pub fn reset_command(&self) -> crate::commands::Reset {
         match self {
-            RiscvChip::CH57X | RiscvChip::CH58X => crate::commands::Reset::Normal2,
+            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X => {
+                crate::commands::Reset::Normal2
+            }
             _ => crate::commands::Reset::Normal,
         }
     }
@@ -108,7 +113,7 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V103 => &flash_op::CH32V103,
             RiscvChip::CH32V003 => &flash_op::CH32V003,
-            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::_Unkown0B => &flash_op::CH573,
+            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X => &flash_op::CH573,
             RiscvChip::CH56X => &flash_op::CH569,
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::_Unkown0A => &flash_op::UNKNOWN_10,
@@ -125,6 +130,7 @@ impl RiscvChip {
             0x06 => Ok(RiscvChip::CH32V30X),
             0x07 => Ok(RiscvChip::CH58X),
             0x09 => Ok(RiscvChip::CH32V003),
+            0x0B => Ok(RiscvChip::CH59X),
             0x0D => Ok(RiscvChip::CH32X035),
             _ => Err(Error::UnknownChip(value)),
         }
@@ -140,9 +146,9 @@ impl RiscvChip {
 
     pub fn code_flash_start(&self) -> u32 {
         match self {
-            RiscvChip::CH56X => 0x0000_0000,
-            RiscvChip::CH57X => 0x0000_0000,
-            RiscvChip::CH58X => 0x0000_0000,
+            RiscvChip::CH56X | RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X => {
+                0x0000_0000
+            }
             _ => 0x0800_0000,
         }
     }
@@ -168,6 +174,7 @@ impl FromStr for RiscvChip {
             "CH56X" => Ok(RiscvChip::CH56X),
             "CH57X" => Ok(RiscvChip::CH57X),
             "CH58X" => Ok(RiscvChip::CH58X),
+            "CH59X" => Ok(RiscvChip::CH59X),
             "CH32X035" => Ok(RiscvChip::CH32X035),
             _ => Err(Error::UnknownChip(0)),
         }

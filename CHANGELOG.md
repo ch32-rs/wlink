@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `--chip` option to specify chip type
 - Check probe type when doing mode-switch
 - Add support for CH32X035
+- Add support for CH59X
 
 ### Fixed
 

@@ -1,4 +1,4 @@
-# CH57X & CH58X
+# CH57X & CH58X & CH59X
 
 ## Debug Pins
 
