@@ -60,7 +60,6 @@ impl WchLink {
         let chip_info = chip_info.ok_or(Error::NotAttached)?;
 
         let mut uid = None;
-        let mut sram_code_mode = 0;
         if chip_info.chip_family.support_flash_protect() {
             let chip_id = if probe_info.version() >= (2, 9) {
                 self.send_command(commands::QueryChipInfo::V2)?
@@ -76,8 +75,11 @@ impl WchLink {
             if protected {
                 log::warn!("Flash is protected, debug access is not available");
             }
+        }
+        let mut sram_code_mode = 0;
+        if chip_info.chip_family.support_ram_rom_mode() {
             sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
-            log::debug!("SRAM CODE mode: {}", sram_code_mode);
+            log::debug!("SRAM CODE split mode: {}", sram_code_mode);
         }
 
         // riscvchip = 7 => 2
@@ -136,7 +138,8 @@ impl WchLink {
                     "unprotected"
                 }
             );
-            return Ok(());
+            //
+            // return Ok(());
         }
 
         let use_v2 = probe_info.version() >= (2, 9);

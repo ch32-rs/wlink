@@ -67,14 +67,16 @@ pub enum RiscvChip {
     CH32V20X = 0x05,
     /// CH32V30X RISC-V4C/V4F series, The same as type 5
     CH32V30X = 0x06,
-    /// CH581/CH582/CH583 RISC-V4A BLE 5.3 series, always failback as CH57X
+    /// CH58x RISC-V4A BLE 5.3 series, fallback as CH57X
     CH58X = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
-    _Unkown0A = 0x0A,
-    CH59X = 0x0B,
-    _Unkown0C = 0x0C,
-    CH32X035 = 0x0D,
+    _Unkown0A = 0x0A, // 10
+    /// CH59x RISC-V4C BLE 5.4 series, fallback as CH57X
+    CH59X = 0x0B, // 11
+    _Unkown0C = 0x0C, // 12
+    /// CH32X035 RISC-V4C series, fallbak as 0x0C
+    CH32X035 = 0x0D, // 13
 }
 
 impl RiscvChip {
@@ -89,6 +91,11 @@ impl RiscvChip {
                 | RiscvChip::CH32V30X
                 | RiscvChip::CH32X035
         )
+    }
+
+    // CH32V208xB, CH32V307, CH32V303RCT6/VCT6
+    pub(crate) fn support_ram_rom_mode(&self) -> bool {
+        matches!(self, RiscvChip::CH32V20X | RiscvChip::CH32V30X)
     }
 
     /// Very unsafe. This disables the debug interface of the chip.
@@ -118,7 +125,7 @@ impl RiscvChip {
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::_Unkown0A => &flash_op::UNKNOWN_10,
             RiscvChip::_Unkown0C => &flash_op::UNKNOWN_12,
-            _ => unimplemented!(),
+            RiscvChip::CH32X035 => &flash_op::UNKNOWN_12,
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {
