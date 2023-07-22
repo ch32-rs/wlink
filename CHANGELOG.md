@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix stuck for CH5xx devices, due to unsppported read ram rom split command
 - Add `--chip` option to specify chip type
 - Check probe type when doing mode-switch
+- Add support for CH32X035
 
 ### Fixed
 

@@ -71,12 +71,10 @@ pub enum RiscvChip {
     CH58X = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
-    // It should be CH643, guess from the WCH-LinkUtility UI. aka. CH8571
     _Unkown0A = 0x0A,
-    // CH59x?, The same as type 2
     _Unkown0B = 0x0B,
-    /// 12, It should be CH32X035,
     _Unkown0C = 0x0C,
+    CH32X035 = 0x0D,
 }
 
 impl RiscvChip {
@@ -85,7 +83,11 @@ impl RiscvChip {
         // type 3, 2, 7, 0x0A, 0x0b do not support write protect
         matches!(
             self,
-            RiscvChip::CH32V103 | RiscvChip::CH32V003 | RiscvChip::CH32V20X | RiscvChip::CH32V30X
+            RiscvChip::CH32V103
+                | RiscvChip::CH32V003
+                | RiscvChip::CH32V20X
+                | RiscvChip::CH32V30X
+                | RiscvChip::CH32X035
         )
     }
 
@@ -123,6 +125,7 @@ impl RiscvChip {
             0x06 => Ok(RiscvChip::CH32V30X),
             0x07 => Ok(RiscvChip::CH58X),
             0x09 => Ok(RiscvChip::CH32V003),
+            0x0D => Ok(RiscvChip::CH32X035),
             _ => Err(Error::UnknownChip(value)),
         }
     }
@@ -165,6 +168,7 @@ impl FromStr for RiscvChip {
             "CH56X" => Ok(RiscvChip::CH56X),
             "CH57X" => Ok(RiscvChip::CH57X),
             "CH58X" => Ok(RiscvChip::CH58X),
+            "CH32X035" => Ok(RiscvChip::CH32X035),
             _ => Err(Error::UnknownChip(0)),
         }
     }

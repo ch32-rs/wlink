@@ -22,6 +22,9 @@ impl WchLink {
         if self.chip.is_some() {
             log::warn!("Chip already attached");
         }
+        if expected_chip.is_none() {
+            log::warn!("No expected chip type specified, assume CH32V30X");
+        }
 
         let probe_info = self.send_command(commands::control::GetProbeInfo)?;
 
