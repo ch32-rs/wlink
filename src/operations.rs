@@ -59,15 +59,48 @@ impl WchLink {
         }
         let chip_info = chip_info.ok_or(Error::NotAttached)?;
 
-        let mut uid = None;
-        if chip_info.chip_family.support_flash_protect() {
+        self.send_command(commands::control::Unknown3)?;
+
+        // riscvchip = 7 => 2
+        let flash_addr = chip_info.chip_family.code_flash_start();
+        let page_size = chip_info.chip_family.page_size();
+
+        let info = ChipInfo {
+            uid: None, // TODO
+            chip_family: chip_info.chip_family,
+            chip_type: chip_info.chip_type,
+            march: None,
+            flash_size: 0, // TODO: read flash size
+            memory_start_addr: flash_addr,
+            sram_code_mode: 0, // TODO
+            page_size,
+            //rom_kb: 0, // TODO:
+            //ram_kb: 0, // TODO:
+        };
+
+        self.chip = Some(info);
+        self.probe = Some(probe_info);
+
+        Ok(())
+    }
+
+    // NOTE: this halts the MCU
+    pub fn dump_info(&mut self) -> Result<()> {
+        let probe_info = self.probe.as_ref().unwrap();
+        if self
+            .chip
+            .as_ref()
+            .unwrap()
+            .chip_family
+            .support_flash_protect()
+        {
             let chip_id = if probe_info.version() >= (2, 9) {
                 self.send_command(commands::QueryChipInfo::V2)?
             } else {
                 self.send_command(commands::QueryChipInfo::V1)?
             };
             log::info!("Chip UID: {chip_id}");
-            uid = Some(chip_id);
+            // self.uid = Some(chip_id);
 
             let flash_protected = self.send_command(commands::FlashProtect::Query)?;
             let protected = flash_protected == commands::FlashProtect::FLAG_PROTECTED;
@@ -76,35 +109,17 @@ impl WchLink {
                 log::warn!("Flash is protected, debug access is not available");
             }
         }
-        let mut sram_code_mode = 0;
-        if chip_info.chip_family.support_ram_rom_mode() {
-            sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
+        if self
+            .chip
+            .as_ref()
+            .unwrap()
+            .chip_family
+            .support_ram_rom_mode()
+        {
+            let sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
             log::debug!("SRAM CODE split mode: {}", sram_code_mode);
         }
 
-        // riscvchip = 7 => 2
-        let flash_addr = chip_info.chip_family.code_flash_start();
-        let page_size = chip_info.chip_family.page_size();
-
-        let info = ChipInfo {
-            uid,
-            chip_family: chip_info.chip_family,
-            chip_type: chip_info.chip_type,
-            march: None,
-            flash_size: 0, // TODO: read flash size
-            memory_start_addr: flash_addr,
-            sram_code_mode,
-            page_size,
-            //rom_kb: 0, // TODO:
-            //ram_kb: 0, // TODO:
-        };
-
-        self.chip = Some(info);
-
-        Ok(())
-    }
-
-    pub fn dump_info(&mut self) -> Result<()> {
         let misa = self.read_reg(regs::MISA)?;
         log::trace!("Read csr misa: {misa:08x}");
         let misa = parse_misa(misa);
@@ -227,19 +242,21 @@ impl WchLink {
     }
 
     pub fn write_flash(&mut self, data: &[u8], address: u32) -> Result<()> {
-        let pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
-        let code_start_addr = self.chip.as_ref().unwrap().memory_start_addr;
-        log::debug!("Default flash address 0x{:08x}", code_start_addr);
+        let write_pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
 
         let mut data = data.to_vec();
         if data.len() % 256 != 0 {
             data.resize((data.len() / 256 + 1) * 256, 0);
         }
+
+        self.send_command(Program::Prepare)?;
         self.send_command(SetRamAddress {
             start_addr: address,
-            len: data.len() as u32,
+            len: data.len() as _,
         })?;
         self.send_command(Program::BeginWriteMemory)?;
+
+        // wlink_ramcodewrite
         self.device_handle
             .write_data_endpoint(self.chip.as_ref().unwrap().chip_family.flash_op())?;
 
@@ -260,7 +277,7 @@ impl WchLink {
         // wlink_fastprogram
         self.send_command(Program::BeginWriteFlash)?;
 
-        for chunk in data.chunks(pack_size as usize) {
+        for chunk in data.chunks(write_pack_size as usize) {
             self.device_handle.write_data_endpoint(chunk)?;
             let rxbuf = self.device_handle.read_data_endpoint(4)?;
             if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {

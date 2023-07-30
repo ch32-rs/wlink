@@ -4,7 +4,7 @@ use log::info;
 use rusb::{DeviceHandle, UsbContext};
 
 use crate::{
-    commands::{ChipId, RawCommand, Response},
+    commands::{control::ProbeInfo, ChipId, RawCommand, Response},
     transport::Transport,
     Result, RiscvChip,
 };
@@ -43,6 +43,7 @@ pub struct ChipInfo {
 pub struct WchLink {
     pub(crate) device_handle: DeviceHandle<rusb::Context>,
     pub chip: Option<ChipInfo>,
+    pub probe: Option<ProbeInfo>,
 }
 
 impl WchLink {
@@ -111,6 +112,7 @@ impl WchLink {
         Ok(Self {
             device_handle,
             chip: None,
+            probe: None,
         })
     }
 
@@ -138,6 +140,7 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
     let mut dev = WchLink {
         device_handle: dev,
         chip: None,
+        probe: None,
     };
     let info = dev.probe_info()?;
     info!("probe info: {:?}", info);

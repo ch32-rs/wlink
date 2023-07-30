@@ -48,7 +48,7 @@ enum Commands {
     Flash {
         /// Address in u32
         #[arg(short, long, value_parser = parse_number)]
-        address: u32,
+        address: Option<u32>,
         /// Path to the binary file to flash
         path: String,
     },
@@ -173,8 +173,15 @@ fn main() -> Result<()> {
                 Flash { address, path } => {
                     let firmware = read_firmware_from_file(path)?;
 
-                    log::info!("Flashing {} bytes to 0x{:08x}", firmware.len(), address);
-                    probe.write_flash(&firmware, address)?;
+                    let start_address =
+                        address.unwrap_or_else(|| probe.chip.as_ref().unwrap().memory_start_addr);
+                    log::info!(
+                        "Flashing {} bytes to 0x{:08x}",
+                        firmware.len(),
+                        start_address
+                    );
+
+                    probe.write_flash(&firmware, start_address)?;
                     log::info!("Flash done");
 
                     sleep(Duration::from_millis(500));

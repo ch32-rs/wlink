@@ -12,7 +12,7 @@ pub mod transport;
 pub use crate::error::{Error, Result};
 
 /// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum WchLinkVariant {
     /// WCH-Link-CH549, does not support CH32V00X

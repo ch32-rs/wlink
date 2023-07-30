@@ -69,6 +69,7 @@ impl Transport for DeviceHandle<rusb::Context> {
         Ok(buf)
     }
 
+    // pWriteData
     fn write_data_endpoint(&mut self, buf: &[u8]) -> Result<()> {
         let mut bytes_written = 0;
         const CHUNK: usize = 64;
@@ -82,6 +83,7 @@ impl Transport for DeviceHandle<rusb::Context> {
             bytes_written += chunk.len();
         }
         log::trace!("write data ep {} bytes", bytes_written);
+
         Ok(())
     }
 }

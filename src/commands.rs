@@ -106,8 +106,10 @@ pub enum Program {
     BeginWriteFlash = 0x02,
     // after write memory
     BeginWriteMemory = 0x05,
+    // before SetRamAddress
+    Prepare = 0x06,
 
-    ExecMemory = 0x07,
+    ExecMemory = 0x07, // or 0x0c for risvchip=1
     // EndProgram
     End = 0x08,
     // after read memory

@@ -22,10 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Constraint regs for riscv32ec variant
 - Wrong 0x0c command interpretation, this should be a set chip speed command
+- Cannot flash CH32V003 (#23). Now wlink won't get info when attaching chip
 
 ### Changed
 
 - Refine error messages
+- `--address` for flash is now optional, default to device flash start address
 
 ## [0.0.4] - 2023-07-01
 

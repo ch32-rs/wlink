@@ -16,7 +16,7 @@ impl Command for GetProbeInfo {
         vec![0x01]
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProbeInfo {
     pub major_version: u8,
     pub minor_version: u8,
