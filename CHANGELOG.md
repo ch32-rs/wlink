@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.5] - 2023-07-31
+
 ### Added
 
 - Support WCH-LinkW, a CH32V208 flasher with wireless connection
