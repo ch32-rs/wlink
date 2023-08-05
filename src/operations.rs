@@ -34,7 +34,7 @@ impl WchLink {
 
             self.send_command(commands::SetTwoLineMode {
                 riscvchip: expected_chip.unwrap_or(RiscvChip::CH32V30X) as u8,
-                speed: Default::default(), // 1 high, 2, medium, 3 low
+                speed: self.speed,
             })?;
 
             if let Ok(resp) = self.send_command(commands::control::AttachChip) {
@@ -186,10 +186,8 @@ impl WchLink {
     /// Detach chip and let it resume
     pub fn detach_chip(&mut self) -> Result<()> {
         log::debug!("Detach chip");
-        if self.chip.is_some() {
-            self.send_command(commands::control::DetachChip)?;
-            self.chip = None;
-        }
+        self.send_command(commands::control::DetachChip)?;
+        self.chip = None;
         Ok(())
     }
 
@@ -241,12 +239,17 @@ impl WchLink {
         Ok(())
     }
 
+    // wlink_write
     pub fn write_flash(&mut self, data: &[u8], address: u32) -> Result<()> {
         let write_pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
 
         let mut data = data.to_vec();
         if data.len() % 256 != 0 {
             data.resize((data.len() / 256 + 1) * 256, 0);
+        }
+        log::trace!("Using write pack size {}", write_pack_size);
+        if data.len() < write_pack_size as usize {
+            data.resize(write_pack_size as usize, 0xff);
         }
 
         self.send_command(Program::Prepare)?;

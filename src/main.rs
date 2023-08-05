@@ -24,6 +24,10 @@ struct Cli {
     #[arg(long, global = true)]
     chip: Option<RiscvChip>,
 
+    /// Connection Speed
+    #[arg(long, global = true, default_value = "high")]
+    speed: crate::commands::Speed,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -140,6 +144,7 @@ fn main() -> Result<()> {
         }
         Some(command) => {
             let mut probe = WchLink::open_nth(device_index)?;
+            probe.set_speed(cli.speed);
             probe.probe_info()?;
             probe.attach_chip(cli.chip)?;
             match command {
@@ -171,6 +176,9 @@ fn main() -> Result<()> {
                     probe.erase_flash()?;
                 }
                 Flash { address, path } => {
+                    // NOTE: this is required for Flash command
+                    probe.dump_info()?;
+
                     let firmware = read_firmware_from_file(path)?;
 
                     let start_address =
@@ -189,6 +197,8 @@ fn main() -> Result<()> {
                     log::info!("Now reset...");
                     probe.send_command(commands::Reset::Quit)?;
                     sleep(Duration::from_millis(500));
+                    // reattach
+                    probe.attach_chip(cli.chip)?;
                     log::info!("Resume executing...");
                     probe.ensure_mcu_resume()?;
                 }

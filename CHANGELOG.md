@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `--speed` option to specify flash speed
+
+### Fixed
+
+- Regression in `flash` command
+
 ## [0.0.5] - 2023-07-31
 
 ### Added

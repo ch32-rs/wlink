@@ -44,6 +44,7 @@ pub struct WchLink {
     pub(crate) device_handle: DeviceHandle<rusb::Context>,
     pub chip: Option<ChipInfo>,
     pub probe: Option<ProbeInfo>,
+    pub(crate) speed: crate::commands::Speed,
 }
 
 impl WchLink {
@@ -113,6 +114,7 @@ impl WchLink {
             device_handle,
             chip: None,
             probe: None,
+            speed: Default::default(),
         })
     }
 
@@ -122,6 +124,10 @@ impl WchLink {
         let resp = self.device_handle.read_command_endpoint()?;
 
         C::Response::from_raw(&resp)
+    }
+
+    pub fn set_speed(&mut self, speed: crate::commands::Speed) {
+        self.speed = speed;
     }
 }
 
@@ -141,6 +147,7 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
         device_handle: dev,
         chip: None,
         probe: None,
+        speed: Default::default(),
     };
     let info = dev.probe_info()?;
     info!("probe info: {:?}", info);

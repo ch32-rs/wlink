@@ -265,12 +265,12 @@ impl Command for Reset {
 }
 
 /// Speed settings
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, clap::ValueEnum, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Speed {
     Low = 0x03,
     Medium = 0x02,
     High = 0x01,
-    VeryHigh = 0x00,
+    Max = 0x00,
 }
 
 impl Default for Speed {

@@ -66,6 +66,9 @@ impl Transport for DeviceHandle<rusb::Context> {
             return Err(crate::Error::InvalidPayloadLength);
         }
         log::trace!("read data ep {} bytes", bytes_read);
+        if bytes_read == 4 {
+            log::trace!("recv data {}", hex::encode(&buf));
+        }
         Ok(buf)
     }
 
