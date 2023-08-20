@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Regression in `flash` command
 
+### Changed
+
+- Allow underscore `_` in number literals in command line
+
 ## [0.0.5] - 2023-07-31
 
 ### Added

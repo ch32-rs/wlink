@@ -245,10 +245,11 @@ fn main() -> Result<()> {
 }
 
 pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
-    if s.starts_with("0x") || s.starts_with("0X") {
+    let s = s.replace("_", "").to_lowercase();
+    if s.starts_with("0x") {
         Ok(u32::from_str_radix(&s[2..], 16)
             .unwrap_or_else(|_| panic!("error while parsering {s:?}")))
-    } else if s.starts_with("0b") || s.starts_with("0B") {
+    } else if s.starts_with("0b") {
         Ok(u32::from_str_radix(&s[2..], 2)
             .unwrap_or_else(|_| panic!("error while parsering {s:?}")))
     } else {
