@@ -7,6 +7,6 @@
 
 ## Notes
 
-- Enable debug by WCHISPTool
+- Enable debug using WCHISPTool
 - After debug enabled, flash should be prgrammed at lease once
 - `a9 bd f9 f3` means erased flash or protected flash, the detailed mechanism is unknown
