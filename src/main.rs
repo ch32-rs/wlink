@@ -1,7 +1,10 @@
 use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
-use wlink::{commands, device::WchLink, format::read_firmware_from_file, regs, RiscvChip};
+use wlink::{
+    commands::{self, RawCommand}, device::WchLink, dmi::DebugModuleInterface, format::read_firmware_from_file, regs,
+    RiscvChip,
+};
 
 use clap::{Parser, Subcommand};
 
@@ -17,7 +20,7 @@ struct Cli {
     verbose: u8,
 
     /// Detach chip after operation
-    #[arg(long, global = true)]
+    #[arg(long, global = true, default_value = "true")]
     detach: bool,
 
     /// Specify the chip type, e.g. CH32V30X
@@ -48,15 +51,21 @@ enum Commands {
     Regs {},
     /// Erase flash
     Erase {},
-    /// Program the flash
+    /// Program the code flash
     Flash {
         /// Address in u32
         #[arg(short, long, value_parser = parse_number)]
         address: Option<u32>,
-        /// Path to the binary file to flash
+        /// Do not erase flash before flashing
+        #[arg(long, short = 'E', default_value = "false")]
+        no_erase: bool,
+        /// Do not reset and run after flashing
+        #[arg(long, short = 'R', default_value = "false")]
+        no_run: bool,
+        /// Path to the firmware file to flash
         path: String,
     },
-    /// Unlock flash, enable debugging
+    /// Unlock flash
     Unprotect {},
     /// Protect flash
     Protect {},
@@ -93,6 +102,7 @@ enum Commands {
         #[arg(long)]
         dap: bool,
     },
+    Dev {},
 }
 
 fn main() -> Result<()> {
@@ -148,6 +158,18 @@ fn main() -> Result<()> {
             probe.probe_info()?;
             probe.attach_chip(cli.chip)?;
             match command {
+                Dev {} => {
+                    const FLASH_KEYR: u32 = 0x2000_0030;
+                    let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
+                    // algo.write_mem32(FLASH_KEYR, 0x45670123)?;
+
+                    //algo.ensure_mcu_halt()?;
+                    let address = 0x40001041;
+                    let v = algo.read_mem32(address)?;
+                    println!("0x{:08x}: 0x{:08x}", address, v);
+
+                    // algo.dump_pmp()?;
+                }
                 Dump { address, length } => {
                     log::info!(
                         "Read memory from 0x{:08x} to 0x{:08x}",
@@ -168,19 +190,20 @@ fn main() -> Result<()> {
                     log::info!("Resume MCU");
                     probe.ensure_mcu_resume()?;
 
-                    let dmstatus: regs::Dmstatus = probe.dmi_read()?;
+                    let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#?}");
                 }
                 Erase {} => {
                     log::info!("Erase Flash");
                     probe.erase_flash()?;
                 }
-                Flash { address, path } => {
-                    // NOTE: this is required for Flash command
-                    probe.dump_info()?;
-
+                Flash {
+                    address,
+                    no_erase,
+                    no_run,
+                    path,
+                } => {
                     let firmware = read_firmware_from_file(path)?;
-
                     let start_address =
                         address.unwrap_or_else(|| probe.chip.as_ref().unwrap().memory_start_addr);
                     log::info!(
@@ -189,18 +212,25 @@ fn main() -> Result<()> {
                         start_address
                     );
 
+                    if !no_erase {
+                        log::info!("Erase Flash");
+                        probe.erase_flash()?;
+                    }
+
                     probe.write_flash(&firmware, start_address)?;
                     log::info!("Flash done");
 
                     sleep(Duration::from_millis(500));
 
-                    log::info!("Now reset...");
-                    probe.send_command(commands::Reset::Quit)?;
-                    sleep(Duration::from_millis(500));
+                    if !no_run {
+                        log::info!("Now reset...");
+                        probe.send_command(commands::Reset::AndRun)?;
+                        sleep(Duration::from_millis(500));
+                    }
                     // reattach
-                    probe.attach_chip(cli.chip)?;
-                    log::info!("Resume executing...");
-                    probe.ensure_mcu_resume()?;
+                    //probe.attach_chip(cli.chip)?;
+                    //log::info!("Resume executing...");
+                    //probe.ensure_mcu_resume()?;
                 }
                 Unprotect {} => {
                     log::info!("Unprotect Flash");
@@ -230,8 +260,19 @@ fn main() -> Result<()> {
                 }
                 Status {} => {
                     probe.dump_info()?;
-                    let dmstatus: regs::Dmstatus = probe.dmi_read()?;
-                    log::info!("{dmstatus:#?}");
+                    let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
+                    log::info!("{dmstatus:#x?}");
+                    let dmcontrol: regs::Dmcontrol = probe.read_dmi_reg()?;
+                    log::info!("{dmcontrol:#x?}");
+                    let hartinfo: regs::Hartinfo = probe.read_dmi_reg()?;
+                    log::info!("{hartinfo:#x?}");
+                    let abstractcs: regs::Abstractcs = probe.read_dmi_reg()?;
+                    log::info!("{abstractcs:#x?}");
+                    let haltsum0 = probe.dmi_read(0x40)?;
+                    log::info!("haltsum0: {:#x?}", haltsum0);
+
+                    let cpbr = probe.dmi_read(0x7E)?;
+                    log::info!("cpbr: {:#x?}", cpbr);
                 }
                 _ => unreachable!("unimplemented command"),
             }

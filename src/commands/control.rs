@@ -7,7 +7,8 @@ use crate::{RiscvChip, WchLinkVariant};
 
 use super::*;
 
-/// (0x0d, 0x01)
+/// GetDeviceVersion (0x0d, 0x01)
+#[derive(Debug)]
 pub struct GetProbeInfo;
 impl Command for GetProbeInfo {
     type Response = ProbeInfo;
@@ -55,6 +56,7 @@ impl fmt::Display for ProbeInfo {
 }
 
 /// ?SetChipType (0x0d, 0x02)
+#[derive(Debug)]
 pub struct AttachChip;
 impl Command for AttachChip {
     type Response = AttachChipResponse;
@@ -86,14 +88,19 @@ impl Response for AttachChipResponse {
 // For logging
 impl fmt::Display for AttachChipResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}(0x{:08x})", self.chip_family, self.chip_type)
+        if self.chip_type == 0 {
+            write!(f, "{:?}", self.chip_family)
+        } else {
+            write!(f, "{:?}(0x{:08x})", self.chip_family, self.chip_type)
+        }
     }
 }
 
 // ?? close out
-/// (0x0d, 0xff)
-pub struct DetachChip;
-impl Command for DetachChip {
+/// Detach Chip, (0x0d, 0xff)
+#[derive(Debug)]
+pub struct OptEnd;
+impl Command for OptEnd {
     type Response = ();
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
@@ -101,8 +108,9 @@ impl Command for DetachChip {
     }
 }
 
-/// Only avaliable for CH32V2, CH32V3, CH56X
+/// GetROMRAM, Only avaliable for CH32V2, CH32V3, CH56X
 /// 0, 1, 2, 3
+#[derive(Debug)]
 pub struct GetChipRomRamSplit;
 impl Command for GetChipRomRamSplit {
     type Response = u8;
@@ -112,13 +120,23 @@ impl Command for GetChipRomRamSplit {
     }
 }
 
-/// Special command for CH32V20X, CH32V30X, CH32V003, CH32V103
-/// After attach chip
-pub struct Unknown3;
-impl Command for Unknown3 {
+/// Set Power, from pow3v3, pow5v fn
+#[derive(Debug)]
+pub enum SetPower {
+    Enable3V3,
+    Disable3V3,
+    Enable5V,
+    Disable5V,
+}
+impl Command for SetPower {
     type Response = ();
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
-        vec![0x03]
+        match self {
+            SetPower::Enable3V3 => vec![0x09],
+            SetPower::Disable3V3 => vec![0x0A],
+            SetPower::Enable5V => vec![0x0B],
+            SetPower::Disable5V => vec![0x0C],
+        }
     }
 }

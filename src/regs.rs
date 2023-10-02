@@ -14,6 +14,23 @@ pub const MCAUSE: u16 = 0x342;
 pub const MTVAL: u16 = 0x343;
 pub const DPC: u16 = 0x7b1;
 
+pub const DMDATA0: u8 = 0x04;
+pub const DMDATA1: u8 = 0x05;
+pub const DMCONTROL: u8 = 0x10;
+pub const DMSTATUS: u8 = 0x11;
+pub const DMHARTINFO: u8 = 0x12;
+pub const DMABSTRACTCS: u8 = 0x16;
+pub const DMCOMMAND: u8 = 0x17;
+pub const DMABSTRACTAUTO: u8 = 0x18;
+pub const DMPROGBUF0: u8 = 0x20;
+pub const DMPROGBUF1: u8 = 0x21;
+pub const DMPROGBUF2: u8 = 0x22;
+pub const DMPROGBUF3: u8 = 0x23;
+pub const DMPROGBUF4: u8 = 0x24;
+pub const DMPROGBUF5: u8 = 0x25;
+pub const DMPROGBUF6: u8 = 0x26;
+pub const DMPROGBUF7: u8 = 0x27;
+
 // GPR: 0x1000 - 0x101f
 pub const GPRS: [(&str, &str, u16); 32] = [
     ("x0", "zero", 0x1000),
