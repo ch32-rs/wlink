@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use rusb::DeviceHandle;
 
-use crate::Result;
+use crate::{Error, Result};
 
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
@@ -66,26 +66,30 @@ impl Transport for DeviceHandle<rusb::Context> {
             return Err(crate::Error::InvalidPayloadLength);
         }
         log::trace!("read data ep {} bytes", bytes_read);
-        if bytes_read == 4 {
-            log::trace!("recv data {}", hex::encode(&buf));
+        if bytes_read <= 10 {
+            log::trace!("recv data {}", hex::encode(&buf[..bytes_read]));
         }
-        Ok(buf)
+        if bytes_read != n {
+            log::warn!("read data ep {} bytes", bytes_read);
+            return Err(Error::InvalidPayloadLength);
+        }
+        Ok(buf[..n].to_vec())
     }
 
     // pWriteData
     fn write_data_endpoint(&mut self, buf: &[u8], packet_len: usize) -> Result<()> {
-        let mut bytes_written = 0;
-        while bytes_written < buf.len() {
-            let chunk = &buf[bytes_written..(bytes_written + packet_len).min(buf.len())];
+        for chunk in buf.chunks(packet_len) {
+            let mut chunk = chunk.to_vec();
+            if chunk.len() < packet_len {
+                chunk.resize(packet_len, 0xff);
+            }
             self.write_bulk(
                 RAW_ENDPOINT_OUT,
-                chunk,
+                &chunk,
                 Duration::from_millis(USB_TIMEOUT_MS),
             )?;
-            bytes_written += chunk.len();
         }
-        log::trace!("write data ep {} bytes", bytes_written);
-
+        log::trace!("write data ep {} bytes", buf.len());
         Ok(())
     }
 }
