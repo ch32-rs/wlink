@@ -50,6 +50,8 @@ Current firmware version: 2.9
 - [CH592]/CH591
 - [ ] [CH643] - I don't have this chip, help wanted
 - [CH32X035]
+- [ ] [CH32L103] - I don't have this chip, help wanted
+- [ ] [CH8571] - No other source about this chip, help wanted
 - ... (Feel free to open an issue if you have tested on other chips)
 
 [CH32V003]: http://www.wch-ic.com/products/CH32V003.html
@@ -58,11 +60,13 @@ Current firmware version: 2.9
 [CH32V208]: http://www.wch-ic.com/products/CH32V208.html
 [CH32V307]: http://www.wch-ic.com/products/CH32V307.html
 [CH32X035]: http://www.wch-ic.com/products/CH32X035.html
+[CH32L103]: http://www.wch-ic.com/products/CH32L103.html
 [CH569]: http://www.wch-ic.com/products/CH569.html
 [CH573]: http://www.wch-ic.com/products/CH573.html
 [CH583]: http://www.wch-ic.com/products/CH583.html
 [CH592]: https://www.wch-ic.com/products/CH592.html
 [CH643]: https://www.wch-ic.com/products/CH643.html
+[CH8571]: https://www.wch.cn/news/606.html
 
 ## Install
 

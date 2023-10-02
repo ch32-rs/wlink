@@ -1,6 +1,7 @@
 //! WCH-Link commands and response types.
 
 use std::fmt;
+use std::fmt::Debug;
 
 use crate::error::{Error, Result};
 
@@ -8,7 +9,7 @@ use crate::error::{Error, Result};
 pub mod control;
 
 /// Command to call the WCH-Link
-pub trait Command {
+pub trait Command: Debug {
     type Response: Response;
     const COMMAND_ID: u8;
     fn payload(&self) -> Vec<u8>;
@@ -73,6 +74,8 @@ impl Response for u8 {
     }
 }
 
+/// Generic raw command
+#[derive(Debug)]
 pub struct RawCommand<const N: u8>(pub Vec<u8>);
 impl<const N: u8> Command for RawCommand<N> {
     type Response = Vec<u8>;
@@ -82,13 +85,14 @@ impl<const N: u8> Command for RawCommand<N> {
     }
 }
 
-/// Set RAM address (0x08000000)
-pub struct SetRamAddress {
+/// Set address and offset of the firmware, 0x01.
+#[derive(Debug)]
+pub struct SetWriteMemoryRegion {
     // 0x08000000 or 0x00000000
     pub start_addr: u32,
     pub len: u32,
 }
-impl Command for SetRamAddress {
+impl Command for SetWriteMemoryRegion {
     type Response = ();
     const COMMAND_ID: u8 = 0x01;
     fn payload(&self) -> Vec<u8> {
@@ -99,36 +103,13 @@ impl Command for SetRamAddress {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Program {
-    // wlink_erase
-    EraseFlash = 0x01,
-    BeginWriteFlash = 0x02,
-    // after write memory
-    BeginWriteMemory = 0x05,
-    // before SetRamAddress
-    Prepare = 0x06,
-
-    ExecMemory = 0x07, // or 0x0c for risvchip=1
-    // EndProgram
-    End = 0x08,
-    // after read memory
-    BeginReadMemory = 0x0c,
-}
-impl Command for Program {
-    type Response = u8;
-    const COMMAND_ID: u8 = 0x02;
-    fn payload(&self) -> Vec<u8> {
-        vec![*self as u8]
-    }
-}
-
 /// Read a block of memory from the chip.
-pub struct ReadMemory {
+#[derive(Debug)]
+pub struct SetReadMemoryRegion {
     pub start_addr: u32,
     pub len: u32,
 }
-impl Command for ReadMemory {
+impl Command for SetReadMemoryRegion {
     type Response = ();
     const COMMAND_ID: u8 = 0x03;
     fn payload(&self) -> Vec<u8> {
@@ -139,18 +120,48 @@ impl Command for ReadMemory {
     }
 }
 
-/// (0x06, _)
+/// 0x02 subset
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Program {
+    // wlink_erase
+    EraseFlash = 0x01,
+    // Before write firmware bytes, choice between 0x02 and 0x04
+    WriteFlash = 0x02,
+    // after write flash
+    WriteFlashAndVerify = 0x04,
+    /// Write Flash OP
+    WriteFlashOP = 0x05,
+    // before SetRamAddress
+    Prepare = 0x06,
+    /// Unknown, maybe commit flash op written
+    Unknown07AfterFlashOPWritten = 0x07, // or 0x0B for riscvchip=1
+    /// Unknown, maybe commit flash op written, only for riscvchip=1
+    Unknown0BAfterFlashOPWritten = 0x0B,
+    // EndProgram
+    End = 0x08,
+    /// Read memory section
+    ReadMemory = 0x0c,
+}
+impl Command for Program {
+    type Response = u8;
+    const COMMAND_ID: u8 = 0x02;
+    fn payload(&self) -> Vec<u8> {
+        vec![*self as u8]
+    }
+}
+
+/// 0x06 subset
 // query -> check -> set
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum FlashProtect {
-    Query = 0x01,   // 1 for protected, 2 for unprotected
-    QueryV2 = 0x04, // 1 for protected, 0 for unprotected,
+    CheckReadProtect = 0x01,   // 1 for protected, 2 for unprotected
+    CheckReadProtectEx = 0x04, // 1 for protected, 0 for unprotected,
     Protect = 0x03,
-    // dummy 0xf0 mask
-    ProtectV2 = 0xf3, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     Unprotect = 0x02,
     // dummy 0xf0 mask
-    UnprotectV2 = 0xf2, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    ProtectEx = 0xf3, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    // dummy 0xf0 mask
+    UnprotectEx = 0xf2, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 }
 impl FlashProtect {
     pub const FLAG_PROTECTED: u8 = 0x01;
@@ -160,13 +171,14 @@ impl Command for FlashProtect {
     const COMMAND_ID: u8 = 0x06;
     fn payload(&self) -> Vec<u8> {
         match *self {
-            FlashProtect::ProtectV2 => vec![0x03, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-            FlashProtect::UnprotectV2 => vec![0x02, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            FlashProtect::ProtectEx => vec![0x03, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            FlashProtect::UnprotectEx => vec![0x02, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
             _ => vec![*self as u8],
         }
     }
 }
 
+#[derive(Debug)]
 pub struct SetFlashProtected {
     pub protected: bool,
 }
@@ -185,12 +197,12 @@ impl Command for SetFlashProtected {
 /// Get Chip UID, the UID is also avaliable in the `wchisp` command.
 // ??? 0x11, 0x01, _ (riscvchip)
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum QueryChipInfo {
+pub enum GetChipInfo {
     V1 = 0x09,
     // spot on WCH-LinkUtility v1.70
     V2 = 0x06,
 }
-impl Command for QueryChipInfo {
+impl Command for GetChipInfo {
     type Response = ChipId;
     const COMMAND_ID: u8 = 0x11;
     fn payload(&self) -> Vec<u8> {
@@ -246,9 +258,10 @@ impl fmt::Debug for ChipId {
 }
 
 /// Device reset (0x0b, _)
+#[derive(Debug)]
 pub enum Reset {
     /// wlink_quitreset
-    Quit,
+    AndRun, // the most common reset
     Normal,
     Normal2,
 }
@@ -257,7 +270,7 @@ impl Command for Reset {
     const COMMAND_ID: u8 = 0x0b;
     fn payload(&self) -> Vec<u8> {
         match self {
-            Reset::Quit => vec![0x01],
+            Reset::AndRun => vec![0x01],
             Reset::Normal => vec![0x03],
             Reset::Normal2 => vec![0x02],
         }
@@ -267,32 +280,32 @@ impl Command for Reset {
 /// Speed settings
 #[derive(Debug, Copy, Clone, clap::ValueEnum, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Speed {
+    /// 400
     Low = 0x03,
+    /// 4000
     Medium = 0x02,
+    /// 6000
     High = 0x01,
-    Max = 0x00,
 }
-
 impl Default for Speed {
     fn default() -> Self {
         Speed::High
     }
 }
 
-/// (0x0c, [riscvchip, 1/2/3])
-pub struct SetTwoLineMode {
+/// Set CLK Speed, 0x0C
+#[derive(Debug)]
+pub struct SetSpeed {
     pub riscvchip: u8,
     pub speed: Speed,
 }
-
-impl Command for SetTwoLineMode {
+impl Command for SetSpeed {
     type Response = bool;
     const COMMAND_ID: u8 = 0x0c;
     fn payload(&self) -> Vec<u8> {
         vec![self.riscvchip, self.speed as u8]
     }
 }
-
 impl Response for bool {
     fn from_payload(resp: &[u8]) -> Result<Self> {
         if resp.len() != 1 {
@@ -303,6 +316,7 @@ impl Response for bool {
 }
 
 /// DMI operations
+#[derive(Debug)]
 pub enum DmiOp {
     Nop,
     Read { addr: u8 },
@@ -379,6 +393,25 @@ impl Response for DmiOpResponse {
         Ok(DmiOpResponse { addr, data, op })
     }
 }
+
+#[derive(Debug)]
+pub struct DisableDebug;
+impl Command for DisableDebug {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0e;
+    // 0x81, 0x0e, 0x01, 0x01
+    fn payload(&self) -> Vec<u8> {
+        vec![0x01]
+    }
+}
+
+// 81 0D 05 11 SetAccessAddress
+// 81 0F 01 02 GetDeviceMode
+// 81 0D 01 07 EnableQE
+// 81 0D 01 06 CheckQE
+// 81 FE 01 00 DisEncrypt
+// 81 0D 01 0F ClearCodeFlashB
+// 81 0D 02 08 xx ClearCodeFlash
 
 #[cfg(test)]
 mod tests {

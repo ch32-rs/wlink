@@ -34,7 +34,7 @@ pub struct ChipInfo {
     pub page_size: u32,
     pub memory_start_addr: u32,
     // Fields for ROM/RAM split
-    pub sram_code_mode: u8,
+    // pub sram_code_mode: u8,
     //pub(crate) rom_kb: u32,
     //pub(crate) ram_kb: u32,
 }
@@ -119,6 +119,7 @@ impl WchLink {
     }
 
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {
+        log::debug!("send command: {:?}", cmd);
         let raw = cmd.to_raw();
         self.device_handle.write_command_endpoint(&raw)?;
         let resp = self.device_handle.read_command_endpoint()?;
@@ -151,7 +152,7 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
     };
     let info = dev.probe_info()?;
     info!("probe info: {:?}", info);
-    if info.variant.can_switch_mode() {
+    if info.variant.support_switch_mode() {
         let _ = dev.send_command(RawCommand::<0xff>(vec![0x41]));
         Ok(())
     } else {

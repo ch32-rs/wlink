@@ -24,7 +24,7 @@ pub(crate) trait Transport {
 
     fn read_data_endpoint(&mut self, n: usize) -> Result<Vec<u8>>;
 
-    fn write_data_endpoint(&mut self, buf: &[u8]) -> Result<()>;
+    fn write_data_endpoint(&mut self, buf: &[u8], packet_len: usize) -> Result<()>;
 }
 
 impl Transport for DeviceHandle<rusb::Context> {
@@ -73,11 +73,10 @@ impl Transport for DeviceHandle<rusb::Context> {
     }
 
     // pWriteData
-    fn write_data_endpoint(&mut self, buf: &[u8]) -> Result<()> {
+    fn write_data_endpoint(&mut self, buf: &[u8], packet_len: usize) -> Result<()> {
         let mut bytes_written = 0;
-        const CHUNK: usize = 64;
         while bytes_written < buf.len() {
-            let chunk = &buf[bytes_written..(bytes_written + CHUNK).min(buf.len())];
+            let chunk = &buf[bytes_written..(bytes_written + packet_len).min(buf.len())];
             self.write_bulk(
                 RAW_ENDPOINT_OUT,
                 chunk,
