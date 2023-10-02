@@ -38,8 +38,10 @@ pub trait Response {
             if len != resp[3..].len() {
                 return Err(Error::InvalidPayloadLength);
             }
-            let payload = resp[3..3 + len].to_vec();
-            Err(Error::Protocol(reason, payload))
+            if reason == 0x55 {
+                return Err(Error::Protocol(reason, resp.to_vec()));
+            }
+            Err(Error::Protocol(reason, resp.to_vec()))
         } else if resp[0] == 0x82 {
             let len = resp[2] as usize;
             if len != resp[3..].len() {
@@ -159,6 +161,7 @@ pub enum FlashProtect {
     Protect = 0x03,
     Unprotect = 0x02,
     // dummy 0xf0 mask
+    // prefix byte 0xe7 ? for ch32x035
     ProtectEx = 0xf3, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     // dummy 0xf0 mask
     UnprotectEx = 0xf2, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -412,6 +415,7 @@ impl Command for DisableDebug {
 // 81 FE 01 00 DisEncrypt
 // 81 0D 01 0F ClearCodeFlashB
 // 81 0D 02 08 xx ClearCodeFlash
+// 81 11 01 0D unkown in query info, before GetChipRomRamSplit
 
 #[cfg(test)]
 mod tests {

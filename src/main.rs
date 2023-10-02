@@ -197,8 +197,10 @@ fn main() -> Result<()> {
                     log::info!("{dmstatus:#?}");
                 }
                 Erase {} => {
-                    log::info!("Erase Flash");
+                    log::info!("Erase Flash...");
                     probe.erase_flash()?;
+                    log::debug!("Wait for some time to finish erase...");
+                    sleep(Duration::from_millis(1000));
                 }
                 Flash {
                     address,

@@ -11,7 +11,7 @@ use crate::{
     device::{ChipInfo, WchLink},
     dmi::DebugModuleInterface,
     error::AbstractcsCmdErr,
-    regs::{self, Abstractcs, DMReg, Dmcontrol, Dmstatus},
+    regs::{self, Abstractcs, Dmcontrol, Dmstatus},
     transport::Transport,
     Error, Result, RiscvChip,
 };
@@ -149,11 +149,7 @@ impl WchLink {
 
     pub fn protect_flash(&mut self, protect: bool) -> Result<()> {
         // HACK: requires a fresh attach
-        self.send_command(commands::control::OptEnd)?;
-
-        let probe_info = self.send_command(commands::control::GetProbeInfo)?;
-
-        self.send_command(commands::control::AttachChip)?;
+        self.reattach_chip()?;
 
         let flash_protected_flag = self.send_command(commands::FlashProtect::CheckReadProtect)?;
         let protected = flash_protected_flag == commands::FlashProtect::FLAG_PROTECTED;
@@ -166,15 +162,13 @@ impl WchLink {
                     "unprotected"
                 }
             );
-            //
-            // return Ok(());
         }
 
-        let use_v2 = probe_info.version() >= (2, 9);
+        let use_v2 = false; //probe_info.version() >= (2, 9);
         let cmd = match (protect, use_v2) {
             (true, true) => commands::FlashProtect::ProtectEx,
-            (false, true) => commands::FlashProtect::UnprotectEx,
             (true, false) => commands::FlashProtect::Protect,
+            (false, true) => commands::FlashProtect::UnprotectEx,
             (false, false) => commands::FlashProtect::Unprotect,
         };
 
@@ -201,6 +195,12 @@ impl WchLink {
         log::debug!("Detach chip");
         self.send_command(commands::control::OptEnd)?;
         self.chip = None;
+        Ok(())
+    }
+
+    fn reattach_chip(&mut self) -> Result<()> {
+        self.detach_chip()?;
+        self.attach_chip(self.chip.as_ref().map(|i| i.chip_family))?;
         Ok(())
     }
 
@@ -263,7 +263,7 @@ impl WchLink {
             .support_flash_protect()
         {
             let ret = self.send_command(commands::FlashProtect::CheckReadProtect)?;
-            if ret == 1 {
+            if ret == commands::FlashProtect::FLAG_PROTECTED {
                 log::warn!("Flash is protected, unprotecting...");
                 self.protect_flash(false)?;
             } else if ret == 2 {
@@ -272,7 +272,6 @@ impl WchLink {
             }
         }
         self.send_command(Program::EraseFlash)?;
-
         self.send_command(control::AttachChip)?;
         Ok(())
     }
@@ -282,54 +281,65 @@ impl WchLink {
         let write_pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
         let data_packet_size = self.chip.as_ref().unwrap().chip_family.data_packet_size();
 
-        let mut data = data.to_vec();
-        if data.len() % 256 != 0 {
-            data.resize((data.len() / 256 + 1) * 256, 0xFF);
-        }
+        let data = data.to_vec();
         log::trace!("Using write pack size {}", write_pack_size);
         //if data.len() < write_pack_size as usize {
         //    data.resize(write_pack_size as usize, 0xff);
         // }
 
-        // wlink_ready_write
-        self.send_command(Program::Prepare)?;
-        self.send_command(SetWriteMemoryRegion {
-            start_addr: address,
-            len: data.len() as _,
-        })?;
+        let mut retries = 0;
+        while retries < 3 {
+            // wlink_ready_write
+            self.send_command(Program::Prepare)?;
+            self.send_command(SetWriteMemoryRegion {
+                start_addr: address,
+                len: data.len() as _,
+            })?;
 
-        self.send_command(Program::WriteFlashOP)?;
-        // wlink_ramcodewrite
-        self.device_handle.write_data_endpoint(
-            self.chip.as_ref().unwrap().chip_family.flash_op(),
-            data_packet_size,
-        )?;
+            self.send_command(Program::WriteFlashOP)?;
+            // wlink_ramcodewrite
+            self.device_handle.write_data_endpoint(
+                self.chip.as_ref().unwrap().chip_family.flash_op(),
+                data_packet_size,
+            )?;
 
-        log::debug!("Flash op written");
+            log::debug!("Flash OP written");
 
-        if let Ok(n) = self.send_command(Program::Unknown07AfterFlashOPWritten) {
-            if n != 0x07 {
-                return Err(Error::Custom(format!(
-                    "Unknown07AfterFlashOPWritten: {}",
-                    n
-                )));
+            std::thread::sleep(Duration::from_millis(10));
+            if let Ok(n) = self.send_command(Program::Unknown07AfterFlashOPWritten) {
+                if n == 0x07 {
+                    break;
+                }
             }
+            log::warn!("Unknown07AfterFlashOPWritten failed, retrying...");
+            std::thread::sleep(Duration::from_millis(100));
+            self.reattach_chip()?;
+
+            retries += 1;
+        }
+        if retries >= 3 {
+            return Err(Error::Custom(
+                "Unknown07AfterFlashOPWritten failed".to_string(),
+            ));
         }
 
         // wlink_fastprogram
         self.send_command(Program::WriteFlash)?;
-        self.device_handle
-            .write_data_endpoint(&data, data_packet_size)?;
+        for chunk in data.chunks(write_pack_size as usize) {
+            self.device_handle
+                .write_data_endpoint(&chunk, data_packet_size)?;
+        }
 
         std::thread::sleep(Duration::from_secs(2));
         let rxbuf = self.device_handle.read_data_endpoint(4)?;
-        println!("=> {rxbuf:02x?}");
-        if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {
+        // 41 01 01 04
+        if rxbuf[3] != 0x04 {
             return Err(Error::Custom(format!(
                 // 0x05
                 // 0x18
-                "Error while fastprogram: {:02x}",
-                rxbuf[3]
+                // 0xff
+                "Error while fastprogram: {:02x?}",
+                rxbuf
             )));
         }
 

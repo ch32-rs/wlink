@@ -112,7 +112,6 @@ pub enum RiscvChip {
 impl RiscvChip {
     /// Support flash protect commands, and info query commands
     pub fn support_flash_protect(&self) -> bool {
-        // type 3, 2, 7, 0x0A, 0x0b do not support write protect
         matches!(
             self,
             RiscvChip::CH32V103
@@ -121,6 +120,7 @@ impl RiscvChip {
                 | RiscvChip::CH32V003
                 | RiscvChip::CH643
                 | RiscvChip::CH32L103
+                | RiscvChip::CH32X035
         )
     }
 
