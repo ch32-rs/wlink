@@ -281,8 +281,16 @@ impl WchLink {
         let write_pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
         let data_packet_size = self.chip.as_ref().unwrap().chip_family.data_packet_size();
 
-        let data = data.to_vec();
-        log::trace!("Using write pack size {}", write_pack_size);
+        let mut data = data.to_vec();
+        if data.len() % data_packet_size != 0 {
+            data.resize((data.len() / data_packet_size + 1) * data_packet_size, 0xff);
+            log::debug!("Data resized to {}", data.len());
+        }
+        log::debug!(
+            "Using write pack size {} data pack size {}",
+            write_pack_size,
+            data_packet_size
+        );
         //if data.len() < write_pack_size as usize {
         //    data.resize(write_pack_size as usize, 0xff);
         // }
@@ -306,6 +314,7 @@ impl WchLink {
             log::debug!("Flash OP written");
 
             std::thread::sleep(Duration::from_millis(10));
+            if self.chip.as_ref().unwrap().chip_family == RiscvChip::CH32V103 {}
             if let Ok(n) = self.send_command(Program::Unknown07AfterFlashOPWritten) {
                 if n == 0x07 {
                     break;
@@ -324,38 +333,24 @@ impl WchLink {
         }
 
         // wlink_fastprogram
-        self.send_command(Program::WriteFlash)?;
+        self.send_command(Program::WriteFlashAndVerify)?;
         for chunk in data.chunks(write_pack_size as usize) {
             self.device_handle
                 .write_data_endpoint(&chunk, data_packet_size)?;
-        }
-
-        std::thread::sleep(Duration::from_secs(2));
-        let rxbuf = self.device_handle.read_data_endpoint(4)?;
-        // 41 01 01 04
-        if rxbuf[3] != 0x04 {
-            return Err(Error::Custom(format!(
-                // 0x05
-                // 0x18
-                // 0xff
-                "Error while fastprogram: {:02x?}",
-                rxbuf
-            )));
-        }
-
-        /* for chunk in data.chunks(write_pack_size as usize) {
-            self.device_handle
-                .write_data_endpoint(chunk, data_packet_size)?;
+            std::thread::sleep(Duration::from_secs(2));
             let rxbuf = self.device_handle.read_data_endpoint(4)?;
             // 41 01 01 04
-            if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {
+            if rxbuf[3] != 0x04 {
                 return Err(Error::Custom(format!(
-                    "Error while fastprogram: {:02x}",
-                    rxbuf[3]
+                    // 0x05
+                    // 0x18
+                    // 0xff
+                    "Error while fastprogram: {:02x?}",
+                    rxbuf
                 )));
             }
         }
-        */
+
         log::debug!("Fastprogram done");
 
         // wlink_endprogram

@@ -163,7 +163,7 @@ impl RiscvChip {
                 // 81 0d 01 03
                 // 81 0d 01 10
                 let _ = probe.send_command(RawCommand::<0x0d>(vec![0x03]))?;
-                let _ = probe.send_command(RawCommand::<0x0d>(vec![0x10]))?;
+                // let _ = probe.send_command(RawCommand::<0x0d>(vec![0x10]))?;
             }
             RiscvChip::CH32V30X | RiscvChip::CH8571 | RiscvChip::CH32V003 => {
                 // 81 0d 01 03
