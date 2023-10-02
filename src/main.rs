@@ -2,8 +2,11 @@ use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
 use wlink::{
-    commands::{self, RawCommand}, device::WchLink, dmi::DebugModuleInterface, format::read_firmware_from_file, regs,
-    RiscvChip,
+    commands::{self, RawCommand},
+    device::WchLink,
+    dmi::DebugModuleInterface,
+    format::read_firmware_from_file,
+    regs, RiscvChip,
 };
 
 use clap::{Parser, Subcommand};

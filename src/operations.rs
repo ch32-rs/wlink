@@ -29,11 +29,14 @@ impl WchLink {
             log::warn!("Chip already attached");
         }
 
-        // if expected_chip.is_none() {
-        //    log::warn!("No expected chip type specified, assume CH32V30X (use --chip to specify chip type)");
-        // }
-
         let probe_info = self.send_command(commands::control::GetProbeInfo)?;
+
+        if let Some(chip) = expected_chip {
+            if !probe_info.variant.support_chip(chip) {
+                log::error!("WCH-Link doesn't support the choosen MCU, please use WCH-LinkE!");
+                return Err(Error::UnsupportedChip(chip));
+            }
+        }
 
         let mut chip_info = None;
         for _ in 0..3 {
@@ -304,8 +307,13 @@ impl WchLink {
 
         log::debug!("Flash op written");
 
-        if let Ok(_n) = self.send_command(Program::Unknown07AfterFlashOPWritten) {
-            //todo: check 0x07
+        if let Ok(n) = self.send_command(Program::Unknown07AfterFlashOPWritten) {
+            if n != 0x07 {
+                return Err(Error::Custom(format!(
+                    "Unknown07AfterFlashOPWritten: {}",
+                    n
+                )));
+            }
         }
 
         // wlink_fastprogram
@@ -318,6 +326,8 @@ impl WchLink {
         println!("=> {rxbuf:02x?}");
         if rxbuf[3] != 0x02 && rxbuf[3] != 0x04 {
             return Err(Error::Custom(format!(
+                // 0x05
+                // 0x18
                 "Error while fastprogram: {:02x}",
                 rxbuf[3]
             )));
