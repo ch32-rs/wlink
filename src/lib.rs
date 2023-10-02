@@ -41,6 +41,7 @@ impl WchLinkVariant {
         }
     }
 
+    /// CH549 variant does not support mode switch. re-program is needed.
     pub fn support_switch_mode(&self) -> bool {
         !matches!(self, WchLinkVariant::Ch549)
     }
@@ -50,10 +51,13 @@ impl WchLinkVariant {
         matches!(self, WchLinkVariant::WCh32v208 | WchLinkVariant::ECh32v305)
     }
 
-    /// Better use E variant
+    /// Better use E variant, the Old CH549-based variant does not support all chips
     pub fn support_chip(&self, chip: RiscvChip) -> bool {
         match self {
-            WchLinkVariant::Ch549 => !matches!(chip, RiscvChip::CH32V003),
+            WchLinkVariant::Ch549 => !matches!(
+                chip,
+                RiscvChip::CH32V003 | RiscvChip::CH32X035 | RiscvChip::CH643
+            ),
             WchLinkVariant::WCh32v208 => !matches!(
                 chip,
                 RiscvChip::CH56X | RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X
@@ -191,8 +195,7 @@ impl RiscvChip {
             RiscvChip::CH57X => &flash_op::CH573,
             RiscvChip::CH58X | RiscvChip::CH59X => &flash_op::CH583,
             RiscvChip::CH8571 => &flash_op::OP8571,
-            RiscvChip::CH643 => &flash_op::CH643,
-            RiscvChip::CH32X035 => &flash_op::CH643,
+            RiscvChip::CH32X035 | RiscvChip::CH643 => &flash_op::CH643,
             RiscvChip::CH32L103 => &flash_op::CH32L103,
         }
     }

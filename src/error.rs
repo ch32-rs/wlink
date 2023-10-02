@@ -15,6 +15,8 @@ pub enum Error {
     ProbeNotFound,
     #[error("WCH-Link is connected, but is not in RV mode")]
     ProbeModeNotSupported,
+    #[error("WCH-Link doesn't support current chip: {0:?}")]
+    UnsupportedChip(RiscvChip),
     #[error("Unknown WCH-Link variant: {0}")]
     UnknownLinkVariant(u8),
     #[error("Unknown RISC-V Chip: 0x{0:02x}")]
