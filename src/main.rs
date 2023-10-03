@@ -215,12 +215,14 @@ fn main() -> Result<()> {
                             probe.erase_flash()?;
                         }
                         EraseMode::PinRst => {
-                            unimplemented!("Erase by RST pin");
+                            log::warn!("Code flash erase by RST pin requires a RST pin connection");
+                            probe.erase_flash_by_rst_pin()?;
                         }
                         EraseMode::PowerOff => {
                             probe.erase_flash_by_power_off()?;
                         }
                     }
+                    log::info!("Erase done");
                 }
                 Flash {
                     address,

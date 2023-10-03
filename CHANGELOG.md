@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `--speed` option to specify protocol speed
 - Add `erase --method power-off` option to support erase with power off
+- Add `erase --method pin-rst` option to support erase with RST pin, close #26
 - Add a simple chip ID db, now wlink can identify chip type automatically
 
 ### Fixed

@@ -152,11 +152,7 @@ impl RiscvChip {
     pub fn support_special_erase(&self) -> bool {
         !matches!(
             self,
-            RiscvChip::CH57X
-                | RiscvChip::CH56X
-                | RiscvChip::CH58X
-                | RiscvChip::CH59X
-                | RiscvChip::CH32V003
+            RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X | RiscvChip::CH59X
         )
     }
 

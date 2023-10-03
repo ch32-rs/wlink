@@ -105,20 +105,21 @@ impl fmt::Display for AttachChipResponse {
 /// Erase code flash, only supported by WCH-LinkE.
 #[derive(Debug)]
 pub enum EraseCodeFlash {
-    ByPinRST,
-    ByPowerOff,
+    ByPinRST(RiscvChip),
+    ByPowerOff(RiscvChip),
 }
 impl Command for EraseCodeFlash {
     type Response = ();
     const COMMAND_ID: u8 = 0x0d;
+
     fn payload(&self) -> Vec<u8> {
         match self {
-            // TODO: This is more complex, require RST pin to be connected.
-            EraseCodeFlash::ByPinRST => {
-                // vec![0x08, 0x06]
-                todo!("ByPinRST, This is more complex, require RST pin to be connected")
-            }
-            EraseCodeFlash::ByPowerOff => vec![0x0f, 0x06],
+            // This is more complex, require RST pin to be connected.
+            EraseCodeFlash::ByPinRST(c) => vec![0x08, *c as u8],
+            // NOTE: From the protocol, this command's bytes is wrongly seted
+            // 81 0d 01 0f 09, note here, the "length" bytes is wrong.
+            // I guess it is not verified. So here we use `02`.
+            EraseCodeFlash::ByPowerOff(c) => vec![0x0f, *c as u8],
         }
     }
 }
