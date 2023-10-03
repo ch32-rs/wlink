@@ -46,8 +46,8 @@ impl WchLinkVariant {
         !matches!(self, WchLinkVariant::Ch549)
     }
 
-    /// Only W, E mode support this
-    pub fn support_pow5v(&self) -> bool {
+    /// Only W, E mode support this, power functions
+    pub fn support_power_funcs(&self) -> bool {
         matches!(self, WchLinkVariant::WCh32v208 | WchLinkVariant::ECh32v305)
     }
 

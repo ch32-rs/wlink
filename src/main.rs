@@ -2,11 +2,8 @@ use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
 use wlink::{
-    commands::{self, RawCommand},
-    device::WchLink,
-    dmi::DebugModuleInterface,
-    format::read_firmware_from_file,
-    regs, RiscvChip,
+    commands, device::WchLink, dmi::DebugModuleInterface, format::read_firmware_from_file, regs,
+    RiscvChip,
 };
 
 use clap::{Parser, Subcommand};
@@ -38,6 +35,16 @@ struct Cli {
     command: Option<Commands>,
 }
 
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum EraseMode {
+    /// Erase code flash by power off, the probe will power off the target chip
+    PowerOff,
+    /// Erase code flash by RST pin, the probe will active the nRST line. Requires a RST pin connection
+    PinRst,
+    /// Erase code flash by probe command
+    Default,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Dump memory region
@@ -53,7 +60,11 @@ enum Commands {
     /// Dump registers
     Regs {},
     /// Erase flash
-    Erase {},
+    Erase {
+        /// Erase mode
+        #[arg(long, default_value = "default")]
+        method: EraseMode,
+    },
     /// Program the code flash
     Flash {
         /// Address in u32
@@ -143,6 +154,7 @@ fn main() -> Result<()> {
         None => {
             wlink::device::check_usb_device()?;
             println!("No command given, use --help for help.");
+            println!("hint: use `wlink status` to get started.");
         }
         Some(ModeSwitch { rv, dap }) => {
             wlink::device::check_usb_device()?; // list all connected devices
@@ -161,14 +173,15 @@ fn main() -> Result<()> {
             probe.attach_chip(cli.chip)?;
             match command {
                 Dev {} => {
+                    // probe.erase_flash_by_power_off()?;
                     //  const FLASH_KEYR: u32 = 0x2000_0030;
-                    let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
+                    //let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
                     // algo.write_mem32(FLASH_KEYR, 0x45670123)?;
 
                     //algo.ensure_mcu_halt()?;
-                    let address = 0x40001041;
-                    let v = algo.read_mem32(address)?;
-                    println!("0x{:08x}: 0x{:08x}", address, v);
+                    //let address = 0x40001041;
+                    //let v = algo.read_mem32(address)?;
+                    //println!("0x{:08x}: 0x{:08x}", address, v);
 
                     // algo.dump_pmp()?;
                 }
@@ -195,11 +208,19 @@ fn main() -> Result<()> {
                     let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#?}");
                 }
-                Erase {} => {
-                    log::info!("Erase Flash...");
-                    probe.erase_flash()?;
-                    log::debug!("Wait for some time to finish erase...");
-                    sleep(Duration::from_millis(1000));
+                Erase { method } => {
+                    log::info!("Erase Flash using {:?}", method);
+                    match method {
+                        EraseMode::Default => {
+                            probe.erase_flash()?;
+                        }
+                        EraseMode::PinRst => {
+                            unimplemented!("Erase by RST pin");
+                        }
+                        EraseMode::PowerOff => {
+                            probe.erase_flash_by_power_off()?;
+                        }
+                    }
                 }
                 Flash {
                     address,
@@ -234,10 +255,6 @@ fn main() -> Result<()> {
                         probe.send_command(commands::Reset::ResetAndRun)?;
                         sleep(Duration::from_millis(500));
                     }
-                    // reattach
-                    //probe.attach_chip(cli.chip)?;
-                    //log::info!("Resume executing...");
-                    //probe.ensure_mcu_resume()?;
                 }
                 Unprotect {} => {
                     log::info!("Unprotect Flash");
@@ -267,6 +284,7 @@ fn main() -> Result<()> {
                 }
                 Status {} => {
                     probe.dump_info(true)?;
+
                     let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
                     let dmcontrol: regs::Dmcontrol = probe.read_dmi_reg()?;
