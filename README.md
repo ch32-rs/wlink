@@ -1,4 +1,4 @@
-# wlink - WCH-Link command line tool
+# wlink - WCH-Link(RV) command line tool
 
 [![Crates.io][badge-license]][crates]
 [![Crates.io][badge-version]][crates]
@@ -34,7 +34,7 @@ Current firmware version: 2.10 (aka. v30).
 > **NOTE**: The firmware version is not the same as the version shown by WCH's toolchain. Because WCH calculates the version number by `major * 10 + minor`, so the firmware version 2.10 is actually v30 `0x020a`.
 
 - WCH-Link [CH549] - the first version, reflash required when switching mode
-- WCH-LinkE [CH32V305][CH32V307]
+- WCH-LinkE [CH32V305][CH32V307] - the recommended debug probe
 - WCH-LinkW [CH32V208][CH32V208] - wireless version
 - WCH-Link? [CH32V203][CH32V203]
 
@@ -79,7 +79,7 @@ Current firmware version: 2.10 (aka. v30).
 ```console
 > # Flash firmware.bin to Code FLASH at address 0x08000000
 > wlink flash --address 0x08000000 ./firmware.bin
-12:10:26 [INFO] WCH-Link v2.8 (WCH-Link-CH549)
+12:10:26 [INFO] WCH-Link v2.10 (WCH-Link-CH549)
 12:10:26 [INFO] Attached chip: CH32V30X(0x30700518)
 12:10:26 [INFO] Flashing 8068 bytes to 0x08000000
 12:10:27 [INFO] Flash done
