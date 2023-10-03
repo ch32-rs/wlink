@@ -87,7 +87,7 @@ impl WchLink {
         let info = ChipInfo {
             uid: None, // TODO
             chip_family: chip_info.chip_family,
-            chip_id: chip_info.chip_type,
+            chip_id: chip_info.chip_id,
             march: None,
         };
 

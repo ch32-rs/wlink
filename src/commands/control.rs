@@ -70,7 +70,7 @@ impl Command for AttachChip {
 pub struct AttachChipResponse {
     pub chip_family: RiscvChip,
     pub riscvchip: u8,
-    pub chip_type: u32,
+    pub chip_id: u32,
 }
 impl AttachChipResponse {}
 impl Response for AttachChipResponse {
@@ -81,17 +81,23 @@ impl Response for AttachChipResponse {
         Ok(Self {
             chip_family: RiscvChip::try_from_u8(bytes[0])?,
             riscvchip: bytes[0],
-            chip_type: u32::from_be_bytes(bytes[1..5].try_into().unwrap()),
+            chip_id: u32::from_be_bytes(bytes[1..5].try_into().unwrap()),
         })
     }
 }
 // For logging
 impl fmt::Display for AttachChipResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.chip_type == 0 {
+        if self.chip_id == 0 {
             write!(f, "{:?}", self.chip_family)
+        } else if let Some(chip_name) = crate::chips::chip_id_to_chip_name(self.chip_id) {
+            write!(
+                f,
+                "{:?} [{}] (ChipID: 0x{:08x})",
+                self.chip_family, chip_name, self.chip_id
+            )
         } else {
-            write!(f, "{:?}(0x{:08x})", self.chip_family, self.chip_type)
+            write!(f, "{:?}(ChipID: 0x{:08x})", self.chip_family, self.chip_id)
         }
     }
 }
