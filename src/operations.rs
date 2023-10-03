@@ -242,12 +242,19 @@ impl WchLink {
 
     /// Clear All Code Flash - By Power off
     pub fn erase_flash_by_power_off(&mut self) -> Result<()> {
-        if self.probe.as_ref().unwrap().variant.support_power_funcs() {
+        if self.probe.as_ref().unwrap().variant.support_power_funcs()
+            && self
+                .chip
+                .as_ref()
+                .unwrap()
+                .chip_family
+                .support_special_erase()
+        {
             self.send_command(control::EraseCodeFlash::ByPowerOff)?;
             Ok(())
         } else {
             Err(Error::Custom(format!(
-                "Probe doesn't support power off erase",
+                "Probe or Chip doesn't support power off erase",
             )))
         }
     }
