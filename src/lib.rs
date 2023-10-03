@@ -9,6 +9,7 @@ pub mod format;
 mod operations;
 pub mod regs;
 pub mod transport;
+pub mod chips;
 
 use commands::RawCommand;
 use device::WchLink;
