@@ -97,7 +97,7 @@ impl fmt::Display for AttachChipResponse {
                 self.chip_family, chip_name, self.chip_id
             )
         } else {
-            write!(f, "{:?}(ChipID: 0x{:08x})", self.chip_family, self.chip_id)
+            write!(f, "{:?} (ChipID: 0x{:08x})", self.chip_family, self.chip_id)
         }
     }
 }

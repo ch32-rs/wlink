@@ -150,7 +150,14 @@ impl RiscvChip {
 
     /// Erase code flash by RST pin or power-off
     pub fn support_special_erase(&self) -> bool {
-        self.support_query_info()
+        !matches!(
+            self,
+            RiscvChip::CH57X
+                | RiscvChip::CH56X
+                | RiscvChip::CH58X
+                | RiscvChip::CH59X
+                | RiscvChip::CH32V003
+        )
     }
 
     pub fn reset_command(&self) -> crate::commands::Reset {
