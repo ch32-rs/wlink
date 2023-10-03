@@ -1,0 +1,10 @@
+# CH569
+
+## Boards
+
+- CH569W-R0-1v0
+
+## Pins
+
+- TCK=HTACK=PA10
+- TIO=HTCLK=PA11

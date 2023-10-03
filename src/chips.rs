@@ -84,7 +84,7 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x643_30601 => Some("CH643L"),
             0x643_40601 => Some("CH643U"),
             _ => None,
-        }
+        },
         _ => None,
     }
 }
