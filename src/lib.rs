@@ -167,7 +167,7 @@ impl RiscvChip {
             }
             RiscvChip::CH32V30X | RiscvChip::CH8571 | RiscvChip::CH32V003 => {
                 // 81 0d 01 03
-                let _ = probe.send_command(RawCommand::<0x0d>(vec![0x03]))?;
+               // let _ = probe.send_command(RawCommand::<0x0d>(vec![0x03]))?;
             }
             RiscvChip::CH57X | RiscvChip::CH58X => {
                 log::warn!("The debug interface has been opened, there is a risk of code leakage.");

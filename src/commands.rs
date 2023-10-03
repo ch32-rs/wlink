@@ -156,15 +156,18 @@ impl Command for Program {
 // query -> check -> set
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum FlashProtect {
-    CheckReadProtect = 0x01,   // 1 for protected, 2 for unprotected
-    CheckReadProtectEx = 0x04, // 1 for protected, 0 for unprotected,
-    Protect = 0x03,
-    Unprotect = 0x02,
-    // dummy 0xf0 mask
+    /// 06, _, 01
+    CheckReadProtect, // 1 for protected, 2 for unprotected
+    /// 06, _, 02
+    Unprotect,
+    /// 06, _, 03
+    Protect,
+    /// 06, _, 04
+    CheckReadProtectEx, // 1 for protected, 0 for unprotected,
+    /// bf, or e7
+    UnprotectEx(u8),    // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     // prefix byte 0xe7 ? for ch32x035
-    ProtectEx = 0xf3, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-    // dummy 0xf0 mask
-    UnprotectEx = 0xf2, // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    ProtectEx(u8), // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 }
 impl FlashProtect {
     pub const FLAG_PROTECTED: u8 = 0x01;
@@ -173,10 +176,14 @@ impl Command for FlashProtect {
     type Response = u8;
     const COMMAND_ID: u8 = 0x06;
     fn payload(&self) -> Vec<u8> {
+        use FlashProtect::*;
         match *self {
-            FlashProtect::ProtectEx => vec![0x03, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-            FlashProtect::UnprotectEx => vec![0x02, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-            _ => vec![*self as u8],
+            CheckReadProtect => vec![0x01],
+            Unprotect => vec![0x02],
+            Protect => vec![0x03],
+            CheckReadProtectEx => vec![0x04],
+            UnprotectEx(b) => vec![0x02, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            ProtectEx(b) => vec![0x03, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
         }
     }
 }
@@ -206,7 +213,7 @@ pub enum GetChipInfo {
     V2 = 0x06,
 }
 impl Command for GetChipInfo {
-    type Response = ChipId;
+    type Response = ChipUID;
     const COMMAND_ID: u8 = 0x11;
     fn payload(&self) -> Vec<u8> {
         vec![*self as u8]
@@ -218,8 +225,8 @@ impl Command for GetChipInfo {
 // UID in wchisp: cd-ab-b4-ae-45-bc-c6-16
 // e339e339e339e339 => inital value of erased flash
 /// Chip UID, also reported by wchisp
-pub struct ChipId(pub [u8; 8]);
-impl Response for ChipId {
+pub struct ChipUID(pub [u8; 8]);
+impl Response for ChipUID {
     fn from_raw(resp: &[u8]) -> Result<Self> {
         if resp.len() <= 12 {
             return Err(Error::InvalidPayloadLength);
@@ -242,7 +249,7 @@ impl Response for ChipId {
         unreachable!("ChipId is not be parsed from payload; qed")
     }
 }
-impl fmt::Display for ChipId {
+impl fmt::Display for ChipUID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(
             &self
@@ -254,7 +261,7 @@ impl fmt::Display for ChipId {
         )
     }
 }
-impl fmt::Debug for ChipId {
+impl fmt::Debug for ChipUID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&format!("ChipId({:02x?})", &self.0[..]))
     }
@@ -264,7 +271,7 @@ impl fmt::Debug for ChipId {
 #[derive(Debug)]
 pub enum Reset {
     /// wlink_quitreset
-    AndRun, // the most common reset
+    ResetAndRun, // the most common reset
     Normal,
     Normal2,
 }
@@ -273,7 +280,7 @@ impl Command for Reset {
     const COMMAND_ID: u8 = 0x0b;
     fn payload(&self) -> Vec<u8> {
         match self {
-            Reset::AndRun => vec![0x01],
+            Reset::ResetAndRun => vec![0x01],
             Reset::Normal => vec![0x03],
             Reset::Normal2 => vec![0x02],
         }
@@ -425,7 +432,7 @@ mod tests {
     fn chip_id_parsing() {
         let raw = hex::decode("ffff0020aeb4abcd16c6bc45e339e339e339e339").unwrap();
 
-        let uid = ChipId::from_raw(&raw).unwrap();
+        let uid = ChipUID::from_raw(&raw).unwrap();
 
         println!("=> {uid:?}");
         assert_eq!("cd-ab-b4-ae-45-bc-c6-16", uid.to_string());

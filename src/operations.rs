@@ -6,7 +6,7 @@ use crate::{
     commands::{
         self,
         control::{self, ProbeInfo},
-        DmiOp, Program, RawCommand, SetReadMemoryRegion, SetWriteMemoryRegion,
+        DmiOp, Program, SetReadMemoryRegion, SetWriteMemoryRegion,
     },
     device::{ChipInfo, WchLink},
     dmi::DebugModuleInterface,
@@ -29,7 +29,7 @@ impl WchLink {
             log::warn!("Chip already attached");
         }
 
-        let probe_info = self.send_command(commands::control::GetProbeInfo)?;
+        let probe_info = self.probe_info()?;
 
         if let Some(chip) = expected_chip {
             if !probe_info.variant.support_chip(chip) {
@@ -81,20 +81,14 @@ impl WchLink {
         //log::info!("Check QE: {:?}", ret);
 
         // riscvchip = 7 => 2
-        let flash_addr = chip_info.chip_family.code_flash_start();
-        let page_size = chip_info.chip_family.data_packet_size();
+        //let flash_addr = chip_info.chip_family.code_flash_start();
+        //let page_size = chip_info.chip_family.data_packet_size();
 
         let info = ChipInfo {
             uid: None, // TODO
             chip_family: chip_info.chip_family,
-            chip_type: chip_info.chip_type,
+            chip_id: chip_info.chip_type,
             march: None,
-            flash_size: 0, // TODO: read flash size
-            memory_start_addr: flash_addr,
-            page_size: page_size as _,
-            // sram_code_mode: 0, // TODO
-            //rom_kb: 0, // TODO:
-            //ram_kb: 0, // TODO:
         };
 
         self.chip = Some(info);
@@ -104,16 +98,17 @@ impl WchLink {
     }
 
     // NOTE: this halts the MCU, so it's not suitable except for dumping info
-    pub fn dump_info(&mut self) -> Result<()> {
+    pub fn dump_info(&mut self, detailed: bool) -> Result<()> {
         let probe_info = self.probe.as_ref().unwrap();
-        if self.chip.as_ref().unwrap().chip_family.support_query_info() {
+        let chip_family = self.chip.as_ref().unwrap().chip_family;
+
+        if chip_family.support_query_info() {
             let chip_id = if probe_info.version() >= (2, 9) {
                 self.send_command(commands::GetChipInfo::V2)?
             } else {
                 self.send_command(commands::GetChipInfo::V1)?
             };
             log::info!("Chip UID: {chip_id}");
-            // self.uid = Some(chip_id);
 
             let flash_protected = self.send_command(commands::FlashProtect::CheckReadProtect)?;
             let protected = flash_protected == commands::FlashProtect::FLAG_PROTECTED;
@@ -122,28 +117,23 @@ impl WchLink {
                 log::warn!("Flash is protected, debug access is not available");
             }
         }
-        if self
-            .chip
-            .as_ref()
-            .unwrap()
-            .chip_family
-            .support_ram_rom_mode()
-        {
+        if chip_family.support_ram_rom_mode() {
             let sram_code_mode = self.send_command(commands::control::GetChipRomRamSplit)?;
             log::debug!("SRAM CODE split mode: {}", sram_code_mode);
         }
 
-        let misa = self.read_reg(regs::MISA)?;
-        log::trace!("Read csr misa: {misa:08x}");
-        let misa = parse_misa(misa);
-        log::info!("RISC-V ISA: {misa:?}");
+        if detailed {
+            let misa = self.read_reg(regs::MISA)?;
+            log::trace!("Read csr misa: {misa:08x}");
+            let misa = parse_misa(misa);
+            log::info!("RISC-V ISA: {misa:?}");
 
-        // detect chip's RISC-V core version, QingKe cores
-        let marchid = self.read_reg(regs::MARCHID)?;
-        log::trace!("Read csr marchid: {marchid:08x}");
-        let core_type = parse_marchid(marchid);
-        log::info!("RISC-V arch: {core_type:?}");
-
+            // detect chip's RISC-V core version, QingKe cores
+            let marchid = self.read_reg(regs::MARCHID)?;
+            log::trace!("Read csr marchid: {marchid:08x}");
+            let core_type = parse_marchid(marchid);
+            log::info!("RISC-V arch: {core_type:?}");
+        }
         Ok(())
     }
 
@@ -164,21 +154,17 @@ impl WchLink {
             );
         }
 
-        let use_v2 = false; //probe_info.version() >= (2, 9);
+        let use_v2 = self.probe.as_ref().unwrap().version() >= (2, 9);
         let cmd = match (protect, use_v2) {
-            (true, true) => commands::FlashProtect::ProtectEx,
+            (true, true) => commands::FlashProtect::ProtectEx(0xbf),
             (true, false) => commands::FlashProtect::Protect,
-            (false, true) => commands::FlashProtect::UnprotectEx,
+            (false, true) => commands::FlashProtect::UnprotectEx(0xbf),
             (false, false) => commands::FlashProtect::Unprotect,
         };
-
         self.send_command(cmd)?;
 
-        self.send_command(commands::Reset::AndRun)?; // quit reset
-        self.send_command(commands::control::OptEnd)?;
-
-        self.send_command(commands::control::GetProbeInfo)?;
-        self.send_command(commands::control::AttachChip)?;
+        self.send_command(commands::Reset::ResetAndRun)?; // quit reset
+        self.send_command(control::AttachChip)?;
 
         let flash_protected = self.send_command(commands::FlashProtect::CheckReadProtect)?;
         log::info!(
@@ -199,8 +185,9 @@ impl WchLink {
     }
 
     fn reattach_chip(&mut self) -> Result<()> {
+        let current_chip_family = self.chip.as_ref().map(|i| i.chip_family);
         self.detach_chip()?;
-        self.attach_chip(self.chip.as_ref().map(|i| i.chip_family))?;
+        self.attach_chip(current_chip_family)?;
         Ok(())
     }
 
@@ -267,77 +254,82 @@ impl WchLink {
                 log::warn!("Flash is protected, unprotecting...");
                 self.protect_flash(false)?;
             } else if ret == 2 {
+                self.protect_flash(false)?;
             } else {
                 log::warn!("Unknown flash protect status: {}", ret);
             }
         }
         self.send_command(Program::EraseFlash)?;
         self.send_command(control::AttachChip)?;
+
         Ok(())
     }
 
     // wlink_write
     pub fn write_flash(&mut self, data: &[u8], address: u32) -> Result<()> {
-        let write_pack_size = self.chip.as_ref().unwrap().chip_family.write_pack_size();
-        let data_packet_size = self.chip.as_ref().unwrap().chip_family.data_packet_size();
+        let chip_family = self.chip.as_ref().unwrap().chip_family;
+        let write_pack_size = chip_family.write_pack_size();
+        let data_packet_size = chip_family.data_packet_size();
+
+        if chip_family.support_flash_protect() {
+            self.protect_flash(false)?;
+        }
 
         let mut data = data.to_vec();
-        if data.len() % data_packet_size != 0 {
-            data.resize((data.len() / data_packet_size + 1) * data_packet_size, 0xff);
-            log::debug!("Data resized to {}", data.len());
-        }
+
+        //        if data.len() % data_packet_size != 0 {
+        //          data.resize((data.len() / data_packet_size + 1) * data_packet_size, 0xff);
+        //        log::debug!("Data resized to {}", data.len());
+        //  }
         log::debug!(
             "Using write pack size {} data pack size {}",
             write_pack_size,
             data_packet_size
         );
+
         //if data.len() < write_pack_size as usize {
         //    data.resize(write_pack_size as usize, 0xff);
         // }
 
-        let mut retries = 0;
-        while retries < 3 {
-            // wlink_ready_write
-            self.send_command(Program::Prepare)?;
-            self.send_command(SetWriteMemoryRegion {
-                start_addr: address,
-                len: data.len() as _,
-            })?;
+        //        let mut retries = 0;
+        //      while retries < 1 {
+        // wlink_ready_write
+        self.send_command(Program::Prepare)?;
+        self.send_command(SetWriteMemoryRegion {
+            start_addr: address,
+            len: data.len() as _,
+        })?;
 
+        //std::thread::sleep(Duration::from_millis(10));
+        // if self.chip.as_ref().unwrap().chip_family == RiscvChip::CH32V103 {}
+        for _ in 0..1 {
             self.send_command(Program::WriteFlashOP)?;
             // wlink_ramcodewrite
-            self.device_handle.write_data_endpoint(
-                self.chip.as_ref().unwrap().chip_family.flash_op(),
-                data_packet_size,
-            )?;
+            self.device_handle
+                .write_data_endpoint(self.chip.as_ref().unwrap().chip_family.flash_op(), 128)?;
+
 
             log::debug!("Flash OP written");
 
             std::thread::sleep(Duration::from_millis(10));
-            if self.chip.as_ref().unwrap().chip_family == RiscvChip::CH32V103 {}
+
             if let Ok(n) = self.send_command(Program::Unknown07AfterFlashOPWritten) {
                 if n == 0x07 {
+                    //return Err(Error::Custom(
+                    //    "Unknown07AfterFlashOPWritten failed".to_string(),
+                    //));
                     break;
                 }
             }
-            log::warn!("Unknown07AfterFlashOPWritten failed, retrying...");
             std::thread::sleep(Duration::from_millis(100));
-            self.reattach_chip()?;
-
-            retries += 1;
-        }
-        if retries >= 3 {
-            return Err(Error::Custom(
-                "Unknown07AfterFlashOPWritten failed".to_string(),
-            ));
         }
 
         // wlink_fastprogram
-        self.send_command(Program::WriteFlashAndVerify)?;
+        self.send_command(Program::WriteFlash)?;
         for chunk in data.chunks(write_pack_size as usize) {
             self.device_handle
                 .write_data_endpoint(&chunk, data_packet_size)?;
-            std::thread::sleep(Duration::from_secs(2));
+            //std::thread::sleep(Duration::from_secs(2));
             let rxbuf = self.device_handle.read_data_endpoint(4)?;
             // 41 01 01 04
             if rxbuf[3] != 0x04 {

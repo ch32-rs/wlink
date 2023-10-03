@@ -4,7 +4,7 @@ use log::info;
 use rusb::{DeviceHandle, UsbContext};
 
 use crate::{
-    commands::{control::ProbeInfo, ChipId, RawCommand, Response},
+    commands::{control::ProbeInfo, ChipUID, RawCommand, Response},
     transport::Transport,
     Result, RiscvChip,
 };
@@ -24,19 +24,13 @@ const ENDPOINT_OUT_DAP: u8 = 0x02;
 /// Attached chip information
 #[derive(Debug)]
 pub struct ChipInfo {
-    pub uid: Option<ChipId>,
+    /// UID
+    pub uid: Option<ChipUID>,
     pub chip_family: RiscvChip,
-    pub chip_type: u32,
+    /// 0x303305x4 like chip_id, In SDK, `DBGMCU_GetCHIPID` is used to get this value
+    pub chip_id: u32,
     /// parsed marchid: WCH-V4B, WCH-V4F...
     pub march: Option<String>,
-
-    pub flash_size: u32,
-    pub page_size: u32,
-    pub memory_start_addr: u32,
-    // Fields for ROM/RAM split
-    // pub sram_code_mode: u8,
-    //pub(crate) rom_kb: u32,
-    //pub(crate) ram_kb: u32,
 }
 
 #[derive(Debug)]
@@ -119,7 +113,7 @@ impl WchLink {
     }
 
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {
-        log::trace!("send command: {:?}", cmd);
+        log::debug!("send command: {:?}", cmd);
         let raw = cmd.to_raw();
         self.device_handle.write_command_endpoint(&raw)?;
         let resp = self.device_handle.read_command_endpoint()?;
