@@ -7,8 +7,8 @@ use crate::{
 use std::{thread, time::Duration};
 
 // FPEC, OPTWRE to unlock,
-const KEY1: u32 = 0x45670123;
-const KEY2: u32 = 0xCDEF89AB;
+pub const KEY1: u32 = 0x45670123;
+pub const KEY2: u32 = 0xCDEF89AB;
 
 /// RISC-V DMI
 pub trait DebugModuleInterface {

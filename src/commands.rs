@@ -155,7 +155,7 @@ impl Command for Program {
 /// 0x06 subset
 // query -> check -> set
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum FlashProtect {
+pub enum ConfigChip {
     /// 06, _, 01
     CheckReadProtect, // 1 for protected, 2 for unprotected
     /// 06, _, 02
@@ -165,25 +165,34 @@ pub enum FlashProtect {
     /// 06, _, 04
     CheckReadProtectEx, // 1 for protected, 0 for unprotected,
     /// bf, or e7
-    UnprotectEx(u8),    // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    UnprotectEx(u8), // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     // prefix byte 0xe7 ? for ch32x035
     ProtectEx(u8), // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    /// Config flags
+    /// 81 06 08 02 3f 00 00  ff ff ff ff
+    /// __ __ __ __ __ [DATA] [WRP      ]
+    Config {
+        /// User data
+        data: u16,
+        /// WRP write protection
+        wrp: u32,
+    },
 }
-impl FlashProtect {
+impl ConfigChip {
     pub const FLAG_PROTECTED: u8 = 0x01;
 }
-impl Command for FlashProtect {
+impl Command for ConfigChip {
     type Response = u8;
     const COMMAND_ID: u8 = 0x06;
     fn payload(&self) -> Vec<u8> {
-        use FlashProtect::*;
         match *self {
-            CheckReadProtect => vec![0x01],
-            Unprotect => vec![0x02],
-            Protect => vec![0x03],
-            CheckReadProtectEx => vec![0x04],
-            UnprotectEx(b) => vec![0x02, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-            ProtectEx(b) => vec![0x03, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            ConfigChip::CheckReadProtect => vec![0x01],
+            ConfigChip::Unprotect => vec![0x02],
+            ConfigChip::Protect => vec![0x03],
+            ConfigChip::CheckReadProtectEx => vec![0x04],
+            ConfigChip::UnprotectEx(b) => vec![0x02, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            ConfigChip::ProtectEx(b) => vec![0x03, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            ConfigChip::Config { data: _, wrp: _ } => todo!("ConfigChip"),
         }
     }
 }
@@ -423,6 +432,7 @@ impl Command for DisableDebug {
 // 81 0D 01 0F ClearCodeFlashB
 // 81 0D 02 08 xx ClearCodeFlash
 // 81 11 01 0D unkown in query info, before GetChipRomRamSplit
+// 81 0d 02 ee 00 stop flash ?
 
 #[cfg(test)]
 mod tests {

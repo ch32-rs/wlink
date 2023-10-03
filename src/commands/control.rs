@@ -96,6 +96,27 @@ impl fmt::Display for AttachChipResponse {
     }
 }
 
+/// Erase code flash, only supported by WCH-LinkE.
+#[derive(Debug)]
+pub enum EraseCodeFlash {
+    ByPinRST,
+    ByPowerOff,
+}
+impl Command for EraseCodeFlash {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        match self {
+            // TODO: This is more complex, require RST pin to be connected.
+            EraseCodeFlash::ByPinRST => {
+                // vec![0x08, 0x06]
+                todo!("ByPinRST, This is more complex, require RST pin to be connected")
+            }
+            EraseCodeFlash::ByPowerOff => vec![0x0f, 0x06],
+        }
+    }
+}
+
 /// GetROMRAM, Only avaliable for CH32V2, CH32V3, CH56X
 /// 0, 1, 2, 3
 #[derive(Debug)]
@@ -105,6 +126,17 @@ impl Command for GetChipRomRamSplit {
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         vec![0x04]
+    }
+}
+
+/// 0, 1, 2, 3
+#[derive(Debug)]
+pub struct SetChipRomRamSplit(u8);
+impl Command for SetChipRomRamSplit {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        vec![0x05, self.0]
     }
 }
 
