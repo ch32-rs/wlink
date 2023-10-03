@@ -10,14 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `--speed` option to specify protocol speed
+- Add `erase --method power-off` option to support erase with power off
+- Add a simple chip ID db, now wlink can identify chip type automatically
 
 ### Fixed
 
 - Regression in `flash` command
+- Use chip type from the protocol, close #25
+- Support 2.10 (aka. v30) firmware, close #27
 
 ### Changed
 
 - Allow underscore `_` in number literals in command line
+- Refine protocol naming
+- Add a simple DMI algorithm skeleton
 
 ## [0.0.5] - 2023-07-31
 
