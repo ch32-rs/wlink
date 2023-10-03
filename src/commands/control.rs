@@ -96,18 +96,6 @@ impl fmt::Display for AttachChipResponse {
     }
 }
 
-// ?? close out
-/// Detach Chip, (0x0d, 0xff)
-#[derive(Debug)]
-pub struct OptEnd;
-impl Command for OptEnd {
-    type Response = ();
-    const COMMAND_ID: u8 = 0x0d;
-    fn payload(&self) -> Vec<u8> {
-        vec![0xff]
-    }
-}
-
 /// GetROMRAM, Only avaliable for CH32V2, CH32V3, CH56X
 /// 0, 1, 2, 3
 #[derive(Debug)]
@@ -117,6 +105,18 @@ impl Command for GetChipRomRamSplit {
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         vec![0x04]
+    }
+}
+
+// ?? close out
+/// Detach Chip, (0x0d, 0xff)
+#[derive(Debug)]
+pub struct OptEnd;
+impl Command for OptEnd {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        vec![0xff]
     }
 }
 

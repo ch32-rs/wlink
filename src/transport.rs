@@ -9,8 +9,8 @@ use crate::{Error, Result};
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
 
-const RAW_ENDPOINT_OUT: u8 = 0x02;
-const RAW_ENDPOINT_IN: u8 = 0x82;
+const DATA_ENDPOINT_OUT: u8 = 0x02;
+const DATA_ENDPOINT_IN: u8 = 0x82;
 
 // 1a86:8010 1a86 WCH-Link  Serial: 0001A0000000
 const USB_TIMEOUT_MS: u64 = 5000;
@@ -55,7 +55,7 @@ impl Transport for DeviceHandle<rusb::Context> {
         while bytes_read < n {
             let mut chunk = vec![0u8; 64];
             let chunk_read = self.read_bulk(
-                RAW_ENDPOINT_IN,
+                DATA_ENDPOINT_IN,
                 &mut chunk,
                 Duration::from_millis(USB_TIMEOUT_MS),
             )?;
@@ -83,13 +83,14 @@ impl Transport for DeviceHandle<rusb::Context> {
             if chunk.len() < packet_len {
                 chunk.resize(packet_len, 0xff);
             }
+            log::trace!("write data ep {} bytes", chunk.len());
             self.write_bulk(
-                RAW_ENDPOINT_OUT,
+                DATA_ENDPOINT_OUT,
                 &chunk,
                 Duration::from_millis(USB_TIMEOUT_MS),
             )?;
         }
-        log::trace!("write data ep {} bytes", buf.len());
+        log::trace!("write data ep total {} bytes", buf.len());
         Ok(())
     }
 }

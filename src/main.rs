@@ -158,11 +158,10 @@ fn main() -> Result<()> {
         Some(command) => {
             let mut probe = WchLink::open_nth(device_index)?;
             probe.set_speed(cli.speed);
-            probe.probe_info()?;
             probe.attach_chip(cli.chip)?;
             match command {
                 Dev {} => {
-                    const FLASH_KEYR: u32 = 0x2000_0030;
+                    //  const FLASH_KEYR: u32 = 0x2000_0030;
                     let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
                     // algo.write_mem32(FLASH_KEYR, 0x45670123)?;
 
@@ -208,9 +207,12 @@ fn main() -> Result<()> {
                     no_run,
                     path,
                 } => {
+                    probe.dump_info(false)?;
+
                     let firmware = read_firmware_from_file(path)?;
-                    let start_address =
-                        address.unwrap_or_else(|| probe.chip.as_ref().unwrap().memory_start_addr);
+                    let start_address = address.unwrap_or_else(|| {
+                        probe.chip.as_ref().unwrap().chip_family.code_flash_start()
+                    });
                     log::info!(
                         "Flashing {} bytes to 0x{:08x}",
                         firmware.len(),
@@ -229,7 +231,7 @@ fn main() -> Result<()> {
 
                     if !no_run {
                         log::info!("Now reset...");
-                        probe.send_command(commands::Reset::AndRun)?;
+                        probe.send_command(commands::Reset::ResetAndRun)?;
                         sleep(Duration::from_millis(500));
                     }
                     // reattach
@@ -264,7 +266,7 @@ fn main() -> Result<()> {
                     probe.write_memory_word(address, value)?;
                 }
                 Status {} => {
-                    probe.dump_info()?;
+                    probe.dump_info(true)?;
                     let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
                     let dmcontrol: regs::Dmcontrol = probe.read_dmi_reg()?;
