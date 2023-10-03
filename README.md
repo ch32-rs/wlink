@@ -17,19 +17,21 @@
 
 ## Feature Support
 
-- [x] Flash firmware
-- [x] Reset chip
+- [x] Flash firmware, support Intel HEX, ELF and raw binary format
+- [x] Erase chip
 - [x] Read chip info
 - [x] Read chip memory
 - [x] Read chip register
 - [x] Write chip register
-- [x] Code-Protect & Code-Unprotect for CH32V003/V103/V20X/V30X
+- [x] Code-Protect & Code-Unprotect for supported chips
 
 ## Tested On
 
 ### Probes
 
-Current firmware version: 2.9
+Current firmware version: 2.10 (aka. v30).
+
+> **NOTE**: The firmware version is not the same as the version shown by WCH's toolchain. Because WCH calculates the version number by `major * 10 + minor`, so the firmware version 2.10 is actually v30 `0x020a`.
 
 - WCH-Link [CH549] - the first version, reflash required when switching mode
 - WCH-LinkE [CH32V305][CH32V307]
