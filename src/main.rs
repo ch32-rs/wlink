@@ -209,7 +209,7 @@ fn main() -> Result<()> {
                     log::info!("{dmstatus:#?}");
                 }
                 Erase { method } => {
-                    log::info!("Erase Flash using {:?}", method);
+                    log::info!("Erase Flash using {:?} method", method);
                     match method {
                         EraseMode::Default => {
                             probe.erase_flash()?;
