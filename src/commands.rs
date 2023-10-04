@@ -77,13 +77,17 @@ impl Response for u8 {
 }
 
 /// Generic raw command
-#[derive(Debug)]
 pub struct RawCommand<const N: u8>(pub Vec<u8>);
 impl<const N: u8> Command for RawCommand<N> {
     type Response = Vec<u8>;
     const COMMAND_ID: u8 = N;
     fn payload(&self) -> Vec<u8> {
         self.0.clone()
+    }
+}
+impl<const N: u8> fmt::Debug for RawCommand<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RawCommand<0x{:02x}>({})", N, hex::encode(&self.0))
     }
 }
 
@@ -170,7 +174,7 @@ pub enum ConfigChip {
     ProtectEx(u8), // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     /// Config flags
     /// 81 06 08 02 3f 00 00  ff ff ff ff
-    /// __ __ __ __ __ [DATA] [WRP      ]
+    /// __ __ __ ?? ?? [DATA] [WRP      ]
     Config {
         /// User data
         data: u16,
@@ -193,22 +197,6 @@ impl Command for ConfigChip {
             ConfigChip::UnprotectEx(b) => vec![0x02, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
             ConfigChip::ProtectEx(b) => vec![0x03, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
             ConfigChip::Config { data: _, wrp: _ } => todo!("ConfigChip"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct SetFlashProtected {
-    pub protected: bool,
-}
-impl Command for SetFlashProtected {
-    type Response = u8;
-    const COMMAND_ID: u8 = 0x06;
-    fn payload(&self) -> Vec<u8> {
-        if self.protected {
-            vec![0x03]
-        } else {
-            vec![0x02]
         }
     }
 }
@@ -299,11 +287,11 @@ impl Command for Reset {
 /// Speed settings
 #[derive(Debug, Copy, Clone, clap::ValueEnum, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Speed {
-    /// 400
+    /// 400kHz
     Low = 0x03,
-    /// 4000
+    /// 4000kHz
     Medium = 0x02,
-    /// 6000
+    /// 6000kHz
     High = 0x01,
 }
 impl Default for Speed {
@@ -337,19 +325,19 @@ impl Response for bool {
 /// DMI operations
 #[derive(Debug)]
 pub enum DmiOp {
-    Nop,
-    Read { addr: u8 },
-    Write { addr: u8, data: u32 },
+    DmiNop,
+    DmiRead { addr: u8 },
+    DmiWrite { addr: u8, data: u32 },
 }
 impl DmiOp {
     pub fn nop() -> Self {
-        Self::Nop
+        Self::DmiNop
     }
     pub fn read(addr: u8) -> Self {
-        Self::Read { addr }
+        Self::DmiRead { addr }
     }
     pub fn write(addr: u8, data: u32) -> Self {
-        Self::Write { addr, data }
+        Self::DmiWrite { addr, data }
     }
 }
 impl Command for DmiOp {
@@ -361,14 +349,14 @@ impl Command for DmiOp {
         const DMI_OP_WRITE: u8 = 2;
         let mut bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         match self {
-            DmiOp::Nop => {
+            DmiOp::DmiNop => {
                 bytes[5] = DMI_OP_NOP; // :)
             }
-            DmiOp::Read { addr } => {
+            DmiOp::DmiRead { addr } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_READ;
             }
-            DmiOp::Write { addr, data } => {
+            DmiOp::DmiWrite { addr, data } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_WRITE;
                 bytes[1..5].copy_from_slice(&data.to_be_bytes());
