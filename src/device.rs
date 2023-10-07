@@ -113,7 +113,7 @@ impl WchLink {
     }
 
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {
-        log::debug!("send command: {:?}", cmd);
+        log::trace!("send command: {:?}", cmd);
         let raw = cmd.to_raw();
         self.device_handle.write_command_endpoint(&raw)?;
         let resp = self.device_handle.read_command_endpoint()?;
