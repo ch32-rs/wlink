@@ -286,19 +286,17 @@ impl Command for Reset {
 
 /// Speed settings
 #[derive(Debug, Copy, Clone, clap::ValueEnum, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Default)]
 pub enum Speed {
     /// 400kHz
     Low = 0x03,
     /// 4000kHz
     Medium = 0x02,
     /// 6000kHz
+    #[default]
     High = 0x01,
 }
-impl Default for Speed {
-    fn default() -> Self {
-        Speed::High
-    }
-}
+
 
 /// Set CLK Speed, 0x0C
 #[derive(Debug)]

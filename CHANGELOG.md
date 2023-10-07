@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regression in `flash` command
 - Use chip type from the protocol, close #25
 - Support 2.10 (aka. v30) firmware, close #27
+- Fix `--no-detach` option is not working
+- Use DMI to read memory, avoid using probe commands
 
 ### Changed
 

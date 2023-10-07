@@ -41,7 +41,7 @@ impl WchLink {
         let mut chip_info = None;
         for _ in 0..3 {
             self.send_command(commands::SetSpeed {
-                riscvchip: expected_chip.unwrap_or(RiscvChip::CH32V20X) as u8,
+                riscvchip: expected_chip.unwrap_or(RiscvChip::CH32V103) as u8,
                 speed: self.speed,
             })?;
 
@@ -249,9 +249,7 @@ impl WchLink {
             self.send_command(control::EraseCodeFlash::ByPowerOff(chip_family))?;
             Ok(())
         } else {
-            Err(Error::Custom(format!(
-                "Probe or Chip doesn't support power off erase",
-            )))
+            Err(Error::Custom("Probe or Chip doesn't support power off erase".to_string()))
         }
     }
 
@@ -264,9 +262,7 @@ impl WchLink {
             self.send_command(control::EraseCodeFlash::ByPinRST(chip_family))?;
             Ok(())
         } else {
-            Err(Error::Custom(format!(
-                "Probe or Chip doesn't support RST pin erase",
-            )))
+            Err(Error::Custom("Probe or Chip doesn't support RST pin erase".to_string()))
         }
     }
 
@@ -345,7 +341,7 @@ impl WchLink {
         self.send_command(Program::WriteFlash)?;
         for chunk in data.chunks(write_pack_size as usize) {
             self.device_handle
-                .write_data_endpoint(&chunk, data_packet_size)?;
+                .write_data_endpoint(chunk, data_packet_size)?;
             let rxbuf = self.device_handle.read_data_endpoint(4)?;
             // 41 01 01 04
             if rxbuf[3] != 0x04 {
@@ -607,32 +603,6 @@ impl WchLink {
         }
 
         Ok(())
-    }
-
-    // via: SingleLineDebugMReset
-    pub fn reset_debug_module(&mut self) -> Result<()> {
-        self.ensure_mcu_halt()?;
-
-        // Write command
-        self.send_command(DmiOp::write(0x10, 0x00000003))?;
-
-        let dmcontrol = self.read_dmi_reg::<Dmcontrol>()?;
-        if !(dmcontrol.dmactive() && dmcontrol.ndmreset()) {
-            return Err(Error::Custom(
-                "Value not written, DM reset might be not supported".into(),
-            ));
-        }
-
-        // Write the debug module reset command
-        self.dmi_write(0x10, 0x00000002)?;
-
-        let dmcontrol = self.read_dmi_reg::<Dmcontrol>()?;
-        if !dmcontrol.ndmreset() {
-            Ok(())
-        } else {
-            log::warn!("Reset is not successful");
-            Ok(())
-        }
     }
 }
 

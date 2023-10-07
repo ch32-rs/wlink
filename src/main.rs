@@ -20,8 +20,8 @@ struct Cli {
     verbose: u8,
 
     /// Detach chip after operation
-    #[arg(long, global = true, default_value = "true")]
-    detach: bool,
+    #[arg(long, global = true, default_value = "false")]
+    no_detach: bool,
 
     /// Specify the chip type, e.g. CH32V30X
     #[arg(long, global = true)]
@@ -173,15 +173,37 @@ fn main() -> Result<()> {
             probe.attach_chip(cli.chip)?;
             match command {
                 Dev {} => {
+                    // probe.reset_debug_module()?;
+
+                    // probe.reset_debug_module()?;
+
                     // probe.erase_flash_by_power_off()?;
                     //  const FLASH_KEYR: u32 = 0x2000_0030;
-                    //let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
-                    // algo.write_mem32(FLASH_KEYR, 0x45670123)?;
+                    let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
+
+                    algo.reset_debug_module()?;
+                    //  algo.unlock_flash()?;
+                    //algo.fast_erase_32k(0x0800_0000)?;
+                    //algo.dump_pmp()?;
+                    // 0x40001045
+                    // algo.write_mem8(0x40001040, 0x57)?;
+                    // algo.write_mem8(0x40001040, 0xA8)?;
+
+                    // algo.write_mem8(0x2000_0000, 0xca)?;
+
+                    //algo.program_page(0x0800_0100, &[0x00; 256])?;
+                    //algo.erase_all()?;
+
+                    //algo.lock_flash()?;
+
+                    //algo.write_mem32(0x2000_0000, 0x45670123)?;
 
                     //algo.ensure_mcu_halt()?;
-                    //let address = 0x40001041;
-                    //let v = algo.read_mem32(address)?;
-                    //println!("0x{:08x}: 0x{:08x}", address, v);
+                    for i in 0..10 {
+                        let address = 0x40001040 + i * 4;
+                        let v = algo.read_mem32(address)?;
+                        println!("0x{:08x}: 0x{:08x}", address, v);
+                    }
 
                     // algo.dump_pmp()?;
                 }
@@ -191,7 +213,22 @@ fn main() -> Result<()> {
                         address,
                         address + length
                     );
-                    probe.read_memory(address, length)?;
+
+                    // probe.read_memory(address, length)?;
+                    let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
+                    let out = algo.read_memory(address, length)?;
+                    println!(
+                        "{}",
+                        nu_pretty_hex::config_hex(
+                            &out,
+                            nu_pretty_hex::HexConfig {
+                                title: true,
+                                ascii: true,
+                                address_offset: address as _,
+                                ..Default::default()
+                            },
+                        )
+                    );
                 }
                 Regs {} => {
                     log::info!("Dump GPRs");
@@ -200,6 +237,9 @@ fn main() -> Result<()> {
                 Halt {} => {
                     log::info!("Halt MCU");
                     probe.ensure_mcu_halt()?;
+
+                    let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
+                    log::info!("{dmstatus:#x?}");
                 }
                 Resume {} => {
                     log::info!("Resume MCU");
@@ -303,7 +343,7 @@ fn main() -> Result<()> {
                 }
                 _ => unreachable!("unimplemented command"),
             }
-            if cli.detach {
+            if !cli.no_detach {
                 probe.detach_chip()?;
             }
         }
@@ -313,12 +353,12 @@ fn main() -> Result<()> {
 }
 
 pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
-    let s = s.replace("_", "").to_lowercase();
-    if s.starts_with("0x") {
-        Ok(u32::from_str_radix(&s[2..], 16)
+    let s = s.replace('_', "").to_lowercase();
+    if let Some(hex_str) = s.strip_prefix("0x") {
+        Ok(u32::from_str_radix(hex_str, 16)
             .unwrap_or_else(|_| panic!("error while parsering {s:?}")))
-    } else if s.starts_with("0b") {
-        Ok(u32::from_str_radix(&s[2..], 2)
+    } else if let Some(bin_str) = s.strip_prefix("0b") {
+        Ok(u32::from_str_radix(bin_str, 2)
             .unwrap_or_else(|_| panic!("error while parsering {s:?}")))
     } else {
         Ok(s.parse().expect("must be a number"))
