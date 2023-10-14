@@ -222,6 +222,7 @@ impl Command for GetChipInfo {
 // UID in wchisp: cd-ab-b4-ae-45-bc-c6-16
 // e339e339e339e339 => inital value of erased flash
 /// Chip UID, also reported by wchisp
+#[derive(Clone, PartialEq)]
 pub struct ChipUID(pub [u8; 8]);
 impl Response for ChipUID {
     fn from_raw(resp: &[u8]) -> Result<Self> {
@@ -285,8 +286,7 @@ impl Command for Reset {
 }
 
 /// Speed settings
-#[derive(Debug, Copy, Clone, clap::ValueEnum, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[derive(Default)]
+#[derive(Debug, Copy, Clone, clap::ValueEnum, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 pub enum Speed {
     /// 400kHz
     Low = 0x03,
@@ -296,7 +296,6 @@ pub enum Speed {
     #[default]
     High = 0x01,
 }
-
 
 /// Set CLK Speed, 0x0C
 #[derive(Debug)]
