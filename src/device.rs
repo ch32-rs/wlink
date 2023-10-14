@@ -22,7 +22,7 @@ const ENDPOINT_OUT_DAP: u8 = 0x02;
 // const ENDPOINT_IN_DAP: u8 = 0x83;
 
 /// Attached chip information
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChipInfo {
     /// UID
     pub uid: Option<ChipUID>,

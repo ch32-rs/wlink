@@ -35,7 +35,7 @@ struct Cli {
     command: Option<Commands>,
 }
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 enum EraseMode {
     /// Erase code flash by power off, the probe will power off the target chip
     PowerOff,
@@ -167,6 +167,23 @@ fn main() -> Result<()> {
                 wlink::device::try_switch_from_dap_to_rv(device_index)?;
             }
         }
+        Some(Erase { method }) if method != EraseMode::Default => {
+            // Special handling for non-default erase: bypass attach chip
+            let mut probe = WchLink::open_nth(device_index)?;
+            probe.probe_info()?;
+            probe.set_speed(cli.speed);
+            log::info!("Erase chip by {:?}", method);
+            match method {
+                EraseMode::PowerOff => {
+                    probe.erase_flash_by_power_off(cli.chip)?;
+                }
+                EraseMode::PinRst => {
+                    log::warn!("Code flash erase by RST pin requires a RST pin connection");
+                    probe.erase_flash_by_rst_pin(cli.chip)?;
+                }
+                _ => unreachable!(),
+            }
+        }
         Some(command) => {
             let mut probe: WchLink = WchLink::open_nth(device_index)?;
             probe.set_speed(cli.speed);
@@ -257,18 +274,12 @@ fn main() -> Result<()> {
                     log::info!("{dmstatus:#?}");
                 }
                 Erase { method } => {
-                    log::info!("Erase Flash using {:?} method", method);
+                    log::info!("Erase Flash...");
                     match method {
                         EraseMode::Default => {
                             probe.erase_flash()?;
                         }
-                        EraseMode::PinRst => {
-                            log::warn!("Code flash erase by RST pin requires a RST pin connection");
-                            probe.erase_flash_by_rst_pin()?;
-                        }
-                        EraseMode::PowerOff => {
-                            probe.erase_flash_by_power_off(cli.chip)?;
-                        }
+                        _ => unreachable!(),
                     }
                     log::info!("Erase done");
                 }

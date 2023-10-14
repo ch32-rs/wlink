@@ -20,6 +20,7 @@ impl WchLink {
     pub fn probe_info(&mut self) -> Result<ProbeInfo> {
         let info = self.send_command(commands::control::GetProbeInfo)?;
         log::info!("{}", info);
+        self.probe = Some(info);
         Ok(info)
     }
 
@@ -241,34 +242,48 @@ impl WchLink {
     }
 
     /// Clear All Code Flash - By Power off
-    pub fn erase_flash_by_power_off(&mut self, chip: Option<RiscvChip>) -> Result<()> {
-        let mut chip_family: Option<RiscvChip> = chip;
-        if let Some(chip) = self.chip.as_ref() {
-            chip_family = Some(chip.chip_family)
+    pub fn erase_flash_by_power_off(&mut self, target_chip: Option<RiscvChip>) -> Result<()> {
+        if !self.probe.as_ref().unwrap().variant.support_power_funcs() {
+            return Err(Error::Custom(
+                "Probe doesn't support power off erase".to_string(),
+            ));
         }
 
+        let chip_family = target_chip.and(self.chip.clone().map(|c| c.chip_family));
         if let Some(chip_family) = chip_family {
-            if chip_family.support_special_erase()
-            {
+            if chip_family.support_special_erase() {
                 self.send_command(control::EraseCodeFlash::ByPowerOff(chip_family))?;
-                return Ok(())
+                return Ok(());
             }
+        } else {
+            log::error!("--chip not specified");
         }
 
-        Err(Error::Custom("Probe or Chip doesn't support power off erase".to_string()))
+        Err(Error::Custom(
+            "Chip doesn't support power off erase".to_string(),
+        ))
     }
 
     /// Clear All Code Flash - By RST pin
-    pub fn erase_flash_by_rst_pin(&mut self) -> Result<()> {
-        let chip_family = self.chip.as_ref().unwrap().chip_family;
-        if self.probe.as_ref().unwrap().variant.support_power_funcs()
-            && chip_family.support_special_erase()
-        {
-            self.send_command(control::EraseCodeFlash::ByPinRST(chip_family))?;
-            Ok(())
-        } else {
-            Err(Error::Custom("Probe or Chip doesn't support RST pin erase".to_string()))
+    pub fn erase_flash_by_rst_pin(&mut self, target_chip: Option<RiscvChip>) -> Result<()> {
+        if !self.probe.as_ref().unwrap().variant.support_power_funcs() {
+            return Err(Error::Custom(
+                "Probe doesn't support power off erase".to_string(),
+            ));
         }
+
+        let chip_family = target_chip.and(self.chip.clone().map(|c| c.chip_family));
+        if let Some(chip_family) = chip_family {
+            if chip_family.support_special_erase() {
+                self.send_command(control::EraseCodeFlash::ByPinRST(chip_family))?;
+                return Ok(());
+            }
+        } else {
+            log::error!("--chip not specified");
+        }
+        return Err(Error::Custom(
+            "Chip doesn't support RST pin erase".to_string(),
+        ));
     }
 
     /// Erases flash and re-attach
