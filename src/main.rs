@@ -168,9 +168,17 @@ fn main() -> Result<()> {
             }
         }
         Some(command) => {
-            let mut probe = WchLink::open_nth(device_index)?;
+            let mut probe: WchLink = WchLink::open_nth(device_index)?;
             probe.set_speed(cli.speed);
-            probe.attach_chip(cli.chip)?;
+            // Bypass attach chip when erase flash with NRST or Power-off
+            if let Erase { method } = command {
+                if let EraseMode::Default = method {
+                    probe.attach_chip(cli.chip)?;
+                }
+            } else {
+                probe.attach_chip(cli.chip)?;
+            }
+
             match command {
                 Dev {} => {
                     // probe.reset_debug_module()?;
@@ -259,7 +267,7 @@ fn main() -> Result<()> {
                             probe.erase_flash_by_rst_pin()?;
                         }
                         EraseMode::PowerOff => {
-                            probe.erase_flash_by_power_off()?;
+                            probe.erase_flash_by_power_off(cli.chip)?;
                         }
                     }
                     log::info!("Erase done");

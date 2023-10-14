@@ -241,16 +241,21 @@ impl WchLink {
     }
 
     /// Clear All Code Flash - By Power off
-    pub fn erase_flash_by_power_off(&mut self) -> Result<()> {
-        let chip_family = self.chip.as_ref().unwrap().chip_family;
-        if self.probe.as_ref().unwrap().variant.support_power_funcs()
-            && chip_family.support_special_erase()
-        {
-            self.send_command(control::EraseCodeFlash::ByPowerOff(chip_family))?;
-            Ok(())
-        } else {
-            Err(Error::Custom("Probe or Chip doesn't support power off erase".to_string()))
+    pub fn erase_flash_by_power_off(&mut self, chip: Option<RiscvChip>) -> Result<()> {
+        let mut chip_family: Option<RiscvChip> = chip;
+        if let Some(chip) = self.chip.as_ref() {
+            chip_family = Some(chip.chip_family)
         }
+
+        if let Some(chip_family) = chip_family {
+            if chip_family.support_special_erase()
+            {
+                self.send_command(control::EraseCodeFlash::ByPowerOff(chip_family))?;
+                return Ok(())
+            }
+        }
+
+        Err(Error::Custom("Probe or Chip doesn't support power off erase".to_string()))
     }
 
     /// Clear All Code Flash - By RST pin
