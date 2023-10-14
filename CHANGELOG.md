@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Bypass attach chip when using special erase in #32
+
 ## [0.0.6] - 2023-10-07
 
 ### Added
