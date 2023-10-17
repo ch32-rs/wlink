@@ -177,6 +177,22 @@ impl WchLink {
         Ok(())
     }
 
+    pub fn enable_sdi_printf(&mut self, enable: bool) -> Result<()> {
+        if !self.probe.as_ref().unwrap().variant.support_sdi_printf() {
+            return Err(Error::Custom(
+                "Probe doesn't support sdi printf functionality".to_string(),
+            ));
+        }
+
+        if enable {
+            self.send_command(commands::control::SetSDIPrintf::EnableSDIPrintf)?;
+            Ok(())
+        } else {
+            self.send_command(commands::control::SetSDIPrintf::DisableSDIPrintf)?;
+            Ok(())
+        }
+    }
+
     // wlink_endprocess
     /// Detach chip and let it resume
     pub fn detach_chip(&mut self) -> Result<()> {

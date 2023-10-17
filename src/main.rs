@@ -116,6 +116,12 @@ enum Commands {
         #[arg(long)]
         dap: bool,
     },
+    /// SDI virtual serial port, printf via the debug interface and redirect it to the serial port of the WCH-Link.
+    SDIPrintf {
+        /// Disable sdi printf functionality.
+        #[arg(long, default_value = "false")]
+        no_sdi_printf: bool,
+    },
     Dev {},
 }
 
@@ -359,6 +365,20 @@ fn main() -> Result<()> {
 
                     let cpbr = probe.dmi_read(0x7E)?;
                     log::info!("cpbr: {:#x?}", cpbr);
+                }
+                SDIPrintf { no_sdi_printf } => {
+                    // By enabling sdi printf and modifying the _write function called by printf in the mcu code,
+                    // the WCH-Link can be used to read data from the debug interface of the mcu
+                    // and print it to the serial port of the WCH-Link instead of using its UART peripheral.
+                    // An example can be found here:
+                    // https://github.com/openwch/ch32v003/tree/main/EVT/EXAM/SDI_Printf/SDI_Printf
+                    if no_sdi_printf {
+                        log::info!("Disabling sdi printf functionality.");
+                        probe.enable_sdi_printf(false)?;
+                    } else {
+                        log::info!("Enabling sdi printf functionality.");
+                        probe.enable_sdi_printf(true)?;
+                    }
                 }
                 _ => unreachable!("unimplemented command"),
             }

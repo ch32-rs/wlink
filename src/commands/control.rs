@@ -179,3 +179,19 @@ impl Command for SetPower {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum SetSDIPrintf {
+    EnableSDIPrintf,
+    DisableSDIPrintf,
+}
+impl Command for SetSDIPrintf {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        match self {
+            SetSDIPrintf::EnableSDIPrintf => vec![0xee, 0x00],
+            SetSDIPrintf::DisableSDIPrintf => vec![0xee, 0x01],
+        }
+    }
+}
