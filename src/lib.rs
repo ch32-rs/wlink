@@ -52,6 +52,11 @@ impl WchLinkVariant {
         matches!(self, WchLinkVariant::WCh32v208 | WchLinkVariant::ECh32v305)
     }
 
+    /// Only E mode support sdi printf functionality
+    pub fn support_sdi_printf(&self) -> bool {
+        matches!(self, WchLinkVariant::ECh32v305)
+    }
+
     /// Better use E variant, the Old CH549-based variant does not support all chips
     pub fn support_chip(&self, chip: RiscvChip) -> bool {
         match self {
