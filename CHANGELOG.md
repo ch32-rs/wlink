@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Dump CSRs using `regs` subcommand
+
 ### Fixed
 
 - Bypass attach chip when using special erase in #32

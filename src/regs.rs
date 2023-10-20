@@ -87,6 +87,26 @@ pub const GPRS_RV32EC: [(&str, &str, u16); 16] = [
     ("x15", "a5", 0x100f),
 ];
 
+pub const CSRS: [(&str, u16); 17] = [
+    ("marchid", 0xf12),
+    ("mimpid", 0xf13),
+    ("mhartid", 0xf14),
+    ("misa", 0x301),
+    ("mtvec", 0x305),
+    ("mscratch", 0x340),
+    ("mepc", 0x341),
+    ("mcause", 0x342),
+    ("mtval", 0x343),
+    ("mstatus", 0x300),
+    ("dcsr", 0x7b0),
+    ("dpc", 0x7b1),
+    ("dscratch0", 0x7b2),
+    ("dscratch1", 0x7b3),
+    ("gintenr", 0x800),
+    ("intsyscr", 0x804),
+    ("corecfgr", 0xbc0),
+];
+
 // FPR: 0x1020-0x103f
 
 /// Debug Module Register

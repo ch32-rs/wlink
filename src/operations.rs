@@ -576,6 +576,12 @@ impl WchLink {
             let val = self.read_reg(*regno)?;
             println!("{reg:<4}{name:>5}: 0x{val:08x}");
         }
+
+        for (reg, regno) in &regs::CSRS {
+            let val = self.read_reg(*regno)?;
+            println!("{reg:<9}: 0x{val:08x}");
+        }
+
         Ok(())
     }
 
