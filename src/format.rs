@@ -68,14 +68,13 @@ pub fn read_hex(data: &str) -> Result<Vec<u8>> {
 }
 
 pub fn read_ihex(data: &str) -> Result<Vec<u8>> {
-    use ihex::Record;
+    use ihex::Record::*;
 
     let mut base_address = 0;
 
     let mut records = vec![];
     for record in ihex::Reader::new(data) {
         let record = record?;
-        use Record::*;
         match record {
             Data { offset, value } => {
                 let offset = base_address + offset as u32;
@@ -176,6 +175,12 @@ fn merge_sections(mut sections: Vec<(u32, Cow<[u8]>)>) -> Result<Vec<u8>> {
     let start_address = sections.first().unwrap().0;
     let end_address = sections.last().unwrap().0 + sections.last().unwrap().1.len() as u32;
 
+    log::info!(
+        "Firmware size: {}, start_address: {:#010x}, end_address: {:#010x}",
+        end_address - start_address,
+        start_address,
+        end_address
+    );
     let total_size = end_address - start_address;
 
     let mut binary = vec![0u8; total_size as usize];
