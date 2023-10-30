@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dump CSRs using `regs` subcommand
 - Show firmware size info when flashing
+- Add a progress bar when flashing
 
 ### Fixed
 

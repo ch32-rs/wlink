@@ -1,5 +1,6 @@
 //! Predefined operations for WCH-Link
 
+use indicatif::ProgressBar;
 use std::{thread::sleep, time::Duration};
 
 use crate::{
@@ -358,6 +359,8 @@ impl WchLink {
         }
 
         // wlink_fastprogram
+        let bar = ProgressBar::new(data.len() as _);
+
         self.send_command(Program::WriteFlash)?;
         for chunk in data.chunks(write_pack_size as usize) {
             self.device_handle
@@ -373,7 +376,9 @@ impl WchLink {
                     rxbuf
                 )));
             }
+            bar.inc(chunk.len() as _);
         }
+        bar.finish();
 
         log::debug!("Fastprogram done");
 

@@ -19,7 +19,7 @@ clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
 ihex = "3.0.0"
 log = "0.4.17"
-nu-pretty-hex = "0.85.0"
+nu-pretty-hex = "0.86.0"
 rusb = "0.9.1"
 simplelog = "0.12.0"
 thiserror = "1.0.38"
@@ -28,3 +28,4 @@ object = { version = "0.32", default-features = false, features = [
     "read_core",
     "std",
 ] }
+indicatif = "0.17.7"
