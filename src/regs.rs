@@ -87,7 +87,7 @@ pub const GPRS_RV32EC: [(&str, &str, u16); 16] = [
     ("x15", "a5", 0x100f),
 ];
 
-pub const CSRS: [(&str, u16); 17] = [
+pub const CSRS: [(&str, u16); 16] = [
     ("marchid", 0xf12),
     ("mimpid", 0xf13),
     ("mhartid", 0xf14),
@@ -99,7 +99,7 @@ pub const CSRS: [(&str, u16); 17] = [
     ("mtval", 0x343),
     ("mstatus", 0x300),
     ("dcsr", 0x7b0),
-    ("dpc", 0x7b1),
+    // ("dpc", 0x7b1),
     ("dscratch0", 0x7b2),
     ("dscratch1", 0x7b3),
     ("gintenr", 0x800),
