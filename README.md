@@ -24,12 +24,13 @@
 - [x] Read chip register
 - [x] Write chip register
 - [x] Code-Protect & Code-Unprotect for supported chips
+- [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support
 
 ## Tested On
 
 ### Probes
 
-Current firmware version: 2.10 (aka. v30).
+Current firmware version: 2.11 (aka. v31).
 
 > **NOTE**: The firmware version is not the same as the version shown by WCH's toolchain. Because WCH calculates the version number by `major * 10 + minor`, so the firmware version 2.10 is actually v30 `0x020a`.
 
@@ -38,7 +39,7 @@ Current firmware version: 2.10 (aka. v30).
 - WCH-LinkW [CH32V208][CH32V208] - wireless version
 - WCH-Link? [CH32V203][CH32V203]
 
-[CH549]: http://www.wch-ic.com/products/CH549.html
+[CH549]: https://www.wch-ic.com/products/CH549.html
 
 ### MCU
 
@@ -51,22 +52,24 @@ Current firmware version: 2.10 (aka. v30).
 - [CH583]/CH582/CH581
 - [CH592]/CH591
 - [ ] [CH643] - I don't have this chip, help wanted
+- [ ] [CH641] - I don't have this chip, help wanted
 - [CH32X035]
 - [ ] [CH32L103] - I don't have this chip, help wanted
 - [ ] [CH8571] - No other source about this chip, help wanted
 - ... (Feel free to open an issue if you have tested on other chips)
 
-[CH32V003]: http://www.wch-ic.com/products/CH32V003.html
-[CH32V103]: http://www.wch-ic.com/products/CH32V103.html
-[CH32V203]: http://www.wch-ic.com/products/CH32V203.html
-[CH32V208]: http://www.wch-ic.com/products/CH32V208.html
-[CH32V307]: http://www.wch-ic.com/products/CH32V307.html
-[CH32X035]: http://www.wch-ic.com/products/CH32X035.html
-[CH32L103]: http://www.wch-ic.com/products/CH32L103.html
-[CH569]: http://www.wch-ic.com/products/CH569.html
-[CH573]: http://www.wch-ic.com/products/CH573.html
-[CH583]: http://www.wch-ic.com/products/CH583.html
+[CH32V003]: https://www.wch-ic.com/products/CH32V003.html
+[CH32V103]: https://www.wch-ic.com/products/CH32V103.html
+[CH32V203]: https://www.wch-ic.com/products/CH32V203.html
+[CH32V208]: https://www.wch-ic.com/products/CH32V208.html
+[CH32V307]: https://www.wch-ic.com/products/CH32V307.html
+[CH32X035]: https://www.wch-ic.com/products/CH32X035.html
+[CH32L103]: https://www.wch-ic.com/products/CH32L103.html
+[CH569]: https://www.wch-ic.com/products/CH569.html
+[CH573]: https://www.wch-ic.com/products/CH573.html
+[CH583]: https://www.wch-ic.com/products/CH583.html
 [CH592]: https://www.wch-ic.com/products/CH592.html
+[CH641]: https://www.wch.cn/downloads/CH641DS0_PDF.html
 [CH643]: https://www.wch-ic.com/products/CH643.html
 [CH8571]: https://www.wch.cn/news/606.html
 
