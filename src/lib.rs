@@ -104,10 +104,12 @@ pub enum RiscvChip {
     CH59X = 0x0B, // 11
     /// CH643 RISC-V4C series, RGB Display Driver MCU
     CH643 = 0x0C, // 12
-    /// CH32X035 RISC-V4C PDUSB series, fallbak as CH643
+    /// CH32X035 RISC-V4C USB-PD series, fallbak as CH643
     CH32X035 = 0x0D, // 13
-    /// CH32L103 RISC-V4C low power series
+    /// CH32L103 RISC-V4C low power series, USB-PD
     CH32L103 = 0x0E, // 14
+    /// CH641 RISC-V2A series, USB-PD, fallback as CH32V003
+    CH641 = 0x49,
 }
 
 impl RiscvChip {
@@ -122,6 +124,7 @@ impl RiscvChip {
                 | RiscvChip::CH643
                 | RiscvChip::CH32L103
                 | RiscvChip::CH32X035
+                | RiscvChip::CH641
         )
     }
 
@@ -197,7 +200,7 @@ impl RiscvChip {
 
     fn flash_op(&self) -> &[u8] {
         match self {
-            RiscvChip::CH32V003 => &flash_op::CH32V003,
+            RiscvChip::CH32V003 | RiscvChip::CH641 => &flash_op::CH32V003,
             RiscvChip::CH32V103 => &flash_op::CH32V103,
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::CH56X => &flash_op::CH569,
@@ -222,6 +225,7 @@ impl RiscvChip {
             0x0C => Ok(RiscvChip::CH643),
             0x0D => Ok(RiscvChip::CH32X035),
             0x0E => Ok(RiscvChip::CH32L103),
+            0x49 => Ok(RiscvChip::CH641),
             _ => Err(Error::UnknownChip(value)),
         }
     }
@@ -230,7 +234,7 @@ impl RiscvChip {
     pub fn data_packet_size(&self) -> usize {
         match self {
             RiscvChip::CH32V103 => 128,
-            RiscvChip::CH32V003 => 64,
+            RiscvChip::CH32V003 | RiscvChip::CH641 => 64,
             _ => 256,
         }
     }
@@ -249,7 +253,7 @@ impl RiscvChip {
     // packsize for fastprogram
     pub fn write_pack_size(&self) -> u32 {
         match self {
-            RiscvChip::CH32V003 => 1024,
+            RiscvChip::CH32V003 | RiscvChip::CH641 => 1024,
             _ => 4096,
         }
     }
@@ -273,6 +277,7 @@ impl FromStr for RiscvChip {
             "CH643" => Ok(RiscvChip::CH643),
             "CH32L103" => Ok(RiscvChip::CH32L103),
             "CH8571" => Ok(RiscvChip::CH8571),
+            "CH641" => Ok(RiscvChip::CH641),
             _ => Err(Error::UnknownChip(0)),
         }
     }
