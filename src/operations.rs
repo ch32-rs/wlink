@@ -363,8 +363,13 @@ impl WchLink {
 
         self.send_command(Program::WriteFlash)?;
         for chunk in data.chunks(write_pack_size as usize) {
-            self.device_handle
-                .write_data_endpoint(chunk, data_packet_size)?;
+            self.device_handle.write_data_endpoint_with_progress(
+                chunk,
+                data_packet_size,
+                &|nbytes| {
+                    bar.inc(nbytes as _);
+                },
+            )?;
             let rxbuf = self.device_handle.read_data_endpoint(4)?;
             // 41 01 01 04
             if rxbuf[3] != 0x04 {
@@ -376,7 +381,6 @@ impl WchLink {
                     rxbuf
                 )));
             }
-            bar.inc(chunk.len() as _);
         }
         bar.finish();
 

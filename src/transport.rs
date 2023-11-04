@@ -24,7 +24,16 @@ pub(crate) trait Transport {
 
     fn read_data_endpoint(&mut self, n: usize) -> Result<Vec<u8>>;
 
-    fn write_data_endpoint(&mut self, buf: &[u8], packet_len: usize) -> Result<()>;
+    fn write_data_endpoint(&mut self, buf: &[u8], packet_len: usize) -> Result<()> {
+        self.write_data_endpoint_with_progress(buf, packet_len, &|_| {})
+    }
+
+    fn write_data_endpoint_with_progress(
+        &mut self,
+        buf: &[u8],
+        packet_len: usize,
+        progress_callback: &dyn Fn(usize),
+    ) -> Result<()>;
 }
 
 impl Transport for DeviceHandle<rusb::Context> {
@@ -77,9 +86,15 @@ impl Transport for DeviceHandle<rusb::Context> {
     }
 
     // pWriteData
-    fn write_data_endpoint(&mut self, buf: &[u8], packet_len: usize) -> Result<()> {
+    fn write_data_endpoint_with_progress(
+        &mut self,
+        buf: &[u8],
+        packet_len: usize,
+        progress_callback: &dyn Fn(usize),
+    ) -> Result<()> {
         for chunk in buf.chunks(packet_len) {
             let mut chunk = chunk.to_vec();
+            progress_callback(chunk.len());
             if chunk.len() < packet_len {
                 chunk.resize(packet_len, 0xff);
             }
