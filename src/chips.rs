@@ -1,4 +1,5 @@
 //! The chip DB.
+//! This numbers are from `GetCHIPID` fn in EVT code.
 
 pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
     match chip_id & 0xFFF00000 {
@@ -76,6 +77,13 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x307_20508 => Some("CH32V307FBP6"),
             0x307_10508 => Some("CH32V307RCT6"),
             0x307_00508 => Some("CH32V307VCT6"),
+            _ => None,
+        },
+        0x641 => match chip_id & 0xFFFFFF0F {
+            0x641_00500 => Some("CH641F"),
+            0x641_10500 => Some("CH641D"),
+            0x641_50500 => Some("CH641U"),
+            0x641_60500 => Some("CH641P"),
             _ => None,
         },
         0x643_00000 => match chip_id {
