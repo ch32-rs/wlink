@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `--watch-serial` for `flash` subcommand
+- Add `--watch-serial` for `flash` subcommand, #36
 
 ### Changed
 
