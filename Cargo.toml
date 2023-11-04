@@ -32,4 +32,4 @@ object = { version = "0.32", default-features = false, features = [
     "std",
 ] }
 indicatif = "0.17.7"
-serialport = { version = "4.2.2" }
+serialport = { version = "4.2.2", default-features = false}
