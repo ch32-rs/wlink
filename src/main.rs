@@ -116,13 +116,24 @@ enum Commands {
         #[arg(long)]
         dap: bool,
     },
-    /// SDI virtual serial port, printf via the debug interface and redirect it to the serial port of the WCH-Link.
-    SDIPrintf {
-        /// Disable sdi printf functionality.
-        #[arg(long, default_value = "false")]
-        no_sdi_printf: bool,
-    },
+    /// SDI virtual serial port,
+    #[command(subcommand)]
+    SDIPrint(SDIPrint),
     Dev {},
+}
+
+#[derive(clap::Subcommand, PartialEq, Clone, Copy, Debug)]
+pub enum SDIPrint {
+    /// Enable SDI print, implies --no-detach
+    Enable,
+    /// Disable SDI print
+    Disable,
+}
+
+impl SDIPrint {
+    pub fn is_enable(&self) -> bool {
+        *self == SDIPrint::Enable
+    }
 }
 
 fn main() -> Result<()> {
@@ -155,6 +166,7 @@ fn main() -> Result<()> {
     }
 
     let device_index = cli.device.unwrap_or(0);
+    let mut will_detach = !cli.no_detach;
 
     match cli.command {
         None => {
@@ -366,23 +378,25 @@ fn main() -> Result<()> {
                     let cpbr = probe.dmi_read(0x7E)?;
                     log::info!("cpbr: {:#x?}", cpbr);
                 }
-                SDIPrintf { no_sdi_printf } => {
-                    // By enabling sdi printf and modifying the _write function called by printf in the mcu code,
+                SDIPrint(v) => {
+                    // By enabling SDI print and modifying the _write function called by printf in the mcu code,
                     // the WCH-Link can be used to read data from the debug interface of the mcu
                     // and print it to the serial port of the WCH-Link instead of using its UART peripheral.
                     // An example can be found here:
                     // https://github.com/openwch/ch32v003/tree/main/EVT/EXAM/SDI_Printf/SDI_Printf
-                    if no_sdi_printf {
-                        log::info!("Disabling sdi printf functionality.");
-                        probe.enable_sdi_printf(false)?;
+                    if v.is_enable() {
+                        log::info!("Enabling SDI print");
+                        probe.enable_sdi_print(true)?;
+                        will_detach = false;
+                        log::info!("Now you can connect to the WCH-Link serial port");
                     } else {
-                        log::info!("Enabling sdi printf functionality.");
-                        probe.enable_sdi_printf(true)?;
+                        log::info!("Disabling SDI print");
+                        probe.enable_sdi_print(false)?;
                     }
                 }
                 _ => unreachable!("unimplemented command"),
             }
-            if !cli.no_detach {
+            if will_detach {
                 probe.detach_chip()?;
             }
         }
