@@ -123,7 +123,7 @@ pub fn objcopy_binary(elf_data: &[u8]) -> Result<Vec<u8>> {
             .data(endian, elf_data)
             .map_err(|_| anyhow::format_err!("Failed to access data for an ELF segment."))?;
         if !segment_data.is_empty() && segment.p_type(endian) == PT_LOAD {
-            log::info!(
+            log::debug!(
                     "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
                     p_paddr,
                     p_vaddr,
