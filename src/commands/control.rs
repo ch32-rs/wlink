@@ -180,18 +180,19 @@ impl Command for SetPower {
     }
 }
 
+/// SDI print support, only avaliable for WCH-LinkE
 #[derive(Debug)]
-pub enum SetSDIPrintf {
-    EnableSDIPrintf,
-    DisableSDIPrintf,
+pub enum SetSDIPrint {
+    Enable,
+    Disable,
 }
-impl Command for SetSDIPrintf {
+impl Command for SetSDIPrint {
     type Response = ();
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         match self {
-            SetSDIPrintf::EnableSDIPrintf => vec![0xee, 0x00],
-            SetSDIPrintf::DisableSDIPrintf => vec![0xee, 0x01],
+            SetSDIPrint::Enable => vec![0xee, 0x00],
+            SetSDIPrint::Disable => vec![0xee, 0x01],
         }
     }
 }

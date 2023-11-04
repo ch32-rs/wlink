@@ -52,8 +52,8 @@ impl WchLinkVariant {
         matches!(self, WchLinkVariant::WCh32v208 | WchLinkVariant::ECh32v305)
     }
 
-    /// Only E mode support sdi printf functionality
-    pub fn support_sdi_printf(&self) -> bool {
+    /// Only E mode support SDR print functionality
+    pub fn support_sdi_print(&self) -> bool {
         matches!(self, WchLinkVariant::ECh32v305)
     }
 
@@ -161,6 +161,21 @@ impl RiscvChip {
         !matches!(
             self,
             RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X | RiscvChip::CH59X
+        )
+    }
+
+    pub fn support_sdi_print(&self) -> bool {
+        // CH641, CH643, CH32V003, CH32V103, CH32V20x, CH32V30x, CH32X035, CH32L103
+        matches!(
+            self,
+            RiscvChip::CH32V003
+                | RiscvChip::CH32V103
+                | RiscvChip::CH32V20X
+                | RiscvChip::CH32V30X
+                | RiscvChip::CH32X035
+                | RiscvChip::CH32L103
+                | RiscvChip::CH643
+                | RiscvChip::CH641
         )
     }
 
