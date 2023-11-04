@@ -696,3 +696,40 @@ fn parse_misa(misa: u32) -> Option<String> {
     }
     Some(s)
 }
+
+/// SDI print
+pub fn watch_serial() -> Result<()> {
+    use serialport::SerialPortType;
+
+    let port_info = serialport::available_ports()?
+        .into_iter()
+        .find(|port| {
+            if let SerialPortType::UsbPort(info) = &port.port_type {
+                info.vid == crate::device::VENDOR_ID && info.pid == crate::device::PRODUCT_ID
+            } else {
+                false
+            }
+        })
+        .ok_or_else(|| Error::Custom("No serial port found".to_string()))?;
+    log::debug!("Opening serial port: {:?}", port_info.port_name);
+
+    let mut port = serialport::new(&port_info.port_name, 115200)
+        .timeout(Duration::from_millis(1000))
+        .open()?;
+
+    log::trace!("Serial port opened: {:?}", port);
+
+    loop {
+        let mut buf = [0u8; 1024];
+        match port.read(&mut buf) {
+            Ok(n) => {
+                if n > 0 {
+                    let s = String::from_utf8_lossy(&buf[..n]);
+                    print!("{}", s);
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
+            Err(e) => return Err(e.into()),
+        }
+    }
+}

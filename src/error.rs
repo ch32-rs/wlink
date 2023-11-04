@@ -39,6 +39,10 @@ pub enum Error {
     DmiFailed,
     #[error("Operation timeout")]
     Timeout,
+    #[error("Serial port error: {0}")]
+    Serial(#[from] serialport::Error),
+    #[error("Io error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Debug, Clone, Copy)]
