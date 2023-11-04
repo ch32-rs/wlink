@@ -76,6 +76,9 @@ enum Commands {
         /// Do not reset and run after flashing
         #[arg(long, short = 'R', default_value = "false")]
         no_run: bool,
+        /// Enable SDI print after reset
+        #[arg(long, default_value = "false")]
+        enable_sdi_print: bool,
         /// Path to the firmware file to flash
         path: String,
     },
@@ -306,6 +309,7 @@ fn main() -> Result<()> {
                     erase,
                     no_run,
                     path,
+                    enable_sdi_print,
                 } => {
                     probe.dump_info(false)?;
 
@@ -332,6 +336,11 @@ fn main() -> Result<()> {
                     if !no_run {
                         log::info!("Now reset...");
                         probe.send_command(commands::Reset::ResetAndRun)?;
+                        if enable_sdi_print {
+                            probe.enable_sdi_print(true)?;
+                            will_detach = false;
+                            log::info!("Now you can connect to the WCH-Link serial port");
+                        }
                         sleep(Duration::from_millis(500));
                     }
                 }
