@@ -36,6 +36,7 @@ pub struct ChipInfo {
 #[derive(Debug)]
 pub struct WchLink {
     pub(crate) device_handle: DeviceHandle<rusb::Context>,
+    pub serial_number: String,
     pub chip: Option<ChipInfo>,
     pub probe: Option<ProbeInfo>,
     pub(crate) speed: crate::commands::Speed,
@@ -104,8 +105,13 @@ impl WchLink {
             ));
         }
 
+        let desc = device.device_descriptor()?;
+        let serial_number = device_handle.read_serial_number_string_ascii(&desc)?;
+        log::debug!("Serial number: {:?}", serial_number);
+
         Ok(Self {
             device_handle,
+            serial_number,
             chip: None,
             probe: None,
             speed: Default::default(),
@@ -140,6 +146,8 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
 
     let mut dev = WchLink {
         device_handle: dev,
+        // fake info
+        serial_number: "".to_string(),
         chip: None,
         probe: None,
         speed: Default::default(),

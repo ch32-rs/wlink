@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a progress bar when flashing
 - New chip: CH641, a RV32EC chip almost the same as CH32V003
 - SDI print support, #34
+- Add serial number field to probe
 
 ### Fixed
 
