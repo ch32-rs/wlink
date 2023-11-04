@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- No erase by default when flashing
+
 ## [0.0.7] - 2023-11-04
 
 ### Added

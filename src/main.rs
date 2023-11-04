@@ -70,9 +70,9 @@ enum Commands {
         /// Address in u32
         #[arg(short, long, value_parser = parse_number)]
         address: Option<u32>,
-        /// Do not erase flash before flashing
-        #[arg(long, short = 'E', default_value = "false")]
-        no_erase: bool,
+        /// Erase flash before flashing
+        #[arg(long, short, default_value = "false")]
+        erase: bool,
         /// Do not reset and run after flashing
         #[arg(long, short = 'R', default_value = "false")]
         no_run: bool,
@@ -303,7 +303,7 @@ fn main() -> Result<()> {
                 }
                 Flash {
                     address,
-                    no_erase,
+                    erase,
                     no_run,
                     path,
                 } => {
@@ -319,7 +319,7 @@ fn main() -> Result<()> {
                         start_address
                     );
 
-                    if !no_erase {
+                    if erase {
                         log::info!("Erase Flash");
                         probe.erase_flash()?;
                     }
