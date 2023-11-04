@@ -9,8 +9,8 @@ use crate::{
     Result, RiscvChip,
 };
 
-const VENDOR_ID: u16 = 0x1a86;
-const PRODUCT_ID: u16 = 0x8010;
+pub const VENDOR_ID: u16 = 0x1a86;
+pub const PRODUCT_ID: u16 = 0x8010;
 
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;

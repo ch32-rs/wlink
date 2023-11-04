@@ -7,7 +7,7 @@ pub mod dmi;
 pub mod error;
 pub mod flash_op;
 pub mod format;
-mod operations;
+pub mod operations;
 pub mod regs;
 pub mod transport;
 

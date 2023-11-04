@@ -79,6 +79,9 @@ enum Commands {
         /// Enable SDI print after reset
         #[arg(long, default_value = "false")]
         enable_sdi_print: bool,
+        /// Open serial port(print only) after reset
+        #[arg(long, default_value = "false")]
+        watch_serial: bool,
         /// Path to the firmware file to flash
         path: String,
     },
@@ -310,6 +313,7 @@ fn main() -> Result<()> {
                     no_run,
                     path,
                     enable_sdi_print,
+                    watch_serial,
                 } => {
                     probe.dump_info(false)?;
 
@@ -339,9 +343,13 @@ fn main() -> Result<()> {
                         if enable_sdi_print {
                             probe.enable_sdi_print(true)?;
                             will_detach = false;
-                            log::info!("Now you can connect to the WCH-Link serial port");
+                            log::info!("Now connect to the WCH-Link serial port to read SDI print");
                         }
-                        sleep(Duration::from_millis(500));
+                        if watch_serial {
+                            wlink::operations::watch_serial()?;
+                        } else {
+                            sleep(Duration::from_millis(500));
+                        }
                     }
                 }
                 Unprotect {} => {
