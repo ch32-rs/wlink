@@ -1,10 +1,17 @@
-# CH569
+# CH569/CH565
+
+RISC-V3A, 448KB Code Flash, 32KB Data Flash, 32/64/96KB SRAM(RAMX).
+
+BUS8, USB-SS, ETH, EMMC, SerDes
+
+- CH569: HSPI
+- CH565: DVP
+
+## Debug Pins
+
+- TCK=HTACK=PA10
+- TIO=HTCLK=PA11
 
 ## Boards
 
 - CH569W-R0-1v0
-
-## Pins
-
-- TCK=HTACK=PA10
-- TIO=HTCLK=PA11

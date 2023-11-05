@@ -1,5 +1,7 @@
 # CH57X & CH58X & CH59X
 
+BLE MCU.
+
 ## Debug Pins
 
 - PB15 TCK
