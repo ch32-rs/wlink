@@ -13,18 +13,20 @@
 [docsrs]: https://docs.rs/wlink
 [nightly]: https://github.com/ch32-rs/wlink/releases/tag/nightly
 
-**NOTE**: This tool is still in development and not ready for production use.
+> **Note**
+> This tool is still in development and not ready for production use.
 
 ## Feature Support
 
 - [x] Flash firmware, support Intel HEX, ELF and raw binary format
 - [x] Erase chip
+- [x] Halt, resume, reset support
 - [x] Read chip info
-- [x] Read chip memory
-- [x] Read chip register
-- [x] Write chip register
+- [x] Read chip memory(flash)
+- [x] Read/write chip register - very handy for debugging
 - [x] Code-Protect & Code-Unprotect for supported chips
-- [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support
+- [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support, requires 2.10+ firmware
+- [x] Serial port watching(#36) for a smooth development experience
 
 ## Tested On
 
@@ -77,7 +79,14 @@ Current firmware version: 2.11 (aka. v31).
 
 `cargo install --git https://github.com/ch32-rs/wlink` or download a binary from the [Nightly Release page](https://github.com/ch32-rs/wlink/releases/tag/nightly).
 
+> **Note**
+> On Linux, you should install libudev and libusb development lib first.
+> Like `sudo apt install libudev-dev libusb-1.0-0-dev` on Ubuntu.
+
 ## Usage
+
+> **Note**
+> For help of wire connection for specific chips, please refer to `docs` subdirectory.
 
 ```console
 > # Flash firmware.bin to Code FLASH at address 0x08000000
@@ -88,6 +97,21 @@ Current firmware version: 2.11 (aka. v31).
 12:10:27 [INFO] Flash done
 12:10:28 [INFO] Now reset...
 12:10:28 [INFO] Resume executing...
+
+> # Flash firmware.bin to System FLASH, enable SDI print, then watch serial port
+> wlink flash --enable-sdi-print --watch-serial firmware.bin
+02:54:34 [INFO] WCH-Link v2.11 (WCH-LinkE-CH32V305)
+02:54:34 [INFO] Attached chip: CH32V003 [CH32V003F4P6] (ChipID: 0x00300500)
+02:54:34 [INFO] Flash already unprotected
+02:54:34 [INFO] Flash protected: false
+02:54:35 [INFO] Flash done
+02:54:35 [INFO] Now reset...
+02:54:35 [INFO] Now connect to the WCH-Link serial port to read SDI print
+Hello world from ch32v003 SDI print!
+led toggle
+led toggle
+...
+
 
 > # Dump Code FLASH, for verification
 > # use `-v` or `-vv` for more logs
@@ -109,9 +133,11 @@ Current firmware version: 2.11 (aka. v31).
 08000050:   f3 23 40 f1  b7 02 00 00  93 82 02 00  63 f4 72 00   ×#@××•00××•0c×r0
 08000060:   6f 00 c0 29                                          o0×)
 
+
 > # Dump System FLASH, BOOT_28KB
 > wlink dump 0x1FFF8000 0x7000
 ....
+
 
 > # Dump all general purpose registers
 > wlink regs
