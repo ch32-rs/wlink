@@ -181,13 +181,15 @@ impl Command for SetPower {
 }
 
 /// SDI print support, only avaliable for WCH-LinkE
+/// Firmware version >= 2.10
 #[derive(Debug)]
 pub enum SetSDIPrint {
     Enable,
     Disable,
 }
 impl Command for SetSDIPrint {
-    type Response = ();
+    // 0x00 success, 0xff not support
+    type Response = u8;
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         match self {
