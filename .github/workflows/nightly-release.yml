@@ -32,7 +32,7 @@ jobs:
           components: rustfmt, clippy
           override: true
       - name: Install libudev for Linux (optional)
-        if: matrix.os == 'Linux'
+        if: runner.os == 'Linux'
         run: sudo apt-get install libudev-dev
       - name: Build
         run: cargo build --release
