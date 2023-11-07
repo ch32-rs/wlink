@@ -165,7 +165,7 @@ impl WchLink {
         };
         self.send_command(cmd)?;
 
-        self.send_command(commands::Reset::ResetAndRun)?; // quit reset
+        self.send_command(commands::Reset::Soft)?; // quit reset
         self.send_command(control::AttachChip)?;
 
         let flash_protected = self.send_command(commands::ConfigChip::CheckReadProtect)?;
