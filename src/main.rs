@@ -339,7 +339,7 @@ fn main() -> Result<()> {
 
                     if !no_run {
                         log::info!("Now reset...");
-                        probe.send_command(commands::Reset::ResetAndRun)?;
+                        probe.send_command(commands::Reset::Soft)?;
                         if enable_sdi_print {
                             probe.enable_sdi_print(true)?;
                             will_detach = false;
