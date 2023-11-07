@@ -268,19 +268,20 @@ impl fmt::Debug for ChipUID {
 /// Device reset (0x0b, _)
 #[derive(Debug)]
 pub enum Reset {
-    /// wlink_quitreset
-    ResetAndRun, // the most common reset
+    /// wlink_quitreset, reset and run
+    Soft, // the most common reset
     Normal,
-    Normal2,
+    /// wlink_chip_reset, chip reset
+    Chip,
 }
 impl Command for Reset {
     type Response = ();
     const COMMAND_ID: u8 = 0x0b;
     fn payload(&self) -> Vec<u8> {
         match self {
-            Reset::ResetAndRun => vec![0x01],
+            Reset::Soft => vec![0x01],
             Reset::Normal => vec![0x03],
-            Reset::Normal2 => vec![0x02],
+            Reset::Chip => vec![0x02],
         }
     }
 }

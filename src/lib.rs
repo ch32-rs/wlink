@@ -34,10 +34,9 @@ impl WchLinkVariant {
     pub fn try_from_u8(value: u8) -> Result<Self> {
         match value {
             1 => Ok(Self::Ch549),
-            2 => Ok(Self::ECh32v305),
+            2 | 0x12 => Ok(Self::ECh32v305),
             3 => Ok(Self::SCh32v203),
-            5 => Ok(Self::WCh32v208),
-            0x12 => Ok(Self::ECh32v305), // ??
+            5 | 0x85 => Ok(Self::WCh32v208),
             _ => Err(Error::UnknownLinkVariant(value)),
         }
     }
@@ -181,9 +180,7 @@ impl RiscvChip {
 
     pub fn reset_command(&self) -> crate::commands::Reset {
         match self {
-            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X => {
-                crate::commands::Reset::Normal2
-            }
+            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X => crate::commands::Reset::Chip,
             _ => crate::commands::Reset::Normal,
         }
     }

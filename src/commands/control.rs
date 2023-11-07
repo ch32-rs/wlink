@@ -72,7 +72,6 @@ pub struct AttachChipResponse {
     pub riscvchip: u8,
     pub chip_id: u32,
 }
-impl AttachChipResponse {}
 impl Response for AttachChipResponse {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 5 {
@@ -196,5 +195,25 @@ impl Command for SetSDIPrint {
             SetSDIPrint::Enable => vec![0xee, 0x00],
             SetSDIPrint::Disable => vec![0xee, 0x01],
         }
+    }
+}
+
+/// Set RST pin
+#[derive(Debug)]
+pub enum SetRSTPin {
+    Low,
+    High,
+    Floating,
+}
+impl Command for SetRSTPin {
+    type Response = ();
+    const COMMAND_ID: u8 = 0x0d;
+    fn payload(&self) -> Vec<u8> {
+        let subcmd = match *self {
+            SetRSTPin::Low => 0x13,
+            SetRSTPin::High => 0x14,
+            SetRSTPin::Floating => 0x15,
+        };
+        vec![0x0e, subcmd]
     }
 }
