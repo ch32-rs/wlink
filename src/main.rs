@@ -1,4 +1,4 @@
-use std::{thread::sleep, time::Duration};
+use std::{fs::File, io::Write, path::Path, thread::sleep, time::Duration};
 
 use anyhow::Result;
 use wlink::{
@@ -56,6 +56,14 @@ enum Commands {
         /// Length in bytes, will be rounded up to the next multiple of 4
         #[arg(value_parser = parse_number)]
         length: u32,
+
+        /// Write the dumped memory region to a file
+        #[arg(long, default_value = "", hide_default_value = true)]
+        file: String,
+
+        /// If --file argument is specified and the file already exists, overwrite it
+        #[arg(long, default_value = "false")]
+        overwrite: bool,
     },
     /// Dump registers
     Regs {},
@@ -256,9 +264,14 @@ fn main() -> Result<()> {
 
                     // algo.dump_pmp()?;
                 }
-                Dump { address, length } => {
+                Dump {
+                    address,
+                    length,
+                    file,
+                    overwrite,
+                } => {
                     log::info!(
-                        "Read memory from 0x{:08x} to 0x{:08x}",
+                        "Read memory from 0x{:08x} to 0x{:08x}, file: {file}",
                         address,
                         address + length
                     );
@@ -266,6 +279,17 @@ fn main() -> Result<()> {
                     // probe.read_memory(address, length)?;
                     let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
                     let out = algo.read_memory(address, length)?;
+
+                    if file != "" {
+                        if !overwrite && Path::new(file.as_str()).exists() {
+                            log::error!("File {file} already exists and --overwrite option is not specified");
+                        } else {
+                            let mut file_h = File::create(&file).expect("Unable to create file");
+                            file_h.write_all(&out).expect("Unable to write data");
+                            log::info!("{} bytes written to file {}", out.len(), &file);
+                        }
+                    }
+
                     println!(
                         "{}",
                         nu_pretty_hex::config_hex(
