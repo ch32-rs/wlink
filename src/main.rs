@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write, path::Path, thread::sleep, time::Duration};
+use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
 use wlink::{
@@ -58,12 +58,8 @@ enum Commands {
         length: u32,
 
         /// Write the dumped memory region to a file
-        #[arg(long, default_value = "", hide_default_value = true)]
-        file: String,
-
-        /// If --file argument is specified and the file already exists, overwrite it
-        #[arg(long, default_value = "false")]
-        overwrite: bool,
+        #[arg(short = 'o', long = "out")]
+        filename: Option<String>,
     },
     /// Dump registers
     Regs {},
@@ -267,11 +263,10 @@ fn main() -> Result<()> {
                 Dump {
                     address,
                     length,
-                    file,
-                    overwrite,
+                    filename,
                 } => {
                     log::info!(
-                        "Read memory from 0x{:08x} to 0x{:08x}, file: {file}",
+                        "Read memory from 0x{:08x} to 0x{:08x}",
                         address,
                         address + length
                     );
@@ -280,28 +275,23 @@ fn main() -> Result<()> {
                     let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
                     let out = algo.read_memory(address, length)?;
 
-                    if file != "" {
-                        if !overwrite && Path::new(file.as_str()).exists() {
-                            log::error!("File {file} already exists and --overwrite option is not specified");
-                        } else {
-                            let mut file_h = File::create(&file).expect("Unable to create file");
-                            file_h.write_all(&out).expect("Unable to write data");
-                            log::info!("{} bytes written to file {}", out.len(), &file);
-                        }
+                    if let Some(fname) = filename {
+                        std::fs::write(&fname, &out)?;
+                        log::info!("{} bytes written to file {}", length, &fname);
+                    } else {
+                        println!(
+                            "{}",
+                            nu_pretty_hex::config_hex(
+                                &out,
+                                nu_pretty_hex::HexConfig {
+                                    title: true,
+                                    ascii: true,
+                                    address_offset: address as _,
+                                    ..Default::default()
+                                },
+                            )
+                        );
                     }
-
-                    println!(
-                        "{}",
-                        nu_pretty_hex::config_hex(
-                            &out,
-                            nu_pretty_hex::HexConfig {
-                                title: true,
-                                ascii: true,
-                                address_offset: address as _,
-                                ..Default::default()
-                            },
-                        )
-                    );
                 }
                 Regs {} => {
                     log::info!("Dump GPRs");
