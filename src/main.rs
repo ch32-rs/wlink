@@ -180,12 +180,12 @@ fn main() -> Result<()> {
 
     match cli.command {
         None => {
-            wlink::device::check_usb_device()?;
+            wlink::device::check_all_devices()?;
             println!("No command given, use --help for help.");
             println!("hint: use `wlink status` to get started.");
         }
         Some(ModeSwitch { rv, dap }) => {
-            wlink::device::check_usb_device()?; // list all connected devices
+            wlink::device::check_all_devices()?; // list all connected devices
             log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
             if !(rv ^ dap) {
                 println!("Please choose one mode to switch, either --rv or --dap");
