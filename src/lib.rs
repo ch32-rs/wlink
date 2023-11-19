@@ -10,7 +10,7 @@ pub mod format;
 pub mod operations;
 pub mod probe;
 pub mod regs;
-pub mod transport;
+// pub mod transport;
 pub mod usb_device;
 
 use commands::RawCommand;
@@ -217,7 +217,7 @@ impl RiscvChip {
         Ok(())
     }
 
-    fn flash_op(&self) -> &[u8] {
+    fn flash_op(&self) -> &'static [u8] {
         match self {
             RiscvChip::CH32V003 | RiscvChip::CH641 => &flash_op::CH32V003,
             RiscvChip::CH32V103 => &flash_op::CH32V103,

@@ -190,9 +190,9 @@ fn main() -> Result<()> {
             if !(rv ^ dap) {
                 println!("Please choose one mode to switch, either --rv or --dap");
             } else if dap {
-                wlink::device::try_switch_from_rv_to_dap(device_index)?;
+                // wlink::device::try_switch_from_rv_to_dap(device_index)?;
             } else {
-                wlink::device::try_switch_from_dap_to_rv(device_index)?;
+                //  wlink::device::try_switch_from_dap_to_rv(device_index)?;
             }
         }
         Some(Erase { method }) if method != EraseMode::Default => {

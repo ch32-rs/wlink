@@ -13,7 +13,6 @@ use crate::{
     dmi::DebugModuleInterface,
     error::AbstractcsCmdErr,
     regs::{self, Abstractcs, Dmcontrol, Dmstatus},
-    transport::Transport,
     Error, Result, RiscvChip,
 };
 
@@ -234,7 +233,7 @@ impl WchLink {
         })?;
         self.send_command(Program::ReadMemory)?;
 
-        let mut mem = self.device_handle.read_data_endpoint(length as usize)?;
+        let mut mem = self.read_data_ep(length as usize)?;
         // Fix endian
         for chunk in mem.chunks_exact_mut(4) {
             chunk.reverse();
@@ -364,10 +363,8 @@ impl WchLink {
         // if self.chip.as_ref().unwrap().chip_family == RiscvChip::CH32V103 {}
         self.send_command(Program::WriteFlashOP)?;
         // wlink_ramcodewrite
-        self.device_handle.write_data_endpoint(
-            self.chip.as_ref().unwrap().chip_family.flash_op(),
-            data_packet_size,
-        )?;
+        let flash_op = self.chip.as_ref().unwrap().chip_family.flash_op();
+        self.write_data_ep(flash_op, data_packet_size)?;
 
         log::debug!("Flash OP written");
 
@@ -383,14 +380,10 @@ impl WchLink {
 
         self.send_command(Program::WriteFlash)?;
         for chunk in data.chunks(write_pack_size as usize) {
-            self.device_handle.write_data_endpoint_with_progress(
-                chunk,
-                data_packet_size,
-                &|nbytes| {
-                    bar.inc(nbytes as _);
-                },
-            )?;
-            let rxbuf = self.device_handle.read_data_endpoint(4)?;
+            self.write_data_ep_with_progress(chunk, data_packet_size, &|nbytes| {
+                bar.inc(nbytes as _);
+            })?;
+            let rxbuf = self.read_data_ep(4)?;
             // 41 01 01 04
             if rxbuf[3] != 0x04 {
                 return Err(Error::Custom(format!(
