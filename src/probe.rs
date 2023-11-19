@@ -1,6 +1,6 @@
 //! The probe - WCH-Link
 
-use crate::commands::{Response, self};
+use crate::commands::{self, Response};
 use crate::Result;
 use crate::{
     commands::control::ProbeInfo,
@@ -18,9 +18,8 @@ const PRODUCT_ID_DAP: u16 = 0x8012;
 
 const ENDPOINT_OUT_DAP: u8 = 0x02;
 
-#[derive(Debug)]
 pub struct WchLink {
-    pub(crate) device: USBDevice,
+    pub(crate) device: Box<dyn USBDeviceBackend>,
     pub probe: Option<ProbeInfo>,
 }
 
@@ -44,7 +43,12 @@ impl WchLink {
     // ref: https://github.com/cjacker/wchlinke-mode-switch/blob/main/main.c
     pub fn switch_from_rv_to_dap(nth: usize) -> Result<()> {
         let dev = USBDevice::open_nth(VENDOR_ID, PRODUCT_ID, nth)?;
-        log::info!("Switch mode WCH-LinkRV {:?}", dev);
+        log::info!(
+            "Switch mode WCH-LinkRV {:04x}:{:04x} #{}",
+            VENDOR_ID,
+            PRODUCT_ID,
+            nth
+        );
 
         todo!()
     }

@@ -43,6 +43,8 @@ pub enum Error {
     Serial(#[from] serialport::Error),
     #[error("Io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Driver error")]
+    Driver,
 }
 
 #[derive(Debug, Clone, Copy)]

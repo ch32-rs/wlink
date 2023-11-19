@@ -1,12 +1,14 @@
 //! WchLink device type
 
+use std::time::Duration;
+
 use log::info;
 use rusb::{DeviceHandle, UsbContext};
 
 use crate::{
     commands::{control::ProbeInfo, ChipUID, RawCommand, Response},
-    transport::Transport,
-    Result, RiscvChip,
+    usb_device::{self, USBDeviceBackend},
+    Error, Result, RiscvChip,
 };
 
 pub const VENDOR_ID: u16 = 0x1a86;
@@ -15,11 +17,16 @@ pub const PRODUCT_ID: u16 = 0x8010;
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
 
+const DATA_ENDPOINT_OUT: u8 = 0x02;
+const DATA_ENDPOINT_IN: u8 = 0x82;
+
 const VENDOR_ID_DAP: u16 = 0x1a86;
 const PRODUCT_ID_DAP: u16 = 0x8012;
 
 const ENDPOINT_OUT_DAP: u8 = 0x02;
 // const ENDPOINT_IN_DAP: u8 = 0x83;
+
+const USB_TIMEOUT_MS: u64 = 5000;
 
 /// Attached chip information
 #[derive(Debug, Clone)]
@@ -33,10 +40,8 @@ pub struct ChipInfo {
     pub march: Option<String>,
 }
 
-#[derive(Debug)]
 pub struct WchLink {
-    pub(crate) device_handle: DeviceHandle<rusb::Context>,
-    pub serial_number: String,
+    pub(crate) device_handle: Box<dyn usb_device::USBDeviceBackend>,
     pub chip: Option<ChipInfo>,
     pub probe: Option<ProbeInfo>,
     pub(crate) speed: crate::commands::Speed,
@@ -44,85 +49,91 @@ pub struct WchLink {
 
 impl WchLink {
     pub fn open_nth(nth: usize) -> Result<Self> {
-        let context = rusb::Context::new()?;
-        log::trace!("Acquired libusb context.");
+        let mut dev = usb_device::USBDevice::open_nth(VENDOR_ID, PRODUCT_ID, nth)?;
 
-        let device = context
-            .devices()?
-            .iter()
-            .filter(|device| {
-                device
-                    .device_descriptor()
-                    .map(|desc| desc.vendor_id() == VENDOR_ID && desc.product_id() == PRODUCT_ID)
-                    .unwrap_or(false)
-            })
-            .nth(nth)
-            .map_or(Err(crate::error::Error::ProbeNotFound), Ok);
-
-        // check if there's a device with the DAP VID/PID
-        let device = match device {
-            Ok(device) => device,
-            Err(e) => {
-                if open_usb_device(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth).is_ok() {
-                    return Err(crate::error::Error::ProbeModeNotSupported);
-                }
-                return Err(e);
-            }
-        };
-
-        let mut device_handle = device.open()?;
-
-        let config = device.active_config_descriptor()?;
-
-        // let descriptor = device.device_descriptor()?;
-
-        log::trace!("Device: {:?}", &device);
-
-        device_handle.claim_interface(0)?;
-
-        log::trace!("Claimed interface 0 of USB device.");
-
-        let mut endpoint_out = false;
-        let mut endpoint_in = false;
-
-        if let Some(interface) = config.interfaces().next() {
-            if let Some(descriptor) = interface.descriptors().next() {
-                for endpoint in descriptor.endpoint_descriptors() {
-                    if endpoint.address() == ENDPOINT_OUT {
-                        endpoint_out = true;
-                    }
-
-                    if endpoint.address() == ENDPOINT_IN {
-                        endpoint_in = true;
-                    }
-                }
-            }
-        }
-
-        if !endpoint_out || !endpoint_in {
-            return Err(crate::error::Error::Custom(
-                "Could not find endpoints".to_string(),
-            ));
-        }
-
-        let desc = device.device_descriptor()?;
-        let serial_number = device_handle.read_serial_number_string_ascii(&desc)?;
-        log::debug!("Serial number: {:?}", serial_number);
+        dev.set_timeout(Duration::from_millis(USB_TIMEOUT_MS));
 
         Ok(Self {
-            device_handle,
-            serial_number,
+            device_handle: dev,
             chip: None,
             probe: None,
             speed: Default::default(),
         })
     }
 
+    fn write_command_ep(&mut self, buf: &[u8]) -> Result<()> {
+        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+        self.device_handle.write_endpoint(ENDPOINT_OUT, buf)?;
+        Ok(())
+    }
+
+    fn read_command_ep(&mut self) -> Result<Vec<u8>> {
+        let mut buf = [0u8; 64];
+
+        let bytes_read = self.device_handle.read_endpoint(ENDPOINT_IN, &mut buf)?;
+        let resp = buf[..bytes_read].to_vec();
+        log::trace!(
+            "recv {} {}",
+            hex::encode(&resp[..3]),
+            hex::encode(&resp[3..])
+        );
+        Ok(resp)
+    }
+
+    pub(crate) fn read_data_ep(&mut self, n: usize) -> Result<Vec<u8>> {
+        let mut buf = Vec::with_capacity(n);
+        let mut bytes_read = 0;
+        while bytes_read < n {
+            let mut chunk = vec![0u8; 64];
+            let chunk_read = self
+                .device_handle
+                .read_endpoint(DATA_ENDPOINT_IN, &mut chunk)?;
+            buf.extend_from_slice(&chunk[..chunk_read]);
+            bytes_read += chunk_read;
+        }
+        if bytes_read != n {
+            return Err(crate::Error::InvalidPayloadLength);
+        }
+        log::trace!("read data ep {} bytes", bytes_read);
+        if bytes_read <= 10 {
+            log::trace!("recv data {}", hex::encode(&buf[..bytes_read]));
+        }
+        if bytes_read != n {
+            log::warn!("read data ep {} bytes", bytes_read);
+            return Err(Error::InvalidPayloadLength);
+        }
+        Ok(buf[..n].to_vec())
+    }
+
+    pub(crate) fn write_data_ep(&mut self, buf: &[u8], packet_len: usize) -> Result<()> {
+        self.write_data_ep_with_progress(buf, packet_len, &|_| {})
+    }
+
+    pub(crate) fn write_data_ep_with_progress(
+        &mut self,
+        buf: &[u8],
+        packet_len: usize,
+        progress_callback: &dyn Fn(usize),
+    ) -> Result<()> {
+        for chunk in buf.chunks(packet_len) {
+            let mut chunk = chunk.to_vec();
+            progress_callback(chunk.len());
+            if chunk.len() < packet_len {
+                chunk.resize(packet_len, 0xff);
+            }
+            log::trace!("write data ep {} bytes", chunk.len());
+            self.device_handle
+                .write_endpoint(DATA_ENDPOINT_OUT, &chunk)?;
+        }
+        log::trace!("write data ep total {} bytes", buf.len());
+        Ok(())
+    }
+
     pub fn send_command<C: crate::commands::Command>(&mut self, cmd: C) -> Result<C::Response> {
         log::trace!("send command: {:?}", cmd);
         let raw = cmd.to_raw();
-        self.device_handle.write_command_endpoint(&raw)?;
-        let resp = self.device_handle.read_command_endpoint()?;
+        self.write_command_ep(&raw)?;
+        let resp = self.read_command_ep()?;
 
         C::Response::from_raw(&resp)
     }
@@ -132,22 +143,15 @@ impl WchLink {
     }
 }
 
-impl Drop for WchLink {
-    fn drop(&mut self) {
-        let _ = self.device_handle.release_interface(0);
-    }
-}
-
 /// Switch from DAP mode to RV mode
 // ref: https://github.com/cjacker/wchlinke-mode-switch/blob/main/main.c
-pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
-    let dev = open_usb_device(VENDOR_ID, PRODUCT_ID, nth)?;
-    info!("Switch mode WCH-LinkRV {:?}", dev.device());
+pub fn try_switch_from_rv_to_dap<USB: USBDeviceBackend>(nth: usize) -> Result<()> {
+    let mut dev = USB::open_nth(VENDOR_ID, PRODUCT_ID, nth)?;
+    info!("Switch mode for WCH-LinkRV");
 
     let mut dev = WchLink {
         device_handle: dev,
         // fake info
-        serial_number: "".to_string(),
         chip: None,
         probe: None,
         speed: Default::default(),
@@ -166,17 +170,13 @@ pub fn try_switch_from_rv_to_dap(nth: usize) -> Result<()> {
 }
 
 /// Switch from RV mode to DAP mode
-pub fn try_switch_from_dap_to_rv(nth: usize) -> Result<()> {
-    let dev = open_usb_device(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth)?;
-    info!("Switch mode for WCH-LinkDAP {:?}", dev.device());
+pub fn try_switch_from_dap_to_rv<USB: USBDeviceBackend>(nth: usize) -> Result<()> {
+    let mut dev = USB::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth)?;
+    info!("Switch mode for WCH-LinkDAP");
 
     let buf = [0x81, 0xff, 0x01, 0x52];
     log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
-    let _ = dev.write_bulk(
-        ENDPOINT_OUT_DAP,
-        &buf,
-        std::time::Duration::from_millis(5000),
-    );
+    let _ = dev.write_endpoint(ENDPOINT_OUT_DAP, &buf);
 
     Ok(())
 }
@@ -196,36 +196,4 @@ pub fn check_usb_device() -> Result<()> {
     }
 
     Ok(())
-}
-
-fn open_usb_device(
-    vendor_id: u16,
-    produce_id: u16,
-    nth: usize,
-) -> Result<DeviceHandle<rusb::Context>> {
-    let context = rusb::Context::new()?;
-    log::trace!("Acquired libusb context.");
-
-    let device = context
-        .devices()?
-        .iter()
-        .filter(|device| {
-            device
-                .device_descriptor()
-                .map(|desc| desc.vendor_id() == vendor_id && desc.product_id() == produce_id)
-                .unwrap_or(false)
-        })
-        .nth(nth)
-        .map_or(Err(crate::error::Error::ProbeNotFound), Ok)?;
-
-    let mut device_handle = device.open()?;
-
-    device_handle.claim_interface(0)?;
-
-    log::trace!("Claimed interface 0 of USB device.");
-
-    // TODO: endpoint check
-    // let config = device.active_config_descriptor()?;
-
-    Ok(device_handle)
 }
