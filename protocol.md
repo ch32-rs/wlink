@@ -166,11 +166,3 @@ MRS IDE v2.7
   <http://www.wch-ic.com/products/WCH-Link.html>
 - Official WCH-Link Homepage(Chinese) \
   <https://www.wch.cn/products/WCH-Link.html>
-
-### WCH-OpenOCD
-
-Since WCH updates there firmware to 2.8, the old version of WCH-OpenOCD might be not working.
-
-- <https://github.com/Seneral/riscv-openocd-wch>
-- <https://github.com/jiegec/riscv-openocd>
-- <https://github.com/kprasadvnsi/riscv-openocd-wch>
