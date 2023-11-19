@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `--watch-serial` for `flash` subcommand, #36
+- Add `-o/--out` for `dump` sumcommand, #38
 
 ### Changed
 
