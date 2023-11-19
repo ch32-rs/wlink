@@ -101,8 +101,7 @@
 - <https://github.com/openwch/ch32v003> RISC-V QingKeV2 Microprocessor Debug Manual
 - <https://github.com/cnlohr/ch32v003fun> A miniwchlink implementation
 - <https://github.com/blackmagic-debug/blackmagic/pull/1399>
-- [MounRiver Studio] compatible WCH-Link OpenOCD source code <https://github.com/xu7wong/openocd_wchlink> \
-   from <https://www.wch.cn/bbs/thread-91946-1.html>
+- [MounRiver Studio] compatible WCH-Link OpenOCD source code <https://github.com/treideme/openocd-hacks>
 
 [MounRiver Studio]: http://www.mounriver.com "MounRiver Studio"
 [WCH-LinkUtility]: https://web.archive.org/web/20230613114515if_/https://www.wch.cn/downloads/file/418.html?time=2023-06-13%2019:44:31&code=z88GXEXY3kNBV9rTwDe0iWerDk5iKHB50lkst8j8 "WCH LinkUtility"

@@ -159,3 +159,4 @@ x5     t0: 0xb4a9b38a
 ## References
 
 - [docs/references.md](docs/references.md)
+- WCH's openocd fork: <https://github.com/treideme/openocd-hacks>
