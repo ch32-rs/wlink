@@ -8,8 +8,10 @@ pub mod error;
 pub mod flash_op;
 pub mod format;
 pub mod operations;
+pub mod probe;
 pub mod regs;
 pub mod transport;
+pub mod usb_device;
 
 use commands::RawCommand;
 use device::WchLink;

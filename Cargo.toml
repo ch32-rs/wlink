@@ -33,3 +33,4 @@ object = { version = "0.32", default-features = false, features = [
 ] }
 indicatif = "0.17.7"
 serialport = "4.2.2"
+libloading = "0.8.1"
