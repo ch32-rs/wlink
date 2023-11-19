@@ -15,6 +15,18 @@ pub trait USBDeviceBackend {
     fn write_endpoint(&mut self, ep: u8, buf: &[u8]) -> Result<()>;
 }
 
+pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    {
+        ch375_driver::USBDevice::open_nth(vid, pid, nth)
+            .or_else(|_| libusb::USBDevice::open_nth(vid, pid, nth))
+    }
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    {
+        libusb::USBDevice::open_nth(vid, pid, nth)
+    }
+}
+
 pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
     let mut ret = vec![];
     ret.extend(
@@ -23,12 +35,20 @@ pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
             .map(|s| s.to_string()),
     );
 
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    {
+        ret.extend(
+            ch375_driver::list_devices(vid, pid)?
+                .into_iter()
+                .map(|s| s.to_string()),
+        );
+    }
+
     Ok(ret)
 }
 
-// pub use libusb::USBDevice;
-
-pub use ch375_driver::USBDevice;
+pub use libusb::USBDevice;
+// pub use ch375_driver::USBDevice;
 
 mod libusb {
     use super::*;
@@ -126,6 +146,7 @@ mod libusb {
     }
 }
 
+#[cfg(all(target_os = "windows", target_arch = "x86"))]
 mod ch375_driver {
     use libloading::os::windows::*;
 
@@ -177,6 +198,38 @@ mod ch375_driver {
         iProduct: u8,
         iSerialNumber: u8,
         bNumConfigurations: u8,
+    }
+
+    pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<impl Display>> {
+        let lib = ensure_library_load()?;
+        let mut ret: Vec<String> = vec![];
+
+        let open_device: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
+            unsafe { lib.get(b"CH375OpenDevice").unwrap() };
+        let close_device: Symbol<unsafe extern "stdcall" fn(u32)> =
+            unsafe { lib.get(b"CH375CloseDevice").unwrap() };
+        let get_device_descriptor: Symbol<
+            unsafe extern "stdcall" fn(u32, *mut UsbDeviceDescriptor, *mut u32) -> bool,
+        > = unsafe { lib.get(b"CH375GetDeviceDescr").unwrap() };
+
+        const INVALID_HANDLE: u32 = 0xffffffff;
+
+        for i in 0..8 {
+            let h = unsafe { open_device(i) };
+            if h != INVALID_HANDLE {
+                let mut descr = unsafe { core::mem::zeroed() };
+                let mut len = core::mem::size_of::<UsbDeviceDescriptor>() as u32;
+                let _ = unsafe { get_device_descriptor(i, &mut descr, &mut len) };
+                let vid = descr.idVendor;
+                let pid = descr.idProduct;
+
+                log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
+                if vid == vid && pid == pid {
+                    ret.push(format!("<WCH-Link#{}> {:04x}:{:04x}", i, vid, pid));
+                }
+                unsafe { close_device(i) };
+            }
+        }
     }
 
     pub struct USBDevice {

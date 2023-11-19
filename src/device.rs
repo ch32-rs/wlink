@@ -3,7 +3,6 @@
 use std::time::Duration;
 
 use log::info;
-use rusb::{DeviceHandle, UsbContext};
 
 use crate::{
     commands::{control::ProbeInfo, ChipUID, RawCommand, Response},
@@ -146,7 +145,7 @@ impl WchLink {
 /// Switch from DAP mode to RV mode
 // ref: https://github.com/cjacker/wchlinke-mode-switch/blob/main/main.c
 pub fn try_switch_from_rv_to_dap<USB: USBDeviceBackend>(nth: usize) -> Result<()> {
-    let mut dev = USB::open_nth(VENDOR_ID, PRODUCT_ID, nth)?;
+    let dev = USB::open_nth(VENDOR_ID, PRODUCT_ID, nth)?;
     info!("Switch mode for WCH-LinkRV");
 
     let mut dev = WchLink {
@@ -182,17 +181,12 @@ pub fn try_switch_from_dap_to_rv<USB: USBDeviceBackend>(nth: usize) -> Result<()
 }
 
 /// Check connected USB device
-pub fn check_usb_device() -> Result<()> {
-    let context = rusb::Context::new()?;
-    log::trace!("Acquired libusb context.");
-
-    for device in context.devices()?.iter() {
-        let desc = device.device_descriptor()?;
-        if desc.vendor_id() == VENDOR_ID && desc.product_id() == PRODUCT_ID {
-            log::info!("Found WCH-LinkRV, {:?}", device);
-        } else if desc.vendor_id() == VENDOR_ID_DAP && desc.product_id() == PRODUCT_ID_DAP {
-            log::info!("Found WCH-LinkDAP, {:?}", device);
-        }
+pub fn check_all_devices() -> Result<()> {
+    for dev in usb_device::list_devices(VENDOR_ID, PRODUCT_ID)? {
+        log::info!("Found WCH-LinkRV, {:?}", dev);
+    }
+    for dev in usb_device::list_devices(VENDOR_ID_DAP, PRODUCT_ID_DAP)? {
+        log::info!("Found WCH-LinkDAP, {:?}", dev);
     }
 
     Ok(())
