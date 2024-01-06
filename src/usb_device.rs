@@ -1,9 +1,9 @@
 //! USB Device abstraction - The USB Device of WCH-Link.
 
 use crate::Result;
-use std::{fmt::Display, time::Duration};
+use std::{fmt::{Display, Debug}, time::Duration};
 
-pub trait USBDeviceBackend {
+pub trait USBDeviceBackend: Debug {
     fn set_timeout(&mut self, _timeout: Duration) {}
 
     fn read_endpoint(&mut self, ep: u8, buf: &mut [u8]) -> Result<usize>;
@@ -18,12 +18,12 @@ pub trait USBDeviceBackend {
 pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
     #[cfg(all(target_os = "windows", target_arch = "x86"))]
     {
-        ch375_driver::USBDevice::open_nth(vid, pid, nth)
-            .or_else(|_| libusb::USBDevice::open_nth(vid, pid, nth))
+        ch375_driver::CH375USBDevice::open_nth(vid, pid, nth)
+            .or_else(|_| libusb::LibUSBDevice::open_nth(vid, pid, nth))
     }
     #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
     {
-        libusb::USBDevice::open_nth(vid, pid, nth)
+        libusb::LibUSBDevice::open_nth(vid, pid, nth)
     }
 }
 
@@ -47,10 +47,9 @@ pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
     Ok(ret)
 }
 
-pub use libusb::USBDevice;
-// pub use ch375_driver::USBDevice;
+pub mod libusb {
+    use std::fmt;
 
-mod libusb {
     use super::*;
     use rusb::{DeviceHandle, Speed, UsbContext};
 
@@ -62,7 +61,7 @@ mod libusb {
             let device_desc = device.device_descriptor()?;
             if device_desc.vendor_id() == vid && device_desc.product_id() == pid {
                 result.push(format!(
-                    "<WCH-Link#{}> Bus {:03} Device {:03} ID {:04x}:{:04x} {}",
+                    "<WCH-Link#{}> Bus {:03} Device {:03} ID {:04x}:{:04x}({})",
                     i,
                     device.bus_number(),
                     device.address(),
@@ -75,19 +74,26 @@ mod libusb {
         Ok(result)
     }
 
-    #[derive(Debug)]
-    pub struct USBDevice {
+    pub struct LibUSBDevice {
         handle: DeviceHandle<rusb::Context>,
         timeout: Duration,
     }
 
-    impl USBDeviceBackend for USBDevice {
+    impl fmt::Debug for LibUSBDevice {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("USBDevice")
+                .field("provider", &"libusb")
+                .field("handle", &self.handle.device())
+                .finish()
+        }
+    }
+
+    impl USBDeviceBackend for LibUSBDevice {
         fn set_timeout(&mut self, timeout: Duration) {
             self.timeout = timeout;
         }
 
         fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
-            println!("fuck");
             let context = rusb::Context::new()?;
             let devices = context.devices()?;
             let mut result = vec![];
@@ -111,7 +117,7 @@ mod libusb {
 
             handle.claim_interface(0)?;
 
-            Ok(Box::new(USBDevice {
+            Ok(Box::new(LibUSBDevice {
                 handle,
                 timeout: Duration::from_millis(5000),
             }))
@@ -128,7 +134,7 @@ mod libusb {
         }
     }
 
-    impl Drop for USBDevice {
+    impl Drop for LibUSBDevice {
         fn drop(&mut self) {
             let _ = self.handle.release_interface(0);
         }
@@ -147,7 +153,8 @@ mod libusb {
 }
 
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
-mod ch375_driver {
+pub mod ch375_driver {
+    use std::fmt;
     use libloading::os::windows::*;
 
     use super::*;
@@ -232,11 +239,21 @@ mod ch375_driver {
         }
     }
 
-    pub struct USBDevice {
+    /// USB Device implementation provided by CH375 Windows driver
+    pub struct CH375USBDevice {
         index: u32,
     }
 
-    impl USBDeviceBackend for USBDevice {
+    impl fmt::Debug for LibUSBDevice {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("USBDevice")
+                .field("provider", &"ch375")
+                .field("device", &self.index)
+                .finish()
+        }
+    }
+
+    impl USBDeviceBackend for CH375USBDevice {
         fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
             let lib = ensure_library_load()?;
             /*HANDLE WINAPI CH375OpenDevice( // Open CH375 device, return the handle, invalid if error
@@ -266,7 +283,7 @@ mod ch375_driver {
                     log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
                     if vid == vid && pid == pid {
                         if idx == nth {
-                            return Ok(Box::new(USBDevice { index: i }));
+                            return Ok(Box::new(CH375USBDevice { index: i }));
                         } else {
                             idx += 1;
                         }
@@ -341,7 +358,7 @@ mod ch375_driver {
         }
     }
 
-    impl Drop for USBDevice {
+    impl Drop for CH375USBDevice {
         fn drop(&mut self) {
             if let Ok(lib) = ensure_library_load() {
                 let close_device: Symbol<unsafe extern "stdcall" fn(u32)> =

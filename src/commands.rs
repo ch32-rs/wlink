@@ -323,19 +323,16 @@ impl Response for bool {
 /// DMI operations
 #[derive(Debug)]
 pub enum DmiOp {
-    DmiNop,
-    DmiRead { addr: u8 },
-    DmiWrite { addr: u8, data: u32 },
+    Nop,
+    Read { addr: u8 },
+    Write { addr: u8, data: u32 },
 }
 impl DmiOp {
-    pub fn nop() -> Self {
-        Self::DmiNop
-    }
     pub fn read(addr: u8) -> Self {
-        Self::DmiRead { addr }
+        DmiOp::Read { addr }
     }
     pub fn write(addr: u8, data: u32) -> Self {
-        Self::DmiWrite { addr, data }
+        DmiOp::Write { addr, data }
     }
 }
 impl Command for DmiOp {
@@ -345,16 +342,17 @@ impl Command for DmiOp {
         const DMI_OP_NOP: u8 = 0;
         const DMI_OP_READ: u8 = 1;
         const DMI_OP_WRITE: u8 = 2;
+
         let mut bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         match self {
-            DmiOp::DmiNop => {
+            DmiOp::Nop => {
                 bytes[5] = DMI_OP_NOP; // :)
             }
-            DmiOp::DmiRead { addr } => {
+            DmiOp::Read { addr } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_READ;
             }
-            DmiOp::DmiWrite { addr, data } => {
+            DmiOp::Write { addr, data } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_WRITE;
                 bytes[1..5].copy_from_slice(&data.to_be_bytes());
