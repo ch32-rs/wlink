@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::{RiscvChip, WchLinkVariant};
+use crate::{probe::WchLinkVariant, RiscvChip};
 
 use super::*;
 
@@ -17,7 +17,7 @@ impl Command for GetProbeInfo {
         vec![0x01]
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ProbeInfo {
     pub major_version: u8,
     pub minor_version: u8,
@@ -182,18 +182,17 @@ impl Command for SetPower {
 /// SDI print support, only avaliable for WCH-LinkE
 /// Firmware version >= 2.10
 #[derive(Debug)]
-pub enum SetSDIPrint {
-    Enable,
-    Disable,
-}
-impl Command for SetSDIPrint {
+pub struct SetSDIPrintEnabled(pub bool);
+
+impl Command for SetSDIPrintEnabled {
     // 0x00 success, 0xff not support
     type Response = u8;
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
-        match self {
-            SetSDIPrint::Enable => vec![0xee, 0x00],
-            SetSDIPrint::Disable => vec![0xee, 0x01],
+        if self.0 {
+            vec![0xee, 0x00]
+        } else {
+            vec![0xee, 0x01]
         }
     }
 }

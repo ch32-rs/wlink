@@ -1,7 +1,10 @@
+/// Access WchLink using RISC-V DMI
+
 use crate::{
     commands::DmiOp,
-    device::WchLink,
     error::{AbstractcsCmdErr, Error, Result},
+    operations::ProbeSession,
+    probe::WchLink,
     regs::{Abstractcs, DMReg, Dmcontrol, Dmstatus},
 };
 use std::{thread, time::Duration};
@@ -35,7 +38,7 @@ pub trait DebugModuleInterface {
 
 impl DebugModuleInterface for WchLink {
     fn dmi_nop(&mut self) -> Result<()> {
-        self.send_command(DmiOp::nop())?;
+        self.send_command(DmiOp::Nop)?;
         Ok(())
     }
 
@@ -67,6 +70,16 @@ impl DebugModuleInterface for WchLink {
     }
 }
 
+impl ProbeSession {
+    fn clear_abstractcs_cmderr(&mut self) -> Result<()> {
+        let mut abstractcs = Abstractcs::from(0);
+        abstractcs.set_cmderr(0b111);
+        self.probe.write_dmi_reg(abstractcs)?;
+        Ok(())
+    }
+}
+
+/*
 pub enum HaltMode {
     NoReset,
     Reset,
@@ -557,3 +570,5 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
         Ok(())
     }
 }
+
+*/

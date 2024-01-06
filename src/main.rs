@@ -2,8 +2,8 @@ use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
 use wlink::{
-    commands, device::WchLink, dmi::DebugModuleInterface, format::read_firmware_from_file, regs,
-    RiscvChip,
+    commands, dmi::DebugModuleInterface, firmware::read_firmware_from_file,
+    operations::ProbeSession, probe::WchLink, regs, RiscvChip,
 };
 
 use clap::{Parser, Subcommand};
@@ -141,7 +141,7 @@ pub enum SDIPrint {
 }
 
 impl SDIPrint {
-    pub fn is_enable(&self) -> bool {
+    fn is_enable(&self) -> bool {
         *self == SDIPrint::Enable
     }
 }
@@ -180,21 +180,23 @@ fn main() -> Result<()> {
 
     match cli.command {
         None => {
-            wlink::device::check_all_devices()?;
+            WchLink::list_probes()?;
+
             println!("No command given, use --help for help.");
             println!("hint: use `wlink status` to get started.");
         }
         Some(ModeSwitch { rv, dap }) => {
-            wlink::device::check_all_devices()?; // list all connected devices
+            WchLink::list_probes()?;
             log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
             if !(rv ^ dap) {
                 println!("Please choose one mode to switch, either --rv or --dap");
             } else if dap {
-                // wlink::device::try_switch_from_rv_to_dap(device_index)?;
+                WchLink::switch_from_rv_to_dap(device_index)?;
             } else {
-                //  wlink::device::try_switch_from_dap_to_rv(device_index)?;
+                WchLink::switch_from_dap_to_rv(device_index)?;
             }
         }
+        /*
         Some(Erase { method }) if method != EraseMode::Default => {
             // Special handling for non-default erase: bypass attach chip
             let mut probe = WchLink::open_nth(device_index)?;
@@ -211,54 +213,23 @@ fn main() -> Result<()> {
                 }
                 _ => unreachable!(),
             }
-        }
+        }*/
         Some(command) => {
-            let mut probe: WchLink = WchLink::open_nth(device_index)?;
-            probe.set_speed(cli.speed);
+            let probe = WchLink::open_nth(device_index)?;
+            let mut sess = ProbeSession::attach(probe, cli.chip, cli.speed)?;
+
             // Bypass attach chip when erase flash with NRST or Power-off
-            if let Erase { method } = command {
-                if let EraseMode::Default = method {
-                    probe.attach_chip(cli.chip)?;
-                }
-            } else {
-                probe.attach_chip(cli.chip)?;
-            }
+            // if let Erase { method } = command {
+            //     if let EraseMode::Default = method {
+            //         probe.attach_chip(cli.chip)?;
+            //     }
+            // } else {
+            ////     probe.attach_chip(cli.chip)?;
+            // }
 
             match command {
                 Dev {} => {
-                    // probe.reset_debug_module()?;
-
-                    // probe.reset_debug_module()?;
-
-                    // probe.erase_flash_by_power_off()?;
-                    //  const FLASH_KEYR: u32 = 0x2000_0030;
-                    let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
-
-                    algo.reset_debug_module()?;
-                    //  algo.unlock_flash()?;
-                    //algo.fast_erase_32k(0x0800_0000)?;
-                    //algo.dump_pmp()?;
-                    // 0x40001045
-                    // algo.write_mem8(0x40001040, 0x57)?;
-                    // algo.write_mem8(0x40001040, 0xA8)?;
-
-                    // algo.write_mem8(0x2000_0000, 0xca)?;
-
-                    //algo.program_page(0x0800_0100, &[0x00; 256])?;
-                    //algo.erase_all()?;
-
-                    //algo.lock_flash()?;
-
-                    //algo.write_mem32(0x2000_0000, 0x45670123)?;
-
-                    //algo.ensure_mcu_halt()?;
-                    for i in 0..10 {
-                        let address = 0x40001040 + i * 4;
-                        let v = algo.read_mem32(address)?;
-                        println!("0x{:08x}: 0x{:08x}", address, v);
-                    }
-
-                    // algo.dump_pmp()?;
+                    // dev only
                 }
                 Dump {
                     address,
@@ -271,9 +242,7 @@ fn main() -> Result<()> {
                         address + length
                     );
 
-                    // probe.read_memory(address, length)?;
-                    let mut algo = wlink::dmi::Algorigthm::new(&mut probe);
-                    let out = algo.read_memory(address, length)?;
+                    let out = sess.read_memory(address, length)?;
 
                     if let Some(fname) = filename {
                         std::fs::write(&fname, &out)?;
@@ -293,25 +262,35 @@ fn main() -> Result<()> {
                         );
                     }
                 }
+                /*
                 Regs {} => {
                     log::info!("Dump GPRs");
                     probe.dump_regs()?;
                 }
-                Halt {} => {
+                                WriteReg { reg, value } => {
+                    let regno = reg as u16;
+                    log::info!("Set reg 0x{:04x} to 0x{:08x}", regno, value);
+                    probe.write_reg(regno, value)?;
+                }
+                WriteMem { address, value } => {
+                    log::info!("Write memory 0x{:08x} to 0x{:08x}", value, address);
+                    probe.write_memory_word(address, value)?;
+                }
+                                Halt {} => {
                     log::info!("Halt MCU");
                     probe.ensure_mcu_halt()?;
 
                     let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
                 }
-                Resume {} => {
+                                Resume {} => {
                     log::info!("Resume MCU");
                     probe.ensure_mcu_resume()?;
 
                     let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#?}");
                 }
-                Erase { method } => {
+                                Erase { method } => {
                     log::info!("Erase Flash...");
                     match method {
                         EraseMode::Default => {
@@ -321,6 +300,7 @@ fn main() -> Result<()> {
                     }
                     log::info!("Erase done");
                 }
+                */
                 Flash {
                     address,
                     erase,
@@ -329,11 +309,11 @@ fn main() -> Result<()> {
                     enable_sdi_print,
                     watch_serial,
                 } => {
-                    probe.dump_info(false)?;
+                    sess.dump_info()?;
 
                     let firmware = read_firmware_from_file(path)?;
                     let start_address = address.unwrap_or_else(|| {
-                        probe.chip.as_ref().unwrap().chip_family.code_flash_start()
+                        sess.chip_family.code_flash_start()
                     });
                     log::info!(
                         "Flashing {} bytes to 0x{:08x}",
@@ -343,24 +323,25 @@ fn main() -> Result<()> {
 
                     if erase {
                         log::info!("Erase Flash");
-                        probe.erase_flash()?;
+                        sess.erase_flash()?;
                     }
 
-                    probe.write_flash(&firmware, start_address)?;
+                    sess.write_flash(&firmware, start_address)?;
                     log::info!("Flash done");
 
                     sleep(Duration::from_millis(500));
 
                     if !no_run {
                         log::info!("Now reset...");
-                        probe.send_command(commands::Reset::Soft)?;
+                        sess.soft_reset()?;
                         if enable_sdi_print {
-                            probe.enable_sdi_print(true)?;
+                            sess.set_sdi_print_enabled(true)?;
+
                             will_detach = false;
                             log::info!("Now connect to the WCH-Link serial port to read SDI print");
                         }
                         if watch_serial {
-                            wlink::operations::watch_serial()?;
+                            wlink::probe::watch_serial()?;
                         } else {
                             sleep(Duration::from_millis(500));
                         }
@@ -368,33 +349,25 @@ fn main() -> Result<()> {
                 }
                 Unprotect {} => {
                     log::info!("Unprotect Flash");
-                    probe.protect_flash(false)?;
+                    sess.protect_flash(false)?;
                 }
                 Protect {} => {
                     log::info!("Protect Flash");
-                    probe.protect_flash(true)?;
+                    sess.protect_flash(true)?;
                 }
                 Reset {} => {
                     // probe.send_command(commands::Reset::Quit)?;
-                    probe.soft_reset()?;
+                    sess.soft_reset()?;
                     log::info!("Soft reset");
                     sleep(Duration::from_millis(300));
-                    probe.ensure_mcu_resume()?;
-
+                    // probe.ensure_mcu_resume()?;
                     // probe.reset_debug_module()?;
                 }
-                WriteReg { reg, value } => {
-                    let regno = reg as u16;
-                    log::info!("Set reg 0x{:04x} to 0x{:08x}", regno, value);
-                    probe.write_reg(regno, value)?;
-                }
-                WriteMem { address, value } => {
-                    log::info!("Write memory 0x{:08x} to 0x{:08x}", value, address);
-                    probe.write_memory_word(address, value)?;
-                }
-                Status {} => {
-                    probe.dump_info(true)?;
 
+                Status {} => {
+                    sess.dump_info()?;
+
+                    /*
                     let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
                     let dmcontrol: regs::Dmcontrol = probe.read_dmi_reg()?;
@@ -408,6 +381,7 @@ fn main() -> Result<()> {
 
                     let cpbr = probe.dmi_read(0x7E)?;
                     log::info!("cpbr: {:#x?}", cpbr);
+                    */
                 }
                 SDIPrint(v) => {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,
@@ -417,18 +391,18 @@ fn main() -> Result<()> {
                     // https://github.com/openwch/ch32v003/tree/main/EVT/EXAM/SDI_Printf/SDI_Printf
                     if v.is_enable() {
                         log::info!("Enabling SDI print");
-                        probe.enable_sdi_print(true)?;
+                        sess.set_sdi_print_enabled(true)?;
                         will_detach = false;
                         log::info!("Now you can connect to the WCH-Link serial port");
                     } else {
                         log::info!("Disabling SDI print");
-                        probe.enable_sdi_print(false)?;
+                        sess.set_sdi_print_enabled(false)?;
                     }
                 }
                 _ => unreachable!("unimplemented command"),
             }
             if will_detach {
-                probe.detach_chip()?;
+                sess.detach_chip()?;
             }
         }
     }

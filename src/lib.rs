@@ -2,88 +2,18 @@ use std::{fmt, str::FromStr};
 
 pub mod chips;
 pub mod commands;
-pub mod device;
 pub mod dmi;
 pub mod error;
+pub mod firmware;
 pub mod flash_op;
-pub mod format;
 pub mod operations;
 pub mod probe;
 pub mod regs;
-// pub mod transport;
 pub mod usb_device;
 
-use commands::RawCommand;
-use device::WchLink;
+use probe::WchLink;
 
 pub use crate::error::{Error, Result};
-
-/// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(u8)]
-pub enum WchLinkVariant {
-    /// WCH-Link-CH549, does not support CH32V00X
-    Ch549 = 1,
-    /// WCH-LinkE-CH32V305
-    ECh32v305 = 2,
-    /// WCH-LinkS-CH32V203
-    SCh32v203 = 3,
-    /// WCH-LinkW-CH32V208
-    WCh32v208 = 5,
-}
-
-impl WchLinkVariant {
-    pub fn try_from_u8(value: u8) -> Result<Self> {
-        match value {
-            1 => Ok(Self::Ch549),
-            2 | 0x12 => Ok(Self::ECh32v305),
-            3 => Ok(Self::SCh32v203),
-            5 | 0x85 => Ok(Self::WCh32v208),
-            _ => Err(Error::UnknownLinkVariant(value)),
-        }
-    }
-
-    /// CH549 variant does not support mode switch. re-program is needed.
-    pub fn support_switch_mode(&self) -> bool {
-        !matches!(self, WchLinkVariant::Ch549)
-    }
-
-    /// Only W, E mode support this, power functions
-    pub fn support_power_funcs(&self) -> bool {
-        matches!(self, WchLinkVariant::WCh32v208 | WchLinkVariant::ECh32v305)
-    }
-
-    /// Only E mode support SDR print functionality
-    pub fn support_sdi_print(&self) -> bool {
-        matches!(self, WchLinkVariant::ECh32v305)
-    }
-
-    /// Better use E variant, the Old CH549-based variant does not support all chips
-    pub fn support_chip(&self, chip: RiscvChip) -> bool {
-        match self {
-            WchLinkVariant::Ch549 => !matches!(
-                chip,
-                RiscvChip::CH32V003 | RiscvChip::CH32X035 | RiscvChip::CH643
-            ),
-            WchLinkVariant::WCh32v208 => !matches!(
-                chip,
-                RiscvChip::CH56X | RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X
-            ),
-            _ => true,
-        }
-    }
-}
-
-impl fmt::Display for WchLinkVariant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            WchLinkVariant::Ch549 => write!(f, "WCH-Link-CH549"),
-            WchLinkVariant::ECh32v305 => write!(f, "WCH-LinkE-CH32V305"),
-            WchLinkVariant::SCh32v203 => write!(f, "WCH-LinkS-CH32V203"),
-            WchLinkVariant::WCh32v208 => write!(f, "WCH-LinkW-CH32V208"),
-        }
-    }
-}
 
 /// Currently supported RISC-V chip series/family
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -188,17 +118,17 @@ impl RiscvChip {
     }
 
     /// Device-specific post init logic
-    pub fn post_init(&self, probe: &mut WchLink) -> Result<()> {
+    pub fn do_post_init(&self, probe: &mut WchLink) -> Result<()> {
         match self {
             RiscvChip::CH32V103 => {
                 // 81 0d 01 03
                 // 81 0d 01 10
-                let _ = probe.send_command(RawCommand::<0x0d>(vec![0x03]))?;
-                // let _ = probe.send_command(RawCommand::<0x0d>(vec![0x10]))?;
+                let _ = probe.send_command(commands::RawCommand::<0x0d>(vec![0x03]))?;
+                // let _ = probe.send_command(commands::RawCommand::<0x0d>(vec![0x10]))?;
             }
             RiscvChip::CH32V30X | RiscvChip::CH8571 | RiscvChip::CH32V003 => {
                 // 81 0d 01 03
-                // let _ = probe.send_command(RawCommand::<0x0d>(vec![0x03]))?;
+                // let _ = probe.send_command(commands::RawCommand::<0x0d>(vec![0x03]))?;
             }
             RiscvChip::CH57X | RiscvChip::CH58X => {
                 log::warn!("The debug interface has been opened, there is a risk of code leakage.");
@@ -209,7 +139,7 @@ impl RiscvChip {
                 log::warn!("Please ensure that the debug interface has been closed before leaving factory!");
                 // 81 0d 01 04
                 // should test returen value
-                let resp = probe.send_command(RawCommand::<0x0d>(vec![0x04]))?;
+                let resp = probe.send_command(commands::RawCommand::<0x0d>(vec![0x04]))?;
                 log::debug!("TODO, handle CH56X resp {:?}", resp);
             }
             _ => (),
@@ -217,7 +147,8 @@ impl RiscvChip {
         Ok(())
     }
 
-    fn flash_op(&self) -> &'static [u8] {
+    // TODO: CH32V003 has two flash_op for different flash start address
+    fn get_flash_op(&self) -> &'static [u8] {
         match self {
             RiscvChip::CH32V003 | RiscvChip::CH641 => &flash_op::CH32V003,
             RiscvChip::CH32V103 => &flash_op::CH32V103,
@@ -269,7 +200,7 @@ impl RiscvChip {
         }
     }
 
-    // packsize for fastprogram
+    /// pack size for fastprogram
     pub fn write_pack_size(&self) -> u32 {
         match self {
             RiscvChip::CH32V003 | RiscvChip::CH641 => 1024,
@@ -293,6 +224,7 @@ impl FromStr for RiscvChip {
             "CH58X" => Ok(RiscvChip::CH58X),
             "CH59X" => Ok(RiscvChip::CH59X),
             "CH32X035" => Ok(RiscvChip::CH32X035),
+            "CH32X033" => Ok(RiscvChip::CH32X035),
             "CH643" => Ok(RiscvChip::CH643),
             "CH32L103" => Ok(RiscvChip::CH32L103),
             "CH8571" => Ok(RiscvChip::CH8571),
