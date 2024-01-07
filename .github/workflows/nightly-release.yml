@@ -51,6 +51,32 @@ jobs:
           name: wlink-binaries
           path: wlink-${{ matrix.config.arch }}.tar.gz
 
+  build-win-x86:
+    name: build (windows-x86)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          target: i686-pc-windows-msvc
+          components: rustfmt, clippy
+          override: true
+      - name: Build
+        run: cargo build --release --target i686-pc-windows-msvc
+      - name: Compress binary
+        run: |
+          mkdir -p release
+          cp target/i686-pc-windows-msvc/release/wlink.exe release/
+          cp README.md release/
+          (cd release/ && tar -czvf ../wlink-win-x86.tar.gz *)
+      - uses: actions/upload-artifact@v3
+        with:
+          name: wlink-binaries
+          path: wlink-win-x86.tar.gz
+
   build-macos-arm64:
     name: build (macos-arm64)
     runs-on: macos-latest
@@ -78,7 +104,7 @@ jobs:
           path: wlink-macos-arm64.tar.gz
 
   release:
-    needs: [build, build-macos-arm64]
+    needs: [build, build-macos-arm64, build-win-x86]
     runs-on: ubuntu-22.04
     steps:
       - name: Download Artifacts
@@ -102,6 +128,8 @@ jobs:
           prerelease: false
           body: |
             This is a nightly binary release of the wlink command line tool.
+
+            For Windows users, please use the x86 version since it has the Windows driver support.
 
           files: |
             wlink-*.tar.gz
