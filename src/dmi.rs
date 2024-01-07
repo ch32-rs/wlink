@@ -380,6 +380,8 @@ impl ProbeSession {
     }
 
     pub fn dump_dmi(&mut self) -> Result<()> {
+        log::warn!("The halt status may be incorrect because detaching might resume the MCU");
+
         let dmstatus: regs::Dmstatus = self.probe.read_dmi_reg()?;
         log::info!("{dmstatus:#x?}");
         let dmcontrol: regs::Dmcontrol = self.probe.read_dmi_reg()?;
