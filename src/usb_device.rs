@@ -1,7 +1,10 @@
 //! USB Device abstraction - The USB Device of WCH-Link.
 
 use crate::Result;
-use std::{fmt::{Display, Debug}, time::Duration};
+use std::{
+    fmt::{Debug, Display},
+    time::Duration,
+};
 
 pub trait USBDeviceBackend: Debug {
     fn set_timeout(&mut self, _timeout: Duration) {}
@@ -154,8 +157,8 @@ pub mod libusb {
 
 #[cfg(all(target_os = "windows", target_arch = "x86"))]
 pub mod ch375_driver {
-    use std::fmt;
     use libloading::os::windows::*;
+    use std::fmt;
 
     use super::*;
     use crate::Error;

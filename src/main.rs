@@ -212,36 +212,30 @@ fn main() -> Result<()> {
                 WchLink::switch_from_dap_to_rv(device_index)?;
             }
         }
-        /*
+
         Some(Erase { method }) if method != EraseMode::Default => {
             // Special handling for non-default erase: bypass attach chip
+            // So a chip family info is required, no detection
+            let chip_family = cli.chip.ok_or(wlink::Error::Custom(
+                "--chip required to do a special erase".into(),
+            ))?;
+
             let mut probe = WchLink::open_nth(device_index)?;
-            probe.probe_info()?;
-            probe.set_speed(cli.speed);
             log::info!("Erase chip by {:?}", method);
             match method {
                 EraseMode::PowerOff => {
-                    probe.erase_flash_by_power_off(cli.chip)?;
+                    ProbeSession::erase_flash_by_power_off(&mut probe, chip_family)?;
                 }
                 EraseMode::PinRst => {
                     log::warn!("Code flash erase by RST pin requires a RST pin connection");
-                    probe.erase_flash_by_rst_pin(cli.chip)?;
+                    ProbeSession::erase_flash_by_rst_pin(&mut probe, chip_family)?;
                 }
                 _ => unreachable!(),
             }
-        }*/
+        }
         Some(command) => {
             let probe = WchLink::open_nth(device_index)?;
             let mut sess = ProbeSession::attach(probe, cli.chip, cli.speed)?;
-
-            // Bypass attach chip when erase flash with NRST or Power-off
-            // if let Erase { method } = command {
-            //     if let EraseMode::Default = method {
-            //         probe.attach_chip(cli.chip)?;
-            //     }
-            // } else {
-            ////     probe.attach_chip(cli.chip)?;
-            // }
 
             match command {
                 Dev {} => {
