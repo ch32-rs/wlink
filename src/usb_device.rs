@@ -32,12 +32,6 @@ pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBacke
 
 pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
     let mut ret = vec![];
-    ret.extend(
-        libusb::list_libusb_devices(vid, pid)?
-            .into_iter()
-            .map(|s| s.to_string()),
-    );
-
     #[cfg(all(target_os = "windows", target_arch = "x86"))]
     {
         ret.extend(
@@ -46,6 +40,12 @@ pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
                 .map(|s| s.to_string()),
         );
     }
+
+    ret.extend(
+        libusb::list_libusb_devices(vid, pid)?
+            .into_iter()
+            .map(|s| s.to_string()),
+    );
 
     Ok(ret)
 }
@@ -60,18 +60,21 @@ pub mod libusb {
         let context = rusb::Context::new()?;
         let devices = context.devices()?;
         let mut result = vec![];
-        for (i, device) in devices.iter().enumerate() {
+        let mut idx = 0;
+
+        for device in devices.iter() {
             let device_desc = device.device_descriptor()?;
             if device_desc.vendor_id() == vid && device_desc.product_id() == pid {
                 result.push(format!(
-                    "<WCH-Link#{}> Bus {:03} Device {:03} ID {:04x}:{:04x}({})",
-                    i,
+                    "<WCH-Link#{} libusb device> Bus {:03} Device {:03} ID {:04x}:{:04x}({})",
+                    idx,
                     device.bus_number(),
                     device.address(),
                     device_desc.vendor_id(),
                     device_desc.product_id(),
                     get_speed(device.speed())
                 ));
+                idx += 1;
             }
         }
         Ok(result)
@@ -230,16 +233,20 @@ pub mod ch375_driver {
                 let mut descr = unsafe { core::mem::zeroed() };
                 let mut len = core::mem::size_of::<UsbDeviceDescriptor>() as u32;
                 let _ = unsafe { get_device_descriptor(i, &mut descr, &mut len) };
-                let vid = descr.idVendor;
-                let pid = descr.idProduct;
 
-                log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
-                if vid == vid && pid == pid {
-                    ret.push(format!("<WCH-Link#{}> {:04x}:{:04x}", i, vid, pid));
+                if descr.idVendor == vid && descr.idProduct == pid {
+                    ret.push(format!(
+                        "<WCH-Link#{} WCHLinkDLL device> CH375Driver Device {:04x}:{:04x}",
+                        i, vid, pid
+                    ));
+
+                    log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
                 }
                 unsafe { close_device(i) };
             }
         }
+
+        Ok(ret)
     }
 
     /// USB Device implementation provided by CH375 Windows driver
@@ -247,7 +254,7 @@ pub mod ch375_driver {
         index: u32,
     }
 
-    impl fmt::Debug for LibUSBDevice {
+    impl fmt::Debug for CH375USBDevice {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("USBDevice")
                 .field("provider", &"ch375")
@@ -280,12 +287,10 @@ pub mod ch375_driver {
                     let mut descr = unsafe { core::mem::zeroed() };
                     let mut len = core::mem::size_of::<UsbDeviceDescriptor>() as u32;
                     let _ = unsafe { get_device_descriptor(i, &mut descr, &mut len) };
-                    let vid = descr.idVendor;
-                    let pid = descr.idProduct;
 
-                    log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
-                    if vid == vid && pid == pid {
+                    if descr.idVendor == vid && descr.idProduct == pid {
                         if idx == nth {
+                            log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
                             return Ok(Box::new(CH375USBDevice { index: i }));
                         } else {
                             idx += 1;
