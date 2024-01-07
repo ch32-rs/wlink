@@ -45,6 +45,18 @@ enum EraseMode {
     Default,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum ResetMode {
+    /// Quit reset
+    Quit,
+    /// Reset and run
+    Run,
+    /// Reset and halt
+    Halt,
+    /// Reset DM(Debug module)
+    Dm,
+}
+
 #[derive(Subcommand)]
 enum Commands {
     /// Dump memory region
@@ -116,7 +128,11 @@ enum Commands {
     /// Resumes the MCU
     Resume {},
     /// Reset the MCU
-    Reset {},
+    Reset {
+        /// Reset mode
+        #[arg(default_value = "quit")]
+        mode: ResetMode,
+    },
     /// Debug, check status
     Status {},
     /// Swifth mode from RV to DAP or vice versa
@@ -262,45 +278,47 @@ fn main() -> Result<()> {
                         );
                     }
                 }
-                /*
                 Regs {} => {
                     log::info!("Dump GPRs");
-                    probe.dump_regs()?;
+                    sess.dump_regs()?;
+                    sess.dump_pmp_csrs()?;
                 }
-                                WriteReg { reg, value } => {
+                WriteReg { reg, value } => {
                     let regno = reg as u16;
                     log::info!("Set reg 0x{:04x} to 0x{:08x}", regno, value);
-                    probe.write_reg(regno, value)?;
+                    sess.write_reg(regno, value)?;
                 }
                 WriteMem { address, value } => {
                     log::info!("Write memory 0x{:08x} to 0x{:08x}", value, address);
-                    probe.write_memory_word(address, value)?;
+                    sess.write_mem32(address, value)?;
                 }
-                                Halt {} => {
+                Halt {} => {
                     log::info!("Halt MCU");
-                    probe.ensure_mcu_halt()?;
+                    sess.reset_debug_module()?;
+                    sess.ensure_mcu_halt()?;
 
-                    let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
+                    will_detach = false; // detach will ersume the MCU
+
+                    let dmstatus: regs::Dmstatus = sess.probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
                 }
-                                Resume {} => {
+                Resume {} => {
                     log::info!("Resume MCU");
-                    probe.ensure_mcu_resume()?;
+                    sess.ensure_mcu_resume()?;
 
-                    let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
+                    let dmstatus: regs::Dmstatus = sess.probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#?}");
                 }
-                                Erase { method } => {
+                Erase { method } => {
                     log::info!("Erase Flash...");
                     match method {
                         EraseMode::Default => {
-                            probe.erase_flash()?;
+                            sess.erase_flash()?;
                         }
                         _ => unreachable!(),
                     }
                     log::info!("Erase done");
                 }
-                */
                 Flash {
                     address,
                     erase,
@@ -312,9 +330,8 @@ fn main() -> Result<()> {
                     sess.dump_info()?;
 
                     let firmware = read_firmware_from_file(path)?;
-                    let start_address = address.unwrap_or_else(|| {
-                        sess.chip_family.code_flash_start()
-                    });
+                    let start_address =
+                        address.unwrap_or_else(|| sess.chip_family.code_flash_start());
                     log::info!(
                         "Flashing {} bytes to 0x{:08x}",
                         firmware.len(),
@@ -355,33 +372,32 @@ fn main() -> Result<()> {
                     log::info!("Protect Flash");
                     sess.protect_flash(true)?;
                 }
-                Reset {} => {
-                    // probe.send_command(commands::Reset::Quit)?;
-                    sess.soft_reset()?;
-                    log::info!("Soft reset");
-                    sleep(Duration::from_millis(300));
-                    // probe.ensure_mcu_resume()?;
-                    // probe.reset_debug_module()?;
-                }
+                Reset { mode } => {
+                    log::info!("Reset {:?}", mode);
+                    match mode {
+                        ResetMode::Quit => {
+                            sess.probe.send_command(commands::Reset::Soft)?;
+                        }
+                        ResetMode::Run => {
+                            sess.ensure_mcu_resume()?;
+                        }
+                        ResetMode::Halt => {
+                            sess.ensure_mcu_halt()?;
 
+                            will_detach = false; // detach will ersume the MCU
+                        }
+                        ResetMode::Dm => {
+                            sess.reset_debug_module()?;
+
+                            will_detach = false; // detach will ersume the MCU
+                        }
+                    }
+                    sleep(Duration::from_millis(300));
+                }
                 Status {} => {
                     sess.dump_info()?;
-
-                    /*
-                    let dmstatus: regs::Dmstatus = probe.read_dmi_reg()?;
-                    log::info!("{dmstatus:#x?}");
-                    let dmcontrol: regs::Dmcontrol = probe.read_dmi_reg()?;
-                    log::info!("{dmcontrol:#x?}");
-                    let hartinfo: regs::Hartinfo = probe.read_dmi_reg()?;
-                    log::info!("{hartinfo:#x?}");
-                    let abstractcs: regs::Abstractcs = probe.read_dmi_reg()?;
-                    log::info!("{abstractcs:#x?}");
-                    let haltsum0 = probe.dmi_read(0x40)?;
-                    log::info!("haltsum0: {:#x?}", haltsum0);
-
-                    let cpbr = probe.dmi_read(0x7E)?;
-                    log::info!("cpbr: {:#x?}", cpbr);
-                    */
+                    sess.dump_core_csrs()?;
+                    sess.dump_dmi()?;
                 }
                 SDIPrint(v) => {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,

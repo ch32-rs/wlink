@@ -272,6 +272,7 @@ pub enum Reset {
     Soft, // the most common reset
     Normal,
     /// wlink_chip_reset, chip reset
+    // The memory is not reseted
     Chip,
 }
 impl Command for Reset {

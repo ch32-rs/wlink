@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 pub mod chips;
 pub mod commands;
@@ -108,6 +108,10 @@ impl RiscvChip {
                 | RiscvChip::CH643
                 | RiscvChip::CH641
         )
+    }
+
+    pub fn is_rv32ec(&self) -> bool {
+        matches!(self, RiscvChip::CH32V003 | RiscvChip::CH641)
     }
 
     pub fn reset_command(&self) -> crate::commands::Reset {

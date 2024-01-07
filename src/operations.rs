@@ -4,10 +4,8 @@ use indicatif::ProgressBar;
 use std::{thread::sleep, time::Duration};
 
 use crate::{
-    commands::{self, control::ProbeInfo, DmiOp, Speed},
-    error::AbstractcsCmdErr,
+    commands::{self, Speed},
     probe::WchLink,
-    regs::{self, Abstractcs, Dmcontrol, Dmstatus},
     Error, Result, RiscvChip,
 };
 
@@ -124,16 +122,7 @@ impl ProbeSession {
         }
         /*
         if detailed {
-            let misa = self.read_reg(regs::MISA)?;
-            log::trace!("Read csr misa: {misa:08x}");
-            let misa = parse_misa(misa);
-            log::info!("RISC-V ISA: {misa:?}");
 
-            // detect chip's RISC-V core version, QingKe cores
-            let marchid = self.read_reg(regs::MARCHID)?;
-            log::trace!("Read csr marchid: {marchid:08x}");
-            let core_type = parse_marchid(marchid);
-            log::info!("RISC-V arch: {core_type:?}");
         }
         */
         Ok(())
@@ -330,87 +319,6 @@ impl ProbeSession {
 }
 
 /*
-impl WchLink {
-    pub fn probe_info(&mut self) -> Result<ProbeInfo> {
-        let info = self.send_command(commands::control::GetProbeInfo)?;
-        log::info!("{}", info);
-        self.probe = Some(info);
-        Ok(info)
-    }
-
-    /// Attach chip and get chip info
-    pub fn attach_chip(&mut self, expected_chip: Option<RiscvChip>) -> Result<()> {
-        if self.chip.is_some() {
-            log::warn!("Chip already attached");
-        }
-
-        let probe_info = self.probe_info()?;
-
-        if let Some(chip) = expected_chip {
-            if !probe_info.variant.support_chip(chip) {
-                log::error!("WCH-Link doesn't support the choosen MCU, please use WCH-LinkE!");
-                return Err(Error::UnsupportedChip(chip));
-            }
-        }
-
-        let mut chip_info = None;
-        for _ in 0..3 {
-            self.send_command(commands::SetSpeed {
-                riscvchip: expected_chip.unwrap_or(RiscvChip::CH32V103) as u8,
-                speed: self.speed,
-            })?;
-
-            if let Ok(resp) = self.send_command(commands::control::AttachChip) {
-                log::info!("Attached chip: {}", resp);
-                chip_info = Some(resp);
-
-                if let Some(expected_chip) = expected_chip {
-                    if resp.chip_family != expected_chip {
-                        log::error!(
-                            "Attached chip type ({:?}) does not match expected chip type ({:?})",
-                            resp.chip_family,
-                            expected_chip
-                        );
-                        return Err(Error::ChipMismatch(expected_chip, resp.chip_family));
-                    }
-                }
-                // set speed again
-                if expected_chip.is_none() {
-                    self.send_command(commands::SetSpeed {
-                        riscvchip: resp.chip_family as u8,
-                        speed: self.speed,
-                    })?;
-                }
-
-                break;
-            } else {
-                log::debug!("retrying...");
-                sleep(Duration::from_millis(100));
-            }
-        }
-        let chip_info = chip_info.ok_or(Error::NotAttached)?;
-
-        chip_info.chip_family.do_post_init(self)?;
-
-        //let ret = self.send_command(control::CheckQE)?;
-        //log::info!("Check QE: {:?}", ret);
-
-        // riscvchip = 7 => 2
-        //let flash_addr = chip_info.chip_family.code_flash_start();
-        //let page_size = chip_info.chip_family.data_packet_size();
-
-        let info = ChipInfo {
-            uid: None, // TODO
-            chip_family: chip_info.chip_family,
-            chip_id: chip_info.chip_id,
-            march: None,
-        };
-
-        self.chip = Some(info);
-        self.probe = Some(probe_info);
-
-        Ok(())
-    }
 
     // NOTE: this halts the MCU, so it's not suitable except for dumping info
     pub fn dump_info(&mut self, detailed: bool) -> Result<()> {
@@ -456,20 +364,6 @@ impl WchLink {
 
 
     // wlink_endprocess
-    /// Detach chip and let it resume
-    pub fn detach_chip(&mut self) -> Result<()> {
-        log::debug!("Detach chip");
-        self.send_command(commands::control::OptEnd)?;
-        self.chip = None;
-        Ok(())
-    }
-
-    fn reattach_chip(&mut self) -> Result<()> {
-        let current_chip_family = self.chip.as_ref().map(|i| i.chip_family);
-        self.detach_chip()?;
-        self.attach_chip(current_chip_family)?;
-        Ok(())
-    }
 
     pub fn read_flash_size_kb(&mut self) -> Result<u32> {
         // Ref: (DS) Chapter 31 Electronic Signature (ESIG)
@@ -591,29 +485,7 @@ impl WchLink {
         Ok(())
     }
 
-    // SingleLineExitPauseMode
-    pub fn ensure_mcu_resume(&mut self) -> Result<()> {
-        self.clear_dmstatus_havereset()?;
-        let dmstatus = self.read_dmi_reg::<Dmstatus>()?;
-        if dmstatus.allrunning() && dmstatus.anyrunning() {
-            log::debug!("Already running, nop");
-            return Ok(());
-        }
 
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
-        self.send_command(DmiOp::write(0x10, 0x80000001))?;
-        self.send_command(DmiOp::write(0x10, 0x00000001))?;
-        self.send_command(DmiOp::write(0x10, 0x40000001))?;
-
-        let dmstatus = self.read_dmi_reg::<Dmstatus>()?;
-        if dmstatus.allresumeack() && dmstatus.anyresumeack() {
-            log::debug!("Resumed");
-            Ok(())
-        } else {
-            log::warn!("Resume fails");
-            Ok(())
-        }
-    }
 
     /// Write a memory word, require MCU to be halted.
     ///
@@ -653,12 +525,6 @@ impl WchLink {
         Ok(())
     }
 
-    fn clear_dmstatus_havereset(&mut self) -> Result<()> {
-        let mut dmcontrol = self.read_dmi_reg::<Dmcontrol>()?;
-        dmcontrol.set_ackhavereset(true);
-        self.write_dmi_reg(dmcontrol)?;
-        Ok(())
-    }
 
     /// Clear cmderror field of abstractcs register.
     /// write 1 to clean the corresponding bit.
@@ -741,69 +607,8 @@ impl WchLink {
         Ok(())
     }
 
-    pub fn dump_regs(&mut self) -> Result<()> {
-        let dpc = self.read_reg(regs::DPC)?;
-        println!("dpc(pc):   0x{dpc:08x}");
 
-        let gprs = if self
-            .chip
-            .as_ref()
-            .map(|chip| chip.chip_family == RiscvChip::CH32V003)
-            .unwrap_or(false)
-        {
-            &regs::GPRS_RV32EC[..]
-        } else {
-            &regs::GPRS[..]
-        };
-
-        for (reg, name, regno) in gprs {
-            let val = self.read_reg(*regno)?;
-            println!("{reg:<4}{name:>5}: 0x{val:08x}");
-        }
-
-        for (reg, regno) in &regs::CSRS {
-            let val = self.read_reg(*regno)?;
-            println!("{reg:<9}: 0x{val:08x}");
-        }
-
-        Ok(())
-    }
 
 
 }
 */
-// marchid => dc68d882
-// Parsed marchid: WCH-V4B
-// Ref: QingKe V4 Manual
-fn parse_marchid(marchid: u32) -> Option<String> {
-    if marchid == 0 {
-        None
-    } else {
-        Some(format!(
-            "{}{}{}-{}{}{}",
-            (((marchid >> 26) & 0x1F) + 64) as u8 as char,
-            (((marchid >> 21) & 0x1F) + 64) as u8 as char,
-            (((marchid >> 16) & 0x1F) + 64) as u8 as char,
-            (((marchid >> 10) & 0x1F) + 64) as u8 as char,
-            ((((marchid >> 5) & 0x1F) as u8) + b'0') as char,
-            ((marchid & 0x1F) + 64) as u8 as char,
-        ))
-    }
-}
-
-fn parse_misa(misa: u32) -> Option<String> {
-    let mut s = String::new();
-    let mxl = (misa >> 30) & 0x3;
-    s.push_str(match mxl {
-        1 => "RV32",
-        2 => "RV64",
-        3 => "RV128",
-        _ => return None,
-    });
-    for i in 0..26 {
-        if (misa >> i) & 1 == 1 {
-            s.push((b'A' + i as u8) as char);
-        }
-    }
-    Some(s)
-}

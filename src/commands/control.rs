@@ -49,8 +49,11 @@ impl fmt::Display for ProbeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "WCH-Link v{}.{} ({})",
-            self.major_version, self.minor_version, self.variant
+            "WCH-Link v{}.{}(v{}) ({})",
+            self.major_version,
+            self.minor_version,
+            self.major_version + self.minor_version * 10,
+            self.variant
         )
     }
 }
@@ -75,7 +78,7 @@ pub struct AttachChipResponse {
 impl Response for AttachChipResponse {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 5 {
-            return Err(crate::error::Error::InvalidPayloadLength);
+            return Err(Error::InvalidPayloadLength);
         }
         Ok(Self {
             chip_family: RiscvChip::try_from_u8(bytes[0])?,

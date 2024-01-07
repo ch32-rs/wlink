@@ -1,11 +1,14 @@
-/// Access WchLink using RISC-V DMI
-
+/// Access MCU using RISC-V DMI
+///
+/// Ref:
+/// - RISC-V QingKeV2 Microprocessor Debug Manual.
+/// - RISC-V Debug Specification 0.13.2
 use crate::{
     commands::DmiOp,
     error::{AbstractcsCmdErr, Error, Result},
     operations::ProbeSession,
     probe::WchLink,
-    regs::{Abstractcs, DMReg, Dmcontrol, Dmstatus},
+    regs::{self, Abstractcs, DMReg, Dmcontrol, Dmstatus},
 };
 use std::{thread, time::Duration};
 
@@ -77,43 +80,22 @@ impl ProbeSession {
         self.probe.write_dmi_reg(abstractcs)?;
         Ok(())
     }
-}
-
-/*
-pub enum HaltMode {
-    NoReset,
-    Reset,
-    Reboot,
-    Resume,
-    /// Halt then go to bootloader
-    Bootloader,
-}
-
-pub struct Algorigthm<'a, D: DebugModuleInterface> {
-    dmi: &'a mut D,
-}
-
-impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
-    pub fn new(dmi: &'a mut D) -> Self {
-        Self { dmi }
-    }
-
-    fn clear_abstractcs_cmderr(&mut self) -> Result<()> {
-        let mut abstractcs = Abstractcs::from(0);
-        abstractcs.set_cmderr(0b111);
-        self.dmi.write_dmi_reg(abstractcs)?;
+    fn clear_dmstatus_havereset(&mut self) -> Result<()> {
+        let mut dmcontrol = self.probe.read_dmi_reg::<Dmcontrol>()?;
+        dmcontrol.set_ackhavereset(true);
+        self.probe.write_dmi_reg(dmcontrol)?;
         Ok(())
     }
 
     pub fn ensure_mcu_halt(&mut self) -> Result<()> {
-        let dmstatus = self.dmi.read_dmi_reg::<Dmstatus>()?;
+        let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
         if dmstatus.allhalted() && dmstatus.anyhalted() {
             log::trace!("Already halted, nop");
         } else {
             loop {
                 // Initiate a halt request
-                self.dmi.dmi_write(0x10, 0x80000001)?;
-                let dmstatus = self.dmi.read_dmi_reg::<Dmstatus>()?;
+                self.probe.dmi_write(0x10, 0x80000001)?;
+                let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
                 if dmstatus.anyhalted() && dmstatus.allhalted() {
                     break;
                 } else {
@@ -124,121 +106,46 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
         }
 
         // Clear the halt request bit.
-        self.dmi.dmi_write(0x10, 0x00000001)?;
-
+        self.probe.dmi_write(0x10, 0x00000001)?;
         Ok(())
     }
 
-    pub fn reset_debug_module(&mut self) -> Result<()> {
-        self.dmi.dmi_write(0x10, 0x00000000)?;
-        self.dmi.dmi_write(0x10, 0x00000001)?;
+    // SingleLineExitPauseMode
+    pub fn ensure_mcu_resume(&mut self) -> Result<()> {
+        self.clear_dmstatus_havereset()?;
+        let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
+        if dmstatus.allrunning() && dmstatus.anyrunning() {
+            log::debug!("Already running, nop");
+            return Ok(());
+        }
 
-        let dmcontrol = self.dmi.read_dmi_reg::<Dmcontrol>()?;
+        self.probe.send_command(DmiOp::write(0x10, 0x80000001))?;
+        self.probe.send_command(DmiOp::write(0x10, 0x80000001))?;
+        self.probe.send_command(DmiOp::write(0x10, 0x00000001))?;
+        // Initiate a resume request
+        self.probe.send_command(DmiOp::write(0x10, 0x40000001))?;
+
+        let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
+        if dmstatus.allresumeack() && dmstatus.anyresumeack() {
+            log::debug!("Resumed");
+            Ok(())
+        } else {
+            log::warn!("Resume fails");
+            Ok(())
+        }
+    }
+
+    pub fn reset_debug_module(&mut self) -> Result<()> {
+        self.probe.dmi_write(0x10, 0x00000000)?;
+        self.probe.dmi_write(0x10, 0x00000001)?;
+
+        let dmcontrol = self.probe.read_dmi_reg::<Dmcontrol>()?;
 
         if dmcontrol.dmactive() {
             Ok(())
         } else {
             Err(Error::DmiFailed)
         }
-    }
-
-    pub fn read_mem32(&mut self, addr: u32) -> Result<u32> {
-        self.dmi.dmi_write(0x20, 0x0002a303)?; // lw x6,0(x5)
-        self.dmi.dmi_write(0x21, 0x00100073)?; // ebreak
-
-        self.dmi.dmi_write(0x04, addr)?; // data0 <- address
-        self.clear_abstractcs_cmderr()?;
-
-        self.dmi.dmi_write(0x17, 0x00271005)?;
-
-        let abstractcs: Abstractcs = self.dmi.read_dmi_reg()?;
-        if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
-        }
-        if abstractcs.cmderr() != 0 {
-            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
-        }
-
-        self.dmi.dmi_write(0x17, 0x00221006)?; // data0 <- x6
-        if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
-        }
-        if abstractcs.cmderr() != 0 {
-            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
-        }
-
-        let data0 = self.dmi.dmi_read(0x04)?;
-        Ok(data0)
-    }
-
-    pub fn write_mem32(&mut self, addr: u32, data: u32) -> Result<()> {
-        // rasm2 -a riscv -d 23a07200
-        // sw t2, 0(t0)
-        self.dmi.dmi_write(0x20, 0x0072a023)?; // sw x7,0(x5)
-        self.dmi.dmi_write(0x21, 0x00100073)?; // ebreak
-
-        self.dmi.dmi_write(0x04, addr)?; // data0 <- address
-
-        self.clear_abstractcs_cmderr()?;
-        self.dmi.dmi_write(0x17, 0x00231005)?; // x5 <- data0
-
-        let abstractcs: Abstractcs = self.dmi.read_dmi_reg()?;
-        log::trace!("{:?}", abstractcs);
-        if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
-        }
-        if abstractcs.cmderr() != 0 {
-            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
-        }
-
-        self.dmi.dmi_write(0x04, data)?; // data0 <- data
-        self.clear_abstractcs_cmderr()?;
-
-        self.dmi.dmi_write(0x17, 0x00271007)?; // x7 <- data0
-
-        let abstractcs: Abstractcs = self.dmi.read_dmi_reg()?;
-        log::trace!("{:?}", abstractcs);
-        if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
-        }
-        if abstractcs.cmderr() != 0 {
-            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
-        }
-        Ok(())
-    }
-
-    pub fn write_mem8(&mut self, addr: u32, data: u8) -> Result<()> {
-        self.dmi.dmi_write(0x20, 0x00728023)?; // sb x7,0(x5)
-        self.dmi.dmi_write(0x21, 0x00100073)?; // ebreak
-
-        self.dmi.dmi_write(0x04, addr)?; // data0 <- address
-
-        self.clear_abstractcs_cmderr()?;
-        self.dmi.dmi_write(0x17, 0x00231005)?; // x5 <- data0
-
-        let abstractcs: Abstractcs = self.dmi.read_dmi_reg()?;
-        log::trace!("{:?}", abstractcs);
-        if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
-        }
-        if abstractcs.cmderr() != 0 {
-            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
-        }
-
-        self.dmi.dmi_write(0x04, data as u32)?; // data0 <- data
-        self.clear_abstractcs_cmderr()?;
-
-        self.dmi.dmi_write(0x17, 0x00271007)?; // x7 <- data0
-
-        let abstractcs: Abstractcs = self.dmi.read_dmi_reg()?;
-        log::trace!("{:?}", abstractcs);
-        if abstractcs.busy() {
-            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
-        }
-        if abstractcs.cmderr() != 0 {
-            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
-        }
-        Ok(())
     }
 
     /// Read register value
@@ -250,10 +157,10 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
         self.clear_abstractcs_cmderr()?;
 
         let reg = regno as u32;
-        self.dmi.dmi_write(0x04, 0x00000000)?; // Clear the Data0 register
-        self.dmi.dmi_write(0x17, 0x00220000 | (reg & 0xFFFF))?;
+        self.probe.dmi_write(0x04, 0x00000000)?; // Clear the Data0 register
+        self.probe.dmi_write(0x17, 0x00220000 | (reg & 0xFFFF))?;
 
-        let abstractcs = self.dmi.read_dmi_reg::<Abstractcs>()?;
+        let abstractcs = self.probe.read_dmi_reg::<Abstractcs>()?;
         if abstractcs.busy() {
             return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); // resue busy
         }
@@ -261,24 +168,126 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
             AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
         }
 
-        let resp = self.dmi.dmi_read(0x04)?;
+        let resp = self.probe.dmi_read(0x04)?;
 
         Ok(resp)
     }
 
-    pub fn dump_pmp(&mut self) -> Result<()> {
-        let regs = [
-            ("pmpcfg0", 0x3A0),
-            ("pmpaddr0", 0x3B0),
-            ("pmpaddr1", 0x3B1),
-            ("pmpaddr2", 0x3B2),
-            ("pmpaddr3", 0x3B3),
-        ];
-        for (name, addr) in regs.iter() {
-            let val = self.read_reg(*addr)?;
-            log::info!("{}: 0x{:08x}", name, val);
+    pub fn write_reg(&mut self, regno: u16, value: u32) -> Result<()> {
+        // self.ensure_mcu_halt()?;
+
+        let reg = regno as u32;
+        self.probe.send_command(DmiOp::write(0x04, value))?;
+        self.probe
+            .send_command(DmiOp::write(0x17, 0x00230000 | (reg & 0xFFFF)))?;
+
+        let abstractcs = self.probe.read_dmi_reg::<Abstractcs>()?;
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
         }
 
+        Ok(())
+    }
+
+    pub fn read_mem32(&mut self, addr: u32) -> Result<u32> {
+        self.probe.dmi_write(0x20, 0x0002a303)?; // lw x6,0(x5)
+        self.probe.dmi_write(0x21, 0x00100073)?; // ebreak
+
+        self.probe.dmi_write(0x04, addr)?; // data0 <- address
+        self.clear_abstractcs_cmderr()?;
+
+        self.probe.dmi_write(0x17, 0x00271005)?;
+
+        let abstractcs: Abstractcs = self.probe.read_dmi_reg()?;
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+
+        self.probe.dmi_write(0x17, 0x00221006)?; // data0 <- x6
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+
+        let data0 = self.probe.dmi_read(0x04)?;
+        Ok(data0)
+    }
+
+    pub fn write_mem32(&mut self, addr: u32, data: u32) -> Result<()> {
+        // rasm2 -a riscv -d 23a07200
+        // sw t2, 0(t0)
+        self.probe.dmi_write(0x20, 0x0072a023)?; // sw x7,0(x5)
+        self.probe.dmi_write(0x21, 0x00100073)?; // ebreak
+
+        self.probe.dmi_write(0x04, addr)?; // data0 <- address
+
+        self.clear_abstractcs_cmderr()?;
+        self.probe.dmi_write(0x17, 0x00231005)?; // x5 <- data0
+
+        let abstractcs: Abstractcs = self.probe.read_dmi_reg()?;
+        log::trace!("{:?}", abstractcs);
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+
+        self.probe.dmi_write(0x04, data)?; // data0 <- data
+        self.clear_abstractcs_cmderr()?;
+
+        self.probe.dmi_write(0x17, 0x00271007)?; // x7 <- data0
+
+        let abstractcs: Abstractcs = self.probe.read_dmi_reg()?;
+        log::trace!("{:?}", abstractcs);
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+        Ok(())
+    }
+
+    pub fn write_mem8(&mut self, addr: u32, data: u8) -> Result<()> {
+        self.probe.dmi_write(0x20, 0x00728023)?; // sb x7,0(x5)
+        self.probe.dmi_write(0x21, 0x00100073)?; // ebreak
+
+        self.probe.dmi_write(0x04, addr)?; // data0 <- address
+
+        self.clear_abstractcs_cmderr()?;
+        self.probe.dmi_write(0x17, 0x00231005)?; // x5 <- data0
+
+        let abstractcs: Abstractcs = self.probe.read_dmi_reg()?;
+        log::trace!("{:?}", abstractcs);
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
+
+        self.probe.dmi_write(0x04, data as u32)?; // data0 <- data
+        self.clear_abstractcs_cmderr()?;
+
+        self.probe.dmi_write(0x17, 0x00271007)?; // x7 <- data0
+
+        let abstractcs: Abstractcs = self.probe.read_dmi_reg()?;
+        log::trace!("{:?}", abstractcs);
+        if abstractcs.busy() {
+            return Err(Error::AbstractCommandError(AbstractcsCmdErr::Busy)); //resue busy
+        }
+        if abstractcs.cmderr() != 0 {
+            AbstractcsCmdErr::try_from_cmderr(abstractcs.cmderr() as _)?;
+        }
         Ok(())
     }
 
@@ -305,7 +314,8 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
         }
     }
 
-    pub fn read_memory(&mut self, addr: u32, len: u32) -> Result<Vec<u8>> {
+    // The same as read_memory, but use DMI
+    pub fn read_memory_by_dmi(&mut self, addr: u32, len: u32) -> Result<Vec<u8>> {
         if len % 4 != 0 {
             return Err(Error::Custom("len must be 4 bytes aligned".to_string()));
         }
@@ -317,7 +327,75 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
         }
         Ok(ret)
     }
+}
 
+impl ProbeSession {
+    pub fn dump_core_csrs(&mut self) -> Result<()> {
+        let misa = self.read_reg(regs::MISA)?;
+        log::trace!("Read csr misa: {misa:08x}");
+        let misa = parse_misa(misa);
+        log::info!("RISC-V ISA(misa): {misa:?}");
+
+        // detect chip's RISC-V core version, QingKe cores
+        let marchid = self.read_reg(regs::MARCHID)?;
+        log::trace!("Read csr marchid: {marchid:08x}");
+        let core_type = parse_marchid(marchid);
+        log::info!("RISC-V arch(marchid): {core_type:?}");
+
+        // mimpid is always "WCH", skip
+        Ok(())
+    }
+
+    pub fn dump_regs(&mut self) -> Result<()> {
+        let dpc = self.read_reg(regs::DPC)?;
+        println!("dpc(pc):   0x{dpc:08x}");
+
+        let gprs = if self.chip_family.is_rv32ec() {
+            regs::GPRS_RV32EC
+        } else {
+            regs::GPRS
+        };
+
+        for (reg, name, regno) in gprs {
+            let val = self.read_reg(*regno)?;
+            println!("{reg:<4}{name:>5}: 0x{val:08x}");
+        }
+
+        for (reg, regno) in regs::CSRS {
+            let val = self.read_reg(*regno)?;
+            println!("{reg:<9}: 0x{val:08x}");
+        }
+
+        Ok(())
+    }
+
+    /// Only for Qingke V4
+    pub fn dump_pmp_csrs(&mut self) -> Result<()> {
+        for (name, addr) in regs::PMP_CSRS {
+            let val = self.read_reg(*addr)?;
+            log::debug!("{}: 0x{:08x}", name, val);
+        }
+
+        Ok(())
+    }
+
+    pub fn dump_dmi(&mut self) -> Result<()> {
+        let dmstatus: regs::Dmstatus = self.probe.read_dmi_reg()?;
+        log::info!("{dmstatus:#x?}");
+        let dmcontrol: regs::Dmcontrol = self.probe.read_dmi_reg()?;
+        log::info!("{dmcontrol:#x?}");
+        let hartinfo: regs::Hartinfo = self.probe.read_dmi_reg()?;
+        log::info!("{hartinfo:#x?}");
+        let abstractcs: regs::Abstractcs = self.probe.read_dmi_reg()?;
+        log::info!("{abstractcs:#x?}");
+        let haltsum0 = self.probe.dmi_read(0x40)?;
+        log::info!("haltsum0: {:#x?}", haltsum0);
+
+        Ok(())
+    }
+}
+
+/*
     fn lock_flash(&mut self) -> Result<()> {
         const FLASH_CTLR: u32 = 0x40022010;
 
@@ -572,3 +650,39 @@ impl<'a, D: DebugModuleInterface> Algorigthm<'a, D> {
 }
 
 */
+
+// marchid => dc68d882
+// Parsed marchid: WCH-V4B
+// Ref: QingKe V4 Manual
+fn parse_marchid(marchid: u32) -> Option<String> {
+    if marchid == 0 {
+        None
+    } else {
+        Some(format!(
+            "{}{}{}-{}{}{}",
+            (((marchid >> 26) & 0x1F) + 64) as u8 as char,
+            (((marchid >> 21) & 0x1F) + 64) as u8 as char,
+            (((marchid >> 16) & 0x1F) + 64) as u8 as char,
+            (((marchid >> 10) & 0x1F) + 64) as u8 as char,
+            ((((marchid >> 5) & 0x1F) as u8) + b'0') as char,
+            ((marchid & 0x1F) + 64) as u8 as char,
+        ))
+    }
+}
+
+fn parse_misa(misa: u32) -> Option<String> {
+    let mut s = String::new();
+    let mxl = (misa >> 30) & 0x3;
+    s.push_str(match mxl {
+        1 => "RV32",
+        2 => "RV64",
+        3 => "RV128",
+        _ => return None,
+    });
+    for i in 0..26 {
+        if (misa >> i) & 1 == 1 {
+            s.push((b'A' + i as u8) as char);
+        }
+    }
+    Some(s)
+}
