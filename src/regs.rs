@@ -14,6 +14,7 @@ pub const MCAUSE: u16 = 0x342;
 pub const MTVAL: u16 = 0x343;
 pub const DPC: u16 = 0x7b1;
 
+// Debug interface, DMI registers
 pub const DMDATA0: u8 = 0x04;
 pub const DMDATA1: u8 = 0x05;
 pub const DMCONTROL: u8 = 0x10;
@@ -21,6 +22,7 @@ pub const DMSTATUS: u8 = 0x11;
 pub const DMHARTINFO: u8 = 0x12;
 pub const DMABSTRACTCS: u8 = 0x16;
 pub const DMCOMMAND: u8 = 0x17;
+// Not available for QingkeV2, QingkeV3
 pub const DMABSTRACTAUTO: u8 = 0x18;
 pub const DMPROGBUF0: u8 = 0x20;
 pub const DMPROGBUF1: u8 = 0x21;
@@ -30,9 +32,10 @@ pub const DMPROGBUF4: u8 = 0x24;
 pub const DMPROGBUF5: u8 = 0x25;
 pub const DMPROGBUF6: u8 = 0x26;
 pub const DMPROGBUF7: u8 = 0x27;
+pub const DMHALTSUM0: u8 = 0x40;
 
 // GPR: 0x1000 - 0x101f
-pub const GPRS: [(&str, &str, u16); 32] = [
+pub const GPRS: &[(&str, &str, u16)] = &[
     ("x0", "zero", 0x1000),
     ("x1", "ra", 0x1001),
     ("x2", "sp", 0x1002),
@@ -68,7 +71,7 @@ pub const GPRS: [(&str, &str, u16); 32] = [
 ];
 
 /// Gereral Purpose Register for riscv32ec
-pub const GPRS_RV32EC: [(&str, &str, u16); 16] = [
+pub const GPRS_RV32EC: &[(&str, &str, u16)] = &[
     ("x0", "zero", 0x1000),
     ("x1", "ra", 0x1001),
     ("x2", "sp", 0x1002),
@@ -87,7 +90,7 @@ pub const GPRS_RV32EC: [(&str, &str, u16); 16] = [
     ("x15", "a5", 0x100f),
 ];
 
-pub const CSRS: [(&str, u16); 16] = [
+pub const CSRS: &[(&str, u16)] = &[
     ("marchid", 0xf12),
     ("mimpid", 0xf13),
     ("mhartid", 0xf14),
@@ -99,12 +102,22 @@ pub const CSRS: [(&str, u16); 16] = [
     ("mtval", 0x343),
     ("mstatus", 0x300),
     ("dcsr", 0x7b0),
-    // ("dpc", 0x7b1),
+    ("dpc", 0x7b1),
     ("dscratch0", 0x7b2),
     ("dscratch1", 0x7b3),
+    // Qingke-RISCV CSR extensions
     ("gintenr", 0x800),
     ("intsyscr", 0x804),
     ("corecfgr", 0xbc0),
+];
+
+/// Physical Memory Protection CSRs, only avaliable for QingkeV4
+pub const PMP_CSRS: &[(&str, u16)] = &[
+    ("pmpcfg0", 0x3A0),
+    ("pmpaddr0", 0x3B0),
+    ("pmpaddr1", 0x3B1),
+    ("pmpaddr2", 0x3B2),
+    ("pmpaddr3", 0x3B3),
 ];
 
 // FPR: 0x1020-0x103f
