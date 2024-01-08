@@ -2,12 +2,8 @@ use std::{thread::sleep, time::Duration};
 
 use anyhow::Result;
 use wlink::{
-    commands,
-    dmi::DebugModuleInterface,
-    firmware::{read_firmware_from_file, Firmware},
-    operations::ProbeSession,
-    probe::WchLink,
-    regs, RiscvChip,
+    commands, dmi::DebugModuleInterface, firmware::read_firmware_from_file,
+    operations::ProbeSession, probe::WchLink, regs, RiscvChip,
 };
 
 use clap::{Parser, Subcommand};
@@ -84,6 +80,12 @@ enum Commands {
         /// Erase mode
         #[arg(long, default_value = "default")]
         method: EraseMode,
+    },
+    /// ROM RAM split for CH32V2, CH32V3, CH56X
+    SetRomRamSplit {
+        /// Choose from 0, 1, 2, 3
+        #[arg(default_value = "0")]
+        split: u8,
     },
     /// Program the code flash
     Flash {
@@ -334,30 +336,7 @@ fn main() -> Result<()> {
 
                     let firmware = read_firmware_from_file(path)?;
 
-                    match firmware {
-                        Firmware::Binary(data) => {
-                            let start_address =
-                                address.unwrap_or_else(|| sess.chip_family.code_flash_start());
-                            log::info!("Flashing {} bytes to 0x{:08x}", data.len(), start_address);
-                            sess.write_flash(&data, start_address)?;
-                        }
-                        Firmware::Sections(sections) => {
-                            // Flash section by section
-                            if address != None {
-                                log::warn!("--address is ignored when flashing ELF or ihex");
-                            }
-                            for section in sections {
-                                let start_address =
-                                    sess.chip_family.fix_code_flash_start(section.address);
-                                log::info!(
-                                    "Flashing {} bytes to 0x{:08x}",
-                                    section.data.len(),
-                                    start_address
-                                );
-                                sess.write_flash(&section.data, start_address)?;
-                            }
-                        }
-                    }
+                    sess.write_firmware(&firmware, address)?;
 
                     log::info!("Flash done");
 
@@ -386,6 +365,10 @@ fn main() -> Result<()> {
                 Protect {} => {
                     log::info!("Protect Flash");
                     sess.protect_flash(true)?;
+                }
+                SetRomRamSplit { split } => {
+                    log::info!("Set ROM RAM split to {}", split);
+                    sess.set_rom_ram_split(split)?;
                 }
                 Reset { mode } => {
                     log::info!("Reset {:?}", mode);

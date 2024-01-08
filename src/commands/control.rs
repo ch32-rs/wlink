@@ -140,7 +140,7 @@ impl Command for GetChipRomRamSplit {
 
 /// 0, 1, 2, 3
 #[derive(Debug)]
-pub struct SetChipRomRamSplit(u8);
+pub struct SetChipRomRamSplit(pub u8);
 impl Command for SetChipRomRamSplit {
     type Response = ();
     const COMMAND_ID: u8 = 0x0d;

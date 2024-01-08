@@ -5,6 +5,7 @@ use std::{thread::sleep, time::Duration};
 
 use crate::{
     commands::{self, Speed},
+    firmware::Firmware,
     probe::WchLink,
     Error, Result, RiscvChip,
 };
@@ -89,6 +90,7 @@ impl ProbeSession {
         Ok(())
     }
 
+    // wlink_clean
     fn reattach_chip(&mut self) -> Result<()> {
         self.detach_chip()?;
         let _ = self.probe.send_command(commands::control::AttachChip)?;
@@ -118,13 +120,26 @@ impl ProbeSession {
             let sram_code_mode = self
                 .probe
                 .send_command(commands::control::GetChipRomRamSplit)?;
-            log::debug!("SRAM CODE split mode: {}", sram_code_mode);
+            log::info!("SRAM CODE split mode: {}", sram_code_mode);
         }
-        /*
-        if detailed {
 
+        Ok(())
+    }
+
+    pub fn set_rom_ram_split(&mut self, split: u8) -> Result<()> {
+        if !self.chip_family.support_ram_rom_mode() {
+            return Err(Error::Custom(
+                "Chip doesn't support RAM/ROM split mode".to_string(),
+            ));
         }
-        */
+        if split > 3 {
+            return Err(Error::Custom(format!(
+                "Invalid RAM/ROM split mode: {}",
+                split
+            )));
+        }
+        self.probe
+            .send_command(commands::control::SetChipRomRamSplit(split))?;
         Ok(())
     }
 
@@ -189,6 +204,109 @@ impl ProbeSession {
         }
         self.probe.send_command(commands::Program::EraseFlash)?;
         self.probe.send_command(commands::control::AttachChip)?;
+
+        Ok(())
+    }
+
+    fn do_flash_write(&mut self, data: &[u8], address: u32) -> Result<()> {
+        let chip_family = self.chip_family;
+        let write_pack_size = chip_family.write_pack_size();
+        let data_packet_size = chip_family.data_packet_size();
+
+        log::trace!(
+            "Using write pack size {} data pack size {}",
+            write_pack_size,
+            data_packet_size
+        );
+
+        // wlink_ready_write
+        // self.send_command(Program::Prepare)?; // no need for CH32V307
+        self.probe.send_command(commands::SetWriteMemoryRegion {
+            start_addr: address,
+            len: data.len() as _,
+        })?;
+
+        // if self.chip.as_ref().unwrap().chip_family == RiscvChip::CH32V103 {}
+        self.probe.send_command(commands::Program::WriteFlashOP)?;
+        // wlink_ramcodewrite
+        let flash_op = self.chip_family.get_flash_op();
+        self.probe.write_data(flash_op, data_packet_size)?;
+
+        let n = self
+            .probe
+            .send_command(commands::Program::Unknown07AfterFlashOPWritten)?;
+        if n != 0x07 {
+            return Err(Error::Custom(
+                "Unknown07AfterFlashOPWritten failed".to_string(),
+            ));
+        }
+
+        // wlink_fastprogram
+        let bar = ProgressBar::new(data.len() as _);
+
+        self.probe.send_command(commands::Program::WriteFlash)?;
+        for chunk in data.chunks(write_pack_size as usize) {
+            self.probe
+                .write_data_with_progress(chunk, data_packet_size, &|nbytes| {
+                    bar.inc(nbytes as _);
+                })?;
+            let rxbuf = self.probe.read_data(4)?;
+            // 41 01 01 04
+            if rxbuf[3] != 0x04 && rxbuf[3] != 0x02 {
+                return Err(Error::Custom(format!(
+                    // 0x05, 0x18, 0xff
+                    "Error while fastprogram: {:02x?}",
+                    rxbuf
+                )));
+            }
+        }
+        bar.finish();
+
+        log::debug!("Fastprogram 0x{:08x} done", address);
+        Ok(())
+    }
+
+    pub fn write_firmware(&mut self, firmware: &Firmware, address: Option<u32>) -> Result<()> {
+        let chip_family = self.chip_family;
+        let write_pack_size = chip_family.write_pack_size();
+        let data_packet_size = chip_family.data_packet_size();
+
+        if chip_family.support_flash_protect() {
+            self.protect_flash(false)?;
+        }
+        log::debug!(
+            "Using write pack size {} data pack size {}",
+            write_pack_size,
+            data_packet_size
+        );
+
+        match firmware {
+            Firmware::Binary(data) => {
+                let start_address = address.unwrap_or_else(|| chip_family.code_flash_start());
+                log::info!("Flashing {} bytes to 0x{:08x}", data.len(), start_address);
+                self.do_flash_write(data, start_address)?;
+            }
+            Firmware::Sections(sections) => {
+                // Flash section by section
+                if address != None {
+                    log::warn!("--address is ignored when flashing ELF or ihex");
+                }
+                for section in sections {
+                    let start_address = chip_family.fix_code_flash_start(section.address);
+                    log::info!(
+                        "Flashing {} bytes to 0x{:08x}",
+                        section.data.len(),
+                        start_address
+                    );
+                    self.do_flash_write(&section.data, start_address)?;
+
+                    self.reattach_chip()?;
+                }
+            }
+        }
+
+        // wlink_endprogram
+        let _ = self.probe.send_command(commands::Program::End)?;
 
         Ok(())
     }
