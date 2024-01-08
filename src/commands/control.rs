@@ -52,7 +52,7 @@ impl fmt::Display for ProbeInfo {
             "WCH-Link v{}.{}(v{}) ({})",
             self.major_version,
             self.minor_version,
-            self.major_version + self.minor_version * 10,
+            self.major_version * 10 + self.minor_version,
             self.variant
         )
     }

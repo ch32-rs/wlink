@@ -113,6 +113,9 @@ impl WchLink {
         };
         let info = this.send_command(commands::control::GetProbeInfo)?;
         this.info = info;
+
+        log::info!("Connected to {}", this.info);
+
         Ok(this)
     }
 
