@@ -16,13 +16,13 @@ license = "MIT/Apache-2.0"
 default = []
 
 [dependencies]
-anyhow = "1.0.68"
+anyhow = "1"
 bitfield = "0.14.0"
 clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
 ihex = "3.0.0"
-log = "0.4.17"
-nu-pretty-hex = "0.86.0"
+log = "0.4.20"
+nu-pretty-hex = "0.88.1"
 rusb = "0.9.1"
 simplelog = "0.12.0"
 thiserror = "1.0.38"
@@ -32,5 +32,5 @@ object = { version = "0.32", default-features = false, features = [
     "std",
 ] }
 indicatif = "0.17.7"
-serialport = "4.2.2"
+serialport = "4.3.0"
 libloading = "0.8.1"
