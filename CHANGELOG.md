@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `-o/--out` for `dump` sumcommand, #38
 - BREAKING CHANGE: Refactor
 - Add Windows native driver support, #39
+- Use loaded memory address from ELF file or ihex file
 
 ### Changed
 

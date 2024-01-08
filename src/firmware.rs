@@ -1,6 +1,6 @@
 //! Firmware file formats
+use std::path::Path;
 use std::str;
-use std::{borrow::Cow, path::Path};
 
 use anyhow::Result;
 use object::{
@@ -16,25 +16,89 @@ pub enum FirmwareFormat {
     Binary,
 }
 
-pub fn read_firmware_from_file<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
+#[derive(Debug, Clone)]
+pub struct Section {
+    /// The start address of the segment, physical address.
+    pub address: u32,
+    pub data: Vec<u8>,
+}
+
+impl Section {
+    pub fn end_address(&self) -> u32 {
+        self.address + self.data.len() as u32
+    }
+}
+
+/// The abstract representation of a firmware image.
+#[derive(Debug, Clone)]
+pub enum Firmware {
+    /// A single section, with address unddefined.
+    Binary(Vec<u8>),
+    /// Multiple sections, with different addresses.
+    Sections(Vec<Section>),
+}
+
+impl Firmware {
+    /// Merge sections w/ <= 256 bytes gap
+    pub fn merge_sections(self) -> Result<Self> {
+        if let Firmware::Sections(mut sections) = self {
+            sections.sort_by_key(|s| s.address);
+            let mut merged = vec![];
+
+            let mut it = sections.drain(0..);
+            let mut last = it
+                .next()
+                .expect("firmware must has at least one section; qed");
+            for sect in it {
+                if let Some(gap) = sect.address.checked_sub(last.end_address()) {
+                    if gap > 256 {
+                        merged.push(last);
+                        last = sect.clone();
+                        continue;
+                    } else {
+                        last.data.resize(last.data.len() + gap as usize, 0);
+                        last.data.extend_from_slice(&sect.data);
+                    }
+                } else {
+                    return Err(anyhow::format_err!(
+                        "section address overflow: {:#010x} + {:#x}",
+                        last.address,
+                        last.data.len()
+                    ));
+                }
+            }
+            merged.push(last);
+            Ok(Firmware::Sections(merged))
+        } else {
+            Ok(self)
+        }
+    }
+}
+
+pub fn read_firmware_from_file<P: AsRef<Path>>(path: P) -> Result<Firmware> {
     let p = path.as_ref();
     let raw = std::fs::read(p)?;
 
     let format = guess_format(p, &raw);
     log::info!("Read {} as {:?} format", p.display(), format);
     match format {
-        FirmwareFormat::PlainHex => Ok(hex::decode(
-            raw.into_iter()
-                .filter(|&c| c != b'\r' || c != b'\n')
-                .collect::<Vec<u8>>(),
-        )?),
-        FirmwareFormat::IntelHex => Ok(read_ihex(str::from_utf8(&raw)?)?),
-        FirmwareFormat::ELF => Ok(objcopy_binary(&raw)?),
-        FirmwareFormat::Binary => Ok(raw),
+        FirmwareFormat::PlainHex => {
+            let raw = hex::decode(
+                raw.into_iter()
+                    .filter(|&c| c != b'\r' || c != b'\n')
+                    .collect::<Vec<u8>>(),
+            )?;
+            Ok(Firmware::Binary(raw))
+        }
+        FirmwareFormat::Binary => Ok(Firmware::Binary(raw)),
+        FirmwareFormat::IntelHex => {
+            read_ihex(str::from_utf8(&raw)?).and_then(|f| f.merge_sections())
+        }
+        FirmwareFormat::ELF => read_elf(&raw).and_then(|f| f.merge_sections()),
     }
 }
 
-pub fn guess_format(path: &Path, raw: &[u8]) -> FirmwareFormat {
+fn guess_format(path: &Path, raw: &[u8]) -> FirmwareFormat {
     let ext = path
         .extension()
         .map(|s| s.to_string_lossy())
@@ -67,36 +131,52 @@ pub fn read_hex(data: &str) -> Result<Vec<u8>> {
     Ok(hex::decode(data)?)
 }
 
-pub fn read_ihex(data: &str) -> Result<Vec<u8>> {
+pub fn read_ihex(data: &str) -> Result<Firmware> {
     use ihex::Record::*;
 
     let mut base_address = 0;
 
-    let mut records = vec![];
+    let mut segs: Vec<Section> = vec![];
+    let mut last_end_address = 0;
     for record in ihex::Reader::new(data) {
         let record = record?;
         match record {
             Data { offset, value } => {
-                let offset = base_address + offset as u32;
+                let start_address = base_address + offset as u32;
 
-                records.push((offset, value.into()));
+                if let Some(last) = segs.last_mut() {
+                    if start_address == last_end_address {
+                        // merge to last
+                        last_end_address = start_address + value.len() as u32;
+                        last.data.extend_from_slice(&value);
+
+                        continue;
+                    }
+                }
+
+                last_end_address = start_address + value.len() as u32;
+                segs.push(Section {
+                    address: start_address,
+                    data: value.to_vec(),
+                })
             }
-            EndOfFile => (),
             ExtendedSegmentAddress(address) => {
                 base_address = (address as u32) * 16;
             }
-            StartSegmentAddress { .. } => (),
             ExtendedLinearAddress(address) => {
                 base_address = (address as u32) << 16;
             }
+            StartSegmentAddress { .. } => (),
             StartLinearAddress(_) => (),
+            EndOfFile => (),
         };
     }
-    merge_sections(records)
+
+    Ok(Firmware::Sections(segs))
 }
 
-/// Simulates `objcopy -O binary`.
-pub fn objcopy_binary(elf_data: &[u8]) -> Result<Vec<u8>> {
+/// Simulates `objcopy -O binary`, returns loadable sections
+pub fn read_elf(elf_data: &[u8]) -> Result<Firmware> {
     let file_kind = object::FileKind::parse(elf_data)?;
 
     match file_kind {
@@ -157,7 +237,10 @@ pub fn objcopy_binary(elf_data: &[u8]) -> Result<Vec<u8>> {
                 }
             }
             let section_data = &elf_data[segment_offset as usize..][..segment_filesize as usize];
-            sections.push((p_paddr as u32, section_data.into()));
+            sections.push(Section {
+                address: p_paddr as u32,
+                data: section_data.to_vec(),
+            });
             log::debug!("Section names: {:?}", section_names);
         }
     }
@@ -166,29 +249,6 @@ pub fn objcopy_binary(elf_data: &[u8]) -> Result<Vec<u8>> {
         anyhow::bail!("empty ELF file");
     }
     log::debug!("found {} sections", sections.len());
-    merge_sections(sections)
-}
-
-fn merge_sections(mut sections: Vec<(u32, Cow<[u8]>)>) -> Result<Vec<u8>> {
-    sections.sort(); // order by start address
-
-    let start_address = sections.first().unwrap().0;
-    let end_address = sections.last().unwrap().0 + sections.last().unwrap().1.len() as u32;
-
-    log::info!(
-        "Firmware size: {}, start_address: {:#010x}, end_address: {:#010x}",
-        end_address - start_address,
-        start_address,
-        end_address
-    );
-    let total_size = end_address - start_address;
-
-    let mut binary = vec![0u8; total_size as usize];
-    // FIXMME: check section overlap?
-    for (addr, sect) in sections {
-        let sect_start = (addr - start_address) as usize;
-        let sect_end = (addr - start_address) as usize + sect.len();
-        binary[sect_start..sect_end].copy_from_slice(&sect);
-    }
-    Ok(binary)
+    // merge_sections(sections)
+    Ok(Firmware::Sections(sections))
 }

@@ -204,6 +204,16 @@ impl RiscvChip {
         }
     }
 
+    // The same as wch-openocd-riscv
+    pub fn fix_code_flash_start(&self, start_address: u32) -> u32 {
+        let addr = self.code_flash_start() + start_address;
+        if addr >= 0x10000000 {
+            addr - 0x08000000
+        } else {
+            addr
+        }
+    }
+
     /// pack size for fastprogram
     pub fn write_pack_size(&self) -> u32 {
         match self {
