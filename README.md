@@ -27,6 +27,7 @@
 - [x] Code-Protect & Code-Unprotect for supported chips
 - [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support, requires 2.10+ firmware
 - [x] [Serial port watching](https://github.com/ch32-rs/wlink/pull/36) for a smooth development experience
+- [x] Windows native driver support, no need to install libusb manually (requires x86 build)
 
 ## Tested On
 
