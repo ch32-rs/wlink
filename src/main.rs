@@ -381,11 +381,11 @@ fn main() -> Result<()> {
                 }
                 Unprotect {} => {
                     log::info!("Unprotect Flash");
-                    sess.protect_flash(false)?;
+                    sess.unprotect_flash()?;
                 }
                 Protect {} => {
                     log::info!("Protect Flash");
-                    sess.protect_flash(true)?;
+                    sess.protect_flash()?;
                 }
                 Reset { mode } => {
                     log::info!("Reset {:?}", mode);

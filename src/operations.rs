@@ -84,12 +84,13 @@ impl ProbeSession {
     }
 
     pub fn detach_chip(&mut self) -> Result<()> {
-        log::debug!("Detach chip");
+        log::trace!("Detach chip");
         self.probe.send_command(commands::control::OptEnd)?;
         Ok(())
     }
 
     fn reattach_chip(&mut self) -> Result<()> {
+        log::debug!("Reattach chip");
         self.detach_chip()?;
         let _ = self.probe.send_command(commands::control::AttachChip)?;
         Ok(())
@@ -108,7 +109,7 @@ impl ProbeSession {
             let flash_protected = self
                 .probe
                 .send_command(commands::ConfigChip::CheckReadProtect)?;
-            let protected = flash_protected == commands::ConfigChip::FLAG_PROTECTED;
+            let protected = flash_protected == commands::ConfigChip::FLAG_READ_PROTECTED;
             log::info!("Flash protected: {}", protected);
             if protected {
                 log::warn!("Flash is protected, debug access is not available");
@@ -128,43 +129,73 @@ impl ProbeSession {
         Ok(())
     }
 
-    pub fn protect_flash(&mut self, protect: bool) -> Result<()> {
+    pub fn unprotect_flash(&mut self) -> Result<()> {
         // HACK: requires a fresh attach
         self.reattach_chip()?;
 
-        let flash_protected_flag = self
+        let read_protected = self
             .probe
             .send_command(commands::ConfigChip::CheckReadProtect)?;
-        let protected = flash_protected_flag == commands::ConfigChip::FLAG_PROTECTED;
-        if protect == protected {
-            log::info!(
-                "Flash already {}",
-                if protected {
-                    "protected"
-                } else {
-                    "unprotected"
-                }
-            );
+        if read_protected == commands::ConfigChip::FLAG_READ_PROTECTED {
+            log::info!("Flash already unprotected");
         }
 
-        let use_v2 = self.probe.info.version() >= (2, 9);
-        let cmd = match (protect, use_v2) {
-            (true, true) => commands::ConfigChip::ProtectEx(0xbf),
-            (true, false) => commands::ConfigChip::Protect,
-            (false, true) => commands::ConfigChip::UnprotectEx(0xbf),
-            (false, false) => commands::ConfigChip::Unprotect,
-        };
-        self.probe.send_command(cmd)?;
+        self.probe.send_command(commands::ConfigChip::Unprotect)?;
 
-        self.probe.send_command(commands::Reset::Soft)?; // quit reset
-        self.probe.send_command(commands::control::AttachChip)?;
+        self.reattach_chip()?;
 
-        let flash_protected = self
+        let read_protected = self
             .probe
             .send_command(commands::ConfigChip::CheckReadProtect)?;
         log::info!(
-            "Flash protected: {}",
-            flash_protected == commands::ConfigChip::FLAG_PROTECTED
+            "Read protected: {}",
+            read_protected == commands::ConfigChip::FLAG_READ_PROTECTED
+        );
+
+        let write_protected = self
+            .probe
+            .send_command(commands::ConfigChip::CheckReadProtectEx)?;
+        if write_protected == commands::ConfigChip::FLAG_WRITE_PROTECTED {
+            log::warn!("Flash is write protected!");
+            log::warn!("try to unprotect...");
+            self.probe
+                .send_command(commands::ConfigChip::UnprotectEx(0xff))?; // FIXME: 0xff or 0xbf
+
+            self.reattach_chip()?;
+
+            let write_protected = self
+                .probe
+                .send_command(commands::ConfigChip::CheckReadProtectEx)?;
+            println!(
+                "Write protected: {}",
+                write_protected == commands::ConfigChip::FLAG_WRITE_PROTECTED
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn protect_flash(&mut self) -> Result<()> {
+        // HACK: requires a fresh attach
+        self.reattach_chip()?;
+
+        let read_protected = self
+            .probe
+            .send_command(commands::ConfigChip::CheckReadProtect)?;
+        if read_protected == commands::ConfigChip::FLAG_READ_PROTECTED {
+            log::warn!("Flash already protected");
+        }
+
+        self.probe.send_command(commands::ConfigChip::Protect)?;
+
+        self.reattach_chip()?;
+
+        let read_protected = self
+            .probe
+            .send_command(commands::ConfigChip::CheckReadProtect)?;
+        log::info!(
+            "Read protected: {}",
+            read_protected == commands::ConfigChip::FLAG_READ_PROTECTED
         );
 
         Ok(())
@@ -178,11 +209,11 @@ impl ProbeSession {
             let ret = self
                 .probe
                 .send_command(commands::ConfigChip::CheckReadProtect)?;
-            if ret == commands::ConfigChip::FLAG_PROTECTED {
+            if ret == commands::ConfigChip::FLAG_READ_PROTECTED {
                 log::warn!("Flash is protected, unprotecting...");
-                self.protect_flash(false)?;
+                self.unprotect_flash()?;
             } else if ret == 2 {
-                self.protect_flash(false)?;
+                self.unprotect_flash()?; // FIXME: 2 is unknown
             } else {
                 log::warn!("Unknown flash protect status: {}", ret);
             }
@@ -200,7 +231,7 @@ impl ProbeSession {
         let data_packet_size = chip_family.data_packet_size();
 
         if chip_family.support_flash_protect() {
-            self.protect_flash(false)?;
+            self.unprotect_flash()?;
         }
 
         let data = data.to_vec();

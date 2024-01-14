@@ -183,7 +183,8 @@ pub enum ConfigChip {
     },
 }
 impl ConfigChip {
-    pub const FLAG_PROTECTED: u8 = 0x01;
+    pub const FLAG_READ_PROTECTED: u8 = 0x01;
+    pub const FLAG_WRITE_PROTECTED: u8 = 0x11;
 }
 impl Command for ConfigChip {
     type Response = u8;
@@ -193,10 +194,13 @@ impl Command for ConfigChip {
             ConfigChip::CheckReadProtect => vec![0x01],
             ConfigChip::Unprotect => vec![0x02],
             ConfigChip::Protect => vec![0x03],
+            // ret = 0x11 protected
             ConfigChip::CheckReadProtectEx => vec![0x04],
+            // b = 0xff ?
             ConfigChip::UnprotectEx(b) => vec![0x02, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            // [0x03, 0xff, 0xff, 0xff, WPR0, WPR1, WPR2, WPR3]
             ConfigChip::ProtectEx(b) => vec![0x03, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
-            ConfigChip::Config { data: _, wrp: _ } => todo!("ConfigChip"),
+            ConfigChip::Config { data: _, wrp: _ } => todo!("ConfigChip: config flags"),
         }
     }
 }
