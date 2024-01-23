@@ -146,6 +146,8 @@ enum Commands {
         #[arg(long)]
         dap: bool,
     },
+    /// List probes
+    List {},
     /// SDI virtual serial port,
     #[command(subcommand)]
     SDIPrint(SDIPrint),
@@ -215,6 +217,9 @@ fn main() -> Result<()> {
             } else {
                 WchLink::switch_from_dap_to_rv(device_index)?;
             }
+        }
+        Some(List {}) => {
+            WchLink::list_probes()?;
         }
 
         Some(Erase { method }) if method != EraseMode::Default => {
