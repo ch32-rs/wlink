@@ -11,12 +11,13 @@ pub mod probe;
 pub mod regs;
 pub mod usb_device;
 
+use clap::ValueEnum;
 use probe::WchLink;
 
 pub use crate::error::{Error, Result};
 
 /// Currently supported RISC-V chip series/family
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 #[repr(u8)]
 pub enum RiscvChip {
     /// CH32V103 RISC-V3A series
