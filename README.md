@@ -86,7 +86,7 @@ Current firmware version: 2.11 (aka. v31).
 
 ### Arch Linux
 
-Arch Linux can install [wlink-git](https://aur.archlinux.org/packages/wlink-git) via the AUR.
+Arch Linux users can install [wlink-git](https://aur.archlinux.org/packages/wlink-git) via the AUR.
 
 ```bash
 yay -Syu wlink
