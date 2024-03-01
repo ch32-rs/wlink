@@ -84,6 +84,14 @@ Current firmware version: 2.11 (aka. v31).
 > On Linux, you should install libudev and libusb development lib first.
 > Like `sudo apt install libudev-dev libusb-1.0-0-dev` on Ubuntu.
 
+### Arch Linux
+
+Arch Linux can install [wlink-git](https://aur.archlinux.org/packages/wlink-git) via the AUR.
+
+```bash
+yay -Syu wlink
+```
+
 ## Usage
 
 > **Note**
