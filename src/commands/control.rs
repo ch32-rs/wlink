@@ -1,8 +1,6 @@
 //! Probe control commands.
 //  COMMAND_ID = 0x0d
 
-use std::fmt;
-
 use crate::{probe::WchLinkVariant, RiscvChip};
 
 use super::*;

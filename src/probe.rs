@@ -270,20 +270,20 @@ pub fn watch_serial() -> Result<()> {
 
     log::trace!("Serial port opened: {:?}", port);
 
+    let mut endl = true;
     loop {
         let mut buf = [0u8; 1024];
         match port.read(&mut buf) {
             Ok(n) => {
-                if n > 0 {
-                    let s = String::from_utf8_lossy(&buf[..n]);
-                    //print!("{}", s);
-                    if s.contains("\n") {
-                        let now =
-                            chrono::DateTime::<chrono::Local>::from(std::time::SystemTime::now());
-                        let out = s.replace("\n", &format!("\n{}: ", now));
-                        print!("{}", out);
+                let s = String::from_utf8_lossy(&buf[..n]);
+                for c in s.chars() {
+                    if c == '\r' || c == '\n' {
+                        endl = true;
+                    } else if endl {
+                        print!("\n{}: {}", chrono::Local::now(), c);
+                        endl = false;
                     } else {
-                        print!("{}", s);
+                        print!("{}", c);
                     }
                 }
             }
