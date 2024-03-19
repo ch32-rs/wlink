@@ -276,7 +276,15 @@ pub fn watch_serial() -> Result<()> {
             Ok(n) => {
                 if n > 0 {
                     let s = String::from_utf8_lossy(&buf[..n]);
-                    print!("{}", s);
+                    //print!("{}", s);
+                    if s.contains("\n") {
+                        let now =
+                            chrono::DateTime::<chrono::Local>::from(std::time::SystemTime::now());
+                        let out = s.replace("\n", &format!("\n{}: ", now));
+                        print!("{}", out);
+                    } else {
+                        print!("{}", s);
+                    }
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
