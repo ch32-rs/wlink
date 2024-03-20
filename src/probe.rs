@@ -279,8 +279,9 @@ pub fn watch_serial() -> Result<()> {
                 for c in s.chars() {
                     if c == '\r' || c == '\n' {
                         endl = true;
+                        println!()
                     } else if endl {
-                        print!("\n{}: {}", chrono::Local::now(), c);
+                        print!("{}: {}", chrono::Local::now(), c);
                         endl = false;
                     } else {
                         print!("{}", c);
