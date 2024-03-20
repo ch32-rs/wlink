@@ -278,8 +278,13 @@ pub fn watch_serial() -> Result<()> {
                 let s = String::from_utf8_lossy(&buf[..n]);
                 for c in s.chars() {
                     if c == '\r' || c == '\n' {
-                        endl = true;
-                        println!()
+                        if endl {
+                            // continous line break
+                            println!("{}:", chrono::Local::now());
+                        } else {
+                            endl = true;
+                            println!()
+                        }
                     } else if endl {
                         print!("{}: {}", chrono::Local::now(), c);
                         endl = false;
