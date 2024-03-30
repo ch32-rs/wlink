@@ -214,58 +214,62 @@ pub enum GetChipInfo {
     V2 = 0x06,
 }
 impl Command for GetChipInfo {
-    type Response = ChipUID;
+    type Response = ESignature;
     const COMMAND_ID: u8 = 0x11;
     fn payload(&self) -> Vec<u8> {
         vec![*self as u8]
     }
 }
 
+// See-also: https://github.com/ch32-rs/wlink/issues/58
 // This does not use standard response format:
-// raw response: ffff00 20 aeb4abcd 16c6bc45 e339e339e339e339
+// raw response: ffff0020 aeb4abcd 16c6bc45 e339e339 20360510
 // UID in wchisp: cd-ab-b4-ae-45-bc-c6-16
-// e339e339e339e339 => inital value of erased flash
-/// Chip UID, also reported by wchisp
-#[derive(Clone, PartialEq)]
-pub struct ChipUID(pub [u8; 8]);
-impl Response for ChipUID {
-    fn from_raw(resp: &[u8]) -> Result<Self> {
-        if resp.len() <= 12 {
-            return Err(Error::InvalidPayloadLength);
-        }
-        if &resp[..2] == b"\xff\xff" {
-            let mut bytes = [0u8; 8];
-            bytes[0..4]
-                .copy_from_slice(&u32::from_be_bytes(resp[4..8].try_into().unwrap()).to_le_bytes());
-            bytes[4..8].copy_from_slice(
-                &u32::from_be_bytes(resp[8..12].try_into().unwrap()).to_le_bytes(),
-            );
-            Ok(Self(bytes))
-        } else {
-            log::warn!("cannot read chip id");
-            Ok(Self(Default::default()))
-        }
+// e339e339 => inital value of erased flash
+// 20360510 => chip id
+/// Flash size and Chip UID, also reported by wchisp
+#[derive(Clone, PartialEq, Debug)]
+pub struct ESignature {
+    /// Non-zero-wait flash size in KB
+    pub flash_size_kb: u16,
+    /// UID
+    pub uid: [u32; 2],
+}
+
+impl Response for ESignature {
+    fn from_payload(_bytes: &[u8]) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        unreachable!("ESignature is not be parsed from payload; qed")
     }
 
-    fn from_payload(_bytes: &[u8]) -> Result<Self> {
-        unreachable!("ChipId is not be parsed from payload; qed")
+    fn from_raw(resp: &[u8]) -> Result<Self> {
+        if resp.len() < 12 {
+            return Err(Error::InvalidPayloadLength);
+        }
+        let flash_size_kb = u16::from_be_bytes(resp[2..4].try_into().unwrap());
+        let uid = [
+            u32::from_be_bytes(resp[4..8].try_into().unwrap()),
+            u32::from_be_bytes(resp[8..12].try_into().unwrap()),
+        ];
+        Ok(Self { flash_size_kb, uid })
     }
 }
-impl fmt::Display for ChipUID {
+impl fmt::Display for ESignature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(
-            &self
-                .0
+        // write aa-bb-cc-.. style UID
+        let bytes: [u8; 8] = unsafe { std::mem::transmute(self.uid) };
+        write!(
+            f,
+            "FlashSize({}KB) UID({})",
+            self.flash_size_kb,
+            &bytes
                 .iter()
-                .map(|b| format!("{b:02x}"))
+                .map(|b| format!("{:02x}", b))
                 .collect::<Vec<_>>()
-                .join("-"),
+                .join("-")
         )
-    }
-}
-impl fmt::Debug for ChipUID {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&format!("ChipId({:02x?})", &self.0[..]))
     }
 }
 
@@ -422,18 +426,3 @@ impl Command for DisableDebug {
 // 81 0D 02 08 xx ClearCodeFlash
 // 81 11 01 0D unkown in query info, before GetChipRomRamSplit
 // 81 0d 02 ee 00 stop flash ?
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn chip_id_parsing() {
-        let raw = hex::decode("ffff0020aeb4abcd16c6bc45e339e339e339e339").unwrap();
-
-        let uid = ChipUID::from_raw(&raw).unwrap();
-
-        println!("=> {uid:?}");
-        assert_eq!("cd-ab-b4-ae-45-bc-c6-16", uid.to_string());
-    }
-}

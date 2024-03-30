@@ -99,12 +99,12 @@ impl ProbeSession {
     // NOTE: this halts the MCU
     pub fn dump_info(&mut self) -> Result<()> {
         if self.chip_family.support_query_info() {
-            let chip_id = if self.probe.info.version() >= (2, 9) {
+            let esig = if self.probe.info.version() >= (2, 9) {
                 self.probe.send_command(commands::GetChipInfo::V2)?
             } else {
                 self.probe.send_command(commands::GetChipInfo::V1)?
             };
-            log::info!("Chip UID: {chip_id}");
+            log::info!("Chip ESIG: {esig}");
 
             let flash_protected = self
                 .probe

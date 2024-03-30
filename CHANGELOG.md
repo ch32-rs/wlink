@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Rename ChipUID response to ESignature, #58
+
 ## [0.0.8] - 2024-03-30
 
 ### Added
