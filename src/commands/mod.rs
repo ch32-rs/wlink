@@ -91,7 +91,7 @@ impl<const N: u8> fmt::Debug for RawCommand<N> {
     }
 }
 
-/// Set address and offset of the firmware, 0x01.
+/// 0x01 - Set address and offset of the firmware
 #[derive(Debug)]
 pub struct SetWriteMemoryRegion {
     // 0x08000000 or 0x00000000
@@ -126,14 +126,14 @@ impl Command for SetReadMemoryRegion {
     }
 }
 
-/// 0x02 subset
+/// 0x02 - Flash or Memory operations
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Program {
     // wlink_erase
     EraseFlash = 0x01,
     // Before write firmware bytes, choice between 0x02 and 0x04
     WriteFlash = 0x02,
-    // after write flash
+    // Write flash
     WriteFlashAndVerify = 0x04,
     /// Write Flash OP
     WriteFlashOP = 0x05,
