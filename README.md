@@ -46,9 +46,14 @@ Current firmware version: 2.11 (aka. v31).
 
 ### MCU
 
+> **Note**
+> A common misunderstanding is that the CH32V2 and CH32V3 series has fewer flash! No it's not.
+> The CH32V203 series has 224K available flash. The CH32V208 and CH32V30x series has 480K available flash.
+> The number in the datasheet is the "zero-wait-state" flash size, which is not the same as the "available" flash size.
+
 - [CH32V003]
 - [CH32V103]
-- [CH32V203]
+- [CH32V203]/[CH32V208]
 - [CH32V307]
 - [CH569]/CH565
 - [CH573]/CH571
