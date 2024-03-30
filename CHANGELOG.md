@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.8] - 2024-03-30
+
 ### Added
 
 - Add `--watch-serial` for `flash` subcommand, #36
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BREAKING CHANGE: Refactor
 - Add Windows native driver support, #39
 - Use loaded memory address from ELF file or ihex file
+- Add timestamp in serial output
 
 ### Fixed
 
