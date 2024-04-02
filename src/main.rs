@@ -351,6 +351,7 @@ fn main() -> Result<()> {
                             if address != None {
                                 log::warn!("--address is ignored when flashing ELF or ihex");
                             }
+                            let mut offset = 0; // may a trait of wchlink
                             for section in sections {
                                 let start_address =
                                     sess.chip_family.fix_code_flash_start(section.address);
@@ -359,7 +360,9 @@ fn main() -> Result<()> {
                                     section.data.len(),
                                     start_address
                                 );
-                                sess.write_flash(&section.data, start_address)?;
+                                log::debug!("offset: 0x{:08x}", offset);
+                                sess.write_flash(&section.data, start_address - offset)?;
+                                offset += ((section.data.len() as u32 + 4095) / 4096) * 4096;
                             }
                         }
                     }
