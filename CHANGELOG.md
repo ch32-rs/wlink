@@ -22,10 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use loaded memory address from ELF file or ihex file
 - Add timestamp in serial output
 
-### Fixed
-
-- Merge gaps in firmware sections, #56
-
 ### Changed
 
 - No erase by default when flashing
