@@ -54,7 +54,7 @@ pub fn fill_tiny_gap_between_sections(mut sections: Vec<Section>, max_tiny_gap: 
                 last = sect.clone();
                 continue;
             } else {
-                last.data.resize(last.data.len() + gap as usize, 0);
+                last.data.resize(last.data.len() + gap as usize, 0xFF);
                 last.data.extend_from_slice(&sect.data);
             }
         } else {
