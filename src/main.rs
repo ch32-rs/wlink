@@ -4,7 +4,7 @@ use anyhow::Result;
 use wlink::{
     commands,
     dmi::DebugModuleInterface,
-    firmware::{read_firmware_from_file, Firmware},
+    firmware::{fill_tiny_gap_between_sections, read_firmware_from_file, Firmware},
     operations::ProbeSession,
     probe::WchLink,
     regs, RiscvChip,
@@ -93,6 +93,9 @@ enum Commands {
         /// Erase flash before flashing
         #[arg(long, short, default_value = "false")]
         erase: bool,
+        /// Skip gap between sections
+        #[arg(long, short, default_value = "false")]
+        skip_gap: bool,
         /// Do not reset and run after flashing
         #[arg(long, short = 'R', default_value = "false")]
         no_run: bool,
@@ -325,6 +328,7 @@ fn main() -> Result<()> {
                 Flash {
                     address,
                     erase,
+                    skip_gap,
                     no_run,
                     path,
                     enable_sdi_print,
@@ -341,25 +345,38 @@ fn main() -> Result<()> {
 
                     match firmware {
                         Firmware::Binary(data) => {
+                            if skip_gap {
+                                log::warn!("Skip gap is ignored when flashing binary");
+                            }
                             let start_address =
                                 address.unwrap_or_else(|| sess.chip_family.code_flash_start());
                             log::info!("Flashing {} bytes to 0x{:08x}", data.len(), start_address);
                             sess.write_flash(&data, start_address)?;
                         }
                         Firmware::Sections(sections) => {
-                            // Flash section by section
+                            let mut sections = sections.clone();
                             if address != None {
                                 log::warn!("--address is ignored when flashing ELF or ihex");
                             }
+                            if skip_gap {
+                                log::warn!("Skip gap is a experimental feature using a trait of wchlink!");
+                                sections = fill_tiny_gap_between_sections(sections, 4096)?;
+                            } else {
+                                // merge sections
+                                sections = fill_tiny_gap_between_sections(sections, 0xFFFFFFFF)?;
+                            }
+                            let mut offset = 0; // may a trait of wchlink
                             for section in sections {
                                 let start_address =
                                     sess.chip_family.fix_code_flash_start(section.address);
                                 log::info!(
-                                    "Flashing {} bytes to 0x{:08x}",
-                                    section.data.len(),
-                                    start_address
-                                );
-                                sess.write_flash(&section.data, start_address)?;
+                                        "Flashing {} bytes to 0x{:08x}",
+                                        section.data.len(),
+                                        start_address
+                                    );
+                                log::debug!("offset: 0x{:08x}", offset);
+                                sess.write_flash(&section.data, start_address - offset)?;
+                                offset += ((section.data.len() as u32 + 4095) / 4096) * 4096;
                             }
                         }
                     }

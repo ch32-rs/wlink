@@ -38,39 +38,35 @@ pub enum Firmware {
     Sections(Vec<Section>),
 }
 
-impl Firmware {
-    /// Merge sections, and fill gap with 0xff
-    pub fn merge_sections(self) -> Result<Self> {
-        if let Firmware::Sections(mut sections) = self {
-            sections.sort_by_key(|s| s.address);
-            let mut merged = vec![];
+/// Merge sections w/ <= max_tiny_gap bytes gap
+pub fn fill_tiny_gap_between_sections(mut sections: Vec<Section>, max_tiny_gap: u32) -> Result<Vec<Section>> {
+    sections.sort_by_key(|s| s.address);
+    let mut merged = vec![];
 
-            let mut it = sections.drain(0..);
-            let mut last = it
-                .next()
-                .expect("firmware must has at least one section; qed");
-
-            for sect in it {
-                if let Some(gap) = sect.address.checked_sub(last.end_address()) {
-                    if gap > 0 {
-                        log::debug!("Merge firmware sections with gap: {}", gap);
-                    }
-                    last.data.resize(last.data.len() + gap as usize, 0xff); // fill gap with 0xff
-                    last.data.extend_from_slice(&sect.data);
-                } else {
-                    return Err(anyhow::format_err!(
-                        "section address overflow: {:#010x} + {:#x}",
-                        last.address,
-                        last.data.len()
-                    ));
-                }
+    let mut it = sections.drain(0..);
+    let mut last = it
+        .next()
+        .expect("firmware must has at least one section; qed");
+    for sect in it {
+        if let Some(gap) = sect.address.checked_sub(last.end_address()) {
+            if gap > max_tiny_gap {
+                merged.push(last);
+                last = sect.clone();
+                continue;
+            } else {
+                last.data.resize(last.data.len() + gap as usize, 0xFF);
+                last.data.extend_from_slice(&sect.data);
             }
-            merged.push(last);
-            Ok(Firmware::Sections(merged))
         } else {
-            Ok(self)
+            return Err(anyhow::format_err!(
+                    "section address overflow: {:#010x} + {:#x}",
+                    last.address,
+                    last.data.len()
+                ));
         }
     }
+    merged.push(last);
+    Ok(merged)
 }
 
 pub fn read_firmware_from_file<P: AsRef<Path>>(path: P) -> Result<Firmware> {
@@ -90,9 +86,9 @@ pub fn read_firmware_from_file<P: AsRef<Path>>(path: P) -> Result<Firmware> {
         }
         FirmwareFormat::Binary => Ok(Firmware::Binary(raw)),
         FirmwareFormat::IntelHex => {
-            read_ihex(str::from_utf8(&raw)?).and_then(|f| f.merge_sections())
+            read_ihex(str::from_utf8(&raw)?)
         }
-        FirmwareFormat::ELF => read_elf(&raw).and_then(|f| f.merge_sections()),
+        FirmwareFormat::ELF => read_elf(&raw),
     }
 }
 
