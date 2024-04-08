@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Rename ChipUID response to ESignature, #58
+- Add `--skip-gap` as a experimental option for `flash` subcommand to write a firmware which has more than 1 section, #40 & #56
 
 ## [0.0.8] - 2024-03-30
 
