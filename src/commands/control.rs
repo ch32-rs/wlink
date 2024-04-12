@@ -180,7 +180,7 @@ impl Command for SetPower {
     }
 }
 
-/// SDI print support, only avaliable for WCH-LinkE
+/// SDI print support, only available for WCH-LinkE
 /// Firmware version >= 2.10
 #[derive(Debug)]
 pub struct SetSDIPrintEnabled(pub bool);

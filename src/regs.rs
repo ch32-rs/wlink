@@ -111,7 +111,7 @@ pub const CSRS: &[(&str, u16)] = &[
     ("corecfgr", 0xbc0),
 ];
 
-/// Physical Memory Protection CSRs, only avaliable for QingkeV4
+/// Physical Memory Protection CSRs, only available for QingkeV4
 pub const PMP_CSRS: &[(&str, u16)] = &[
     ("pmpcfg0", 0x3A0),
     ("pmpaddr0", 0x3B0),
