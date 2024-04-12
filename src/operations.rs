@@ -56,7 +56,7 @@ impl ProbeSession {
                 if expected_chip.is_none() {
                     probe.send_command(commands::SetSpeed {
                         riscvchip: resp.chip_family as u8,
-                        speed: speed,
+                        speed,
                     })?;
                 }
 
@@ -79,7 +79,7 @@ impl ProbeSession {
         Ok(ProbeSession {
             probe,
             chip_family: chip_info.chip_family,
-            speed: speed,
+            speed,
         })
     }
 

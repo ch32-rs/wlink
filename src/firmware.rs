@@ -32,7 +32,7 @@ impl Section {
 /// The abstract representation of a firmware image.
 #[derive(Debug, Clone)]
 pub enum Firmware {
-    /// A single section, with address unddefined.
+    /// A single section, with address undefined.
     Binary(Vec<u8>),
     /// Multiple sections, with different addresses.
     Sections(Vec<Section>),

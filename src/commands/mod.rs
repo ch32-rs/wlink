@@ -205,7 +205,7 @@ impl Command for ConfigChip {
     }
 }
 
-/// Get Chip UID, the UID is also avaliable in the `wchisp` command.
+/// Get Chip UID, the UID is also available in the `wchisp` command.
 // ??? 0x11, 0x01, _ (riscvchip)
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum GetChipInfo {
@@ -280,7 +280,7 @@ pub enum Reset {
     Soft, // the most common reset
     Normal,
     /// wlink_chip_reset, chip reset
-    // The memory is not reseted
+    // The memory is not reset
     Chip,
 }
 impl Command for Reset {
@@ -424,5 +424,5 @@ impl Command for DisableDebug {
 // 81 FE 01 00 DisEncrypt
 // 81 0D 01 0F ClearCodeFlashB
 // 81 0D 02 08 xx ClearCodeFlash
-// 81 11 01 0D unkown in query info, before GetChipRomRamSplit
+// 81 11 01 0D unknown in query info, before GetChipRomRamSplit
 // 81 0d 02 ee 00 stop flash ?

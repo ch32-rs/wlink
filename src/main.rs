@@ -139,7 +139,7 @@ enum Commands {
     },
     /// Debug, check status
     Status {},
-    /// Swifth mode from RV to DAP or vice versa
+    /// Switch mode from RV to DAP or vice versa
     ModeSwitch {
         #[arg(long)]
         rv: bool,
@@ -300,7 +300,7 @@ fn main() -> Result<()> {
                     sess.reset_debug_module()?;
                     sess.ensure_mcu_halt()?;
 
-                    will_detach = false; // detach will ersume the MCU
+                    will_detach = false; // detach will resume the MCU
 
                     let dmstatus: regs::Dmstatus = sess.probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
@@ -348,7 +348,7 @@ fn main() -> Result<()> {
                         }
                         Firmware::Sections(sections) => {
                             // Flash section by section
-                            if address != None {
+                            if address.is_some() {
                                 log::warn!("--address is ignored when flashing ELF or ihex");
                             }
                             for section in sections {
@@ -404,12 +404,12 @@ fn main() -> Result<()> {
                         ResetMode::Halt => {
                             sess.ensure_mcu_halt()?;
 
-                            will_detach = false; // detach will ersume the MCU
+                            will_detach = false; // detach will resume the MCU
                         }
                         ResetMode::Dm => {
                             sess.reset_debug_module()?;
 
-                            will_detach = false; // detach will ersume the MCU
+                            will_detach = false; // detach will resume the MCU
                         }
                     }
                     sleep(Duration::from_millis(300));
@@ -449,11 +449,12 @@ fn main() -> Result<()> {
 pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
     let s = s.replace('_', "").to_lowercase();
     if let Some(hex_str) = s.strip_prefix("0x") {
-        Ok(u32::from_str_radix(hex_str, 16)
-            .unwrap_or_else(|_| panic!("error while parsering {s:?}")))
+        Ok(
+            u32::from_str_radix(hex_str, 16)
+                .unwrap_or_else(|_| panic!("error while parsing {s:?}")),
+        )
     } else if let Some(bin_str) = s.strip_prefix("0b") {
-        Ok(u32::from_str_radix(bin_str, 2)
-            .unwrap_or_else(|_| panic!("error while parsering {s:?}")))
+        Ok(u32::from_str_radix(bin_str, 2).unwrap_or_else(|_| panic!("error while parsing {s:?}")))
     } else {
         Ok(s.parse().expect("must be a number"))
     }

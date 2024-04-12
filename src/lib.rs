@@ -41,7 +41,7 @@ pub enum RiscvChip {
     CH59X = 0x0B, // 11
     /// CH643 RISC-V4C series, RGB Display Driver MCU
     CH643 = 0x0C, // 12
-    /// CH32X035 RISC-V4C USB-PD series, fallbak as CH643
+    /// CH32X035 RISC-V4C USB-PD series, fallback as CH643
     CH32X035 = 0x0D, // 13
     /// CH32L103 RISC-V4C low power series, USB-PD
     CH32L103 = 0x0E, // 14
@@ -143,7 +143,7 @@ impl RiscvChip {
                 log::warn!("The debug interface has been opened, there is a risk of code leakage.");
                 log::warn!("Please ensure that the debug interface has been closed before leaving factory!");
                 // 81 0d 01 04
-                // should test returen value
+                // should test return value
                 let resp = probe.send_command(commands::RawCommand::<0x0d>(vec![0x04]))?;
                 log::debug!("TODO, handle CH56X resp {:?}", resp);
             }
