@@ -113,7 +113,7 @@ pub mod libusb {
                 return Err(crate::Error::ProbeNotFound);
             }
             let device = result.remove(nth);
-            let mut handle = device.open()?;
+            let handle = device.open()?;
 
             log::trace!("Device: {:?}", &device);
 
