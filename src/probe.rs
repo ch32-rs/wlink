@@ -286,7 +286,11 @@ pub fn watch_serial() -> Result<()> {
                             println!()
                         }
                     } else if endl {
-                        print!("{}: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"), c);
+                        print!(
+                            "{}: {}",
+                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                            c
+                        );
                         endl = false;
                     } else {
                         print!("{}", c);

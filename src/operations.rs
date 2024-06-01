@@ -344,7 +344,7 @@ impl ProbeSession {
         }
 
         self.probe
-            .send_command(commands::control::SetSDIPrintEnabled(enable))?;
+            .send_command(commands::control::SetSdiPrintEnabled(enable))?;
         Ok(())
     }
 

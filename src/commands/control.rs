@@ -183,9 +183,9 @@ impl Command for SetPower {
 /// SDI print support, only available for WCH-LinkE
 /// Firmware version >= 2.10
 #[derive(Debug)]
-pub struct SetSDIPrintEnabled(pub bool);
+pub struct SetSdiPrintEnabled(pub bool);
 
-impl Command for SetSDIPrintEnabled {
+impl Command for SetSdiPrintEnabled {
     // 0x00 success, 0xff not support
     type Response = u8;
     const COMMAND_ID: u8 = 0x0d;
