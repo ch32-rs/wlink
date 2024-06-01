@@ -35,7 +35,7 @@ pub const DMPROGBUF7: u8 = 0x27;
 pub const DMHALTSUM0: u8 = 0x40;
 
 // GPR: 0x1000 - 0x101f
-pub const GPRS: &[(&str, &str, u16)] = &[
+pub const GPRS_RVI: &[(&str, &str, u16)] = &[
     ("x0", "zero", 0x1000),
     ("x1", "ra", 0x1001),
     ("x2", "sp", 0x1002),
@@ -71,7 +71,7 @@ pub const GPRS: &[(&str, &str, u16)] = &[
 ];
 
 /// Gereral Purpose Register for riscv32ec
-pub const GPRS_RV32EC: &[(&str, &str, u16)] = &[
+pub const GPRS_RVE: &[(&str, &str, u16)] = &[
     ("x0", "zero", 0x1000),
     ("x1", "ra", 0x1001),
     ("x2", "sp", 0x1002),

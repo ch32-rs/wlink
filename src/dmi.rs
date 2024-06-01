@@ -351,9 +351,9 @@ impl ProbeSession {
         println!("dpc(pc):   0x{dpc:08x}");
 
         let gprs = if self.chip_family.is_rv32ec() {
-            regs::GPRS_RV32EC
+            regs::GPRS_RVE
         } else {
-            regs::GPRS
+            regs::GPRS_RVI
         };
 
         for (reg, name, regno) in gprs {
