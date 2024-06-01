@@ -150,27 +150,25 @@ enum Commands {
     List {},
     /// SDI virtual serial port,
     #[command(subcommand)]
-    SDIPrint(SDIPrint),
+    SdiPrint(SdiPrint),
     Dev {},
 }
 
 #[derive(clap::Subcommand, PartialEq, Clone, Copy, Debug)]
-pub enum SDIPrint {
+pub enum SdiPrint {
     /// Enable SDI print, implies --no-detach
     Enable,
     /// Disable SDI print
     Disable,
 }
 
-impl SDIPrint {
-    fn is_enable(&self) -> bool {
-        *self == SDIPrint::Enable
+impl SdiPrint {
+    pub fn is_enable(&self) -> bool {
+        *self == SdiPrint::Enable
     }
 }
 
 fn main() -> Result<()> {
-    use Commands::*;
-
     let cli = Cli::parse();
 
     // init simplelogger
@@ -207,7 +205,7 @@ fn main() -> Result<()> {
             println!("No command given, use --help for help.");
             println!("hint: use `wlink status` to get started.");
         }
-        Some(ModeSwitch { rv, dap }) => {
+        Some(Commands::ModeSwitch { rv, dap }) => {
             WchLink::list_probes()?;
             log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
             if !(rv ^ dap) {
@@ -218,11 +216,11 @@ fn main() -> Result<()> {
                 WchLink::switch_from_dap_to_rv(device_index)?;
             }
         }
-        Some(List {}) => {
+        Some(Commands::List {}) => {
             WchLink::list_probes()?;
         }
 
-        Some(Erase { method }) if method != EraseMode::Default => {
+        Some(Commands::Erase { method }) if method != EraseMode::Default => {
             // Special handling for non-default erase: bypass attach chip
             // So a chip family info is required, no detection
             let chip_family = cli.chip.ok_or(wlink::Error::Custom(
@@ -247,10 +245,10 @@ fn main() -> Result<()> {
             let mut sess = ProbeSession::attach(probe, cli.chip, cli.speed)?;
 
             match command {
-                Dev {} => {
+                Commands::Dev {} => {
                     // dev only
                 }
-                Dump {
+                Commands::Dump {
                     address,
                     length,
                     filename,
@@ -281,21 +279,21 @@ fn main() -> Result<()> {
                         );
                     }
                 }
-                Regs {} => {
+                Commands::Regs {} => {
                     log::info!("Dump GPRs");
                     sess.dump_regs()?;
                     sess.dump_pmp_csrs()?;
                 }
-                WriteReg { reg, value } => {
+                Commands::WriteReg { reg, value } => {
                     let regno = reg as u16;
                     log::info!("Set reg 0x{:04x} to 0x{:08x}", regno, value);
                     sess.write_reg(regno, value)?;
                 }
-                WriteMem { address, value } => {
+                Commands::WriteMem { address, value } => {
                     log::info!("Write memory 0x{:08x} to 0x{:08x}", value, address);
                     sess.write_mem32(address, value)?;
                 }
-                Halt {} => {
+                Commands::Halt {} => {
                     log::info!("Halt MCU");
                     sess.reset_debug_module()?;
                     sess.ensure_mcu_halt()?;
@@ -305,14 +303,14 @@ fn main() -> Result<()> {
                     let dmstatus: regs::Dmstatus = sess.probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#x?}");
                 }
-                Resume {} => {
+                Commands::Resume {} => {
                     log::info!("Resume MCU");
                     sess.ensure_mcu_resume()?;
 
                     let dmstatus: regs::Dmstatus = sess.probe.read_dmi_reg()?;
                     log::info!("{dmstatus:#?}");
                 }
-                Erase { method } => {
+                Commands::Erase { method } => {
                     log::info!("Erase Flash...");
                     match method {
                         EraseMode::Default => {
@@ -322,7 +320,7 @@ fn main() -> Result<()> {
                     }
                     log::info!("Erase done");
                 }
-                Flash {
+                Commands::Flash {
                     address,
                     erase,
                     no_run,
@@ -384,15 +382,15 @@ fn main() -> Result<()> {
                         }
                     }
                 }
-                Unprotect {} => {
+                Commands::Unprotect {} => {
                     log::info!("Unprotect Flash");
                     sess.unprotect_flash()?;
                 }
-                Protect {} => {
+                Commands::Protect {} => {
                     log::info!("Protect Flash");
                     sess.protect_flash()?;
                 }
-                Reset { mode } => {
+                Commands::Reset { mode } => {
                     log::info!("Reset {:?}", mode);
                     match mode {
                         ResetMode::Quit => {
@@ -414,27 +412,28 @@ fn main() -> Result<()> {
                     }
                     sleep(Duration::from_millis(300));
                 }
-                Status {} => {
+                Commands::Status {} => {
                     sess.dump_info()?;
                     sess.dump_core_csrs()?;
                     sess.dump_dmi()?;
                 }
-                SDIPrint(v) => {
+                Commands::SdiPrint(v) => match v {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,
                     // the WCH-Link can be used to read data from the debug interface of the mcu
                     // and print it to the serial port of the WCH-Link instead of using its UART peripheral.
                     // An example can be found here:
                     // https://github.com/openwch/ch32v003/tree/main/EVT/EXAM/SDI_Printf/SDI_Printf
-                    if v.is_enable() {
+                    SdiPrint::Enable => {
                         log::info!("Enabling SDI print");
                         sess.set_sdi_print_enabled(true)?;
                         will_detach = false;
                         log::info!("Now you can connect to the WCH-Link serial port");
-                    } else {
+                    }
+                    SdiPrint::Disable => {
                         log::info!("Disabling SDI print");
                         sess.set_sdi_print_enabled(false)?;
                     }
-                }
+                },
                 _ => unreachable!("unimplemented command"),
             }
             if will_detach {
