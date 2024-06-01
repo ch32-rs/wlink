@@ -41,35 +41,34 @@ pub enum Firmware {
 impl Firmware {
     /// Merge sections, and fill gap with 0xff
     pub fn merge_sections(self) -> Result<Self> {
-        if let Firmware::Sections(mut sections) = self {
-            sections.sort_by_key(|s| s.address);
-            let mut merged = vec![];
+        let Firmware::Sections(mut sections) = self else {
+            return Ok(self);
+        };
+        sections.sort_by_key(|s| s.address);
+        let mut merged = vec![];
 
-            let mut it = sections.drain(0..);
-            let mut last = it
-                .next()
-                .expect("firmware must has at least one section; qed");
+        let mut it = sections.drain(0..);
+        let mut last = it
+            .next()
+            .expect("firmware must has at least one section; qed");
 
-            for sect in it {
-                if let Some(gap) = sect.address.checked_sub(last.end_address()) {
-                    if gap > 0 {
-                        log::debug!("Merge firmware sections with gap: {}", gap);
-                    }
-                    last.data.resize(last.data.len() + gap as usize, 0xff); // fill gap with 0xff
-                    last.data.extend_from_slice(&sect.data);
-                } else {
-                    return Err(anyhow::format_err!(
-                        "section address overflow: {:#010x} + {:#x}",
-                        last.address,
-                        last.data.len()
-                    ));
+        for sect in it {
+            if let Some(gap) = sect.address.checked_sub(last.end_address()) {
+                if gap > 0 {
+                    log::debug!("Merge firmware sections with gap: {}", gap);
                 }
+                last.data.resize(last.data.len() + gap as usize, 0xff); // fill gap with 0xff
+                last.data.extend_from_slice(&sect.data);
+            } else {
+                return Err(anyhow::format_err!(
+                    "section address overflow: {:#010x} + {:#x}",
+                    last.address,
+                    last.data.len()
+                ));
             }
-            merged.push(last);
-            Ok(Firmware::Sections(merged))
-        } else {
-            Ok(self)
         }
+        merged.push(last);
+        Ok(Firmware::Sections(merged))
     }
 }
 
