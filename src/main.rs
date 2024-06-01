@@ -11,6 +11,7 @@ use wlink::{
 };
 
 use clap::{Parser, Subcommand};
+use clap_verbosity_flag::{InfoLevel, Verbosity};
 
 #[derive(clap::Parser)]
 #[command(author, version, about, long_about = None)]
@@ -19,9 +20,8 @@ struct Cli {
     #[arg(long, short = 'd', value_name = "INDEX")]
     device: Option<usize>,
 
-    /// Turn debugging information on
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    verbose: u8,
+    #[command(flatten)]
+    verbose: Verbosity<InfoLevel>,
 
     /// Detach chip after operation
     #[arg(long, global = true, default_value = "false")]
@@ -172,28 +172,13 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // init simplelogger
-    if cli.verbose >= 2 {
-        let _ = simplelog::TermLogger::init(
-            simplelog::LevelFilter::Trace,
-            simplelog::Config::default(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        );
-    } else if cli.verbose == 1 {
-        let _ = simplelog::TermLogger::init(
-            simplelog::LevelFilter::Debug,
-            simplelog::Config::default(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        );
-    } else {
-        let _ = simplelog::TermLogger::init(
-            simplelog::LevelFilter::Info,
-            simplelog::Config::default(),
-            simplelog::TerminalMode::Mixed,
-            simplelog::ColorChoice::Auto,
-        );
-    }
+    simplelog::TermLogger::init(
+        cli.verbose.log_level_filter(),
+        simplelog::Config::default(),
+        simplelog::TerminalMode::Mixed,
+        simplelog::ColorChoice::Auto,
+    )
+    .expect("initialize simple logger");
 
     let device_index = cli.device.unwrap_or(0);
     let mut will_detach = !cli.no_detach;
