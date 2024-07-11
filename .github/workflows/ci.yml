@@ -2,26 +2,133 @@ name: Build and Test
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+  release:
+    types:
+      - created
+  schedule: # Every day at the 2 P.M. (UTC) we run a scheduled nightly build
+    - cron: "0 14 * * *"
 
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    name: build (${{ matrix.config.arch }})
+    strategy:
+      matrix:
+        config:
+          - os: windows-latest
+            arch: win-x64
+          - os: windows-latest
+            arch: win-x86
+          - os: ubuntu-latest
+            arch: linux-x64
+          - os: macos-latest
+            arch: macos-arm64
+          - os: macos-12
+            arch: macos-x64
+    runs-on: ${{ matrix.config.os }}
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install libudev for Linux
       if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install -y libudev-dev
+    - name: Set target
+      run: |
+        if [[ "${{ matrix.config.arch }}" == "win-x86" ]]; then
+          echo TARGET="--target i686-pc-windows-msvc" >> $GITHUB_ENV
+        else
+          echo TARGET="" >> $GITHUB_ENV
+        fi
+      shell: bash
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --release ${{ env.TARGET }}
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --release ${{ env.TARGET }} --verbose
     - name: Run help
-      run: cargo run -- --help
+      run: cargo run --release ${{ env.TARGET }} -- --help
+
+    - name: Prepare artifacts
+      run: |
+        if [[ "${{ matrix.config.arch }}" == "win-x64" ]]; then
+          WLINK_EXE="target/release/wlink.exe"
+        elif [[ "${{ matrix.config.arch }}" == "win-x86" ]]; then
+          WLINK_EXE="target/i686-pc-windows-msvc/release/wlink.exe"
+        else
+          WLINK_EXE="target/release/wlink"
+        fi
+
+        mkdir wlink-${{ matrix.config.arch }}
+        cp $WLINK_EXE wlink-${{ matrix.config.arch }}
+        cp README.md wlink-${{ matrix.config.arch }}
+      shell: bash
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wlink-${{ matrix.config.arch }}
+        path: wlink-${{ matrix.config.arch }}
+
+    - name: Prepare Release Asset
+      if: github.event_name == 'release'
+      run: |
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          7z a -tzip wlink-${{ github.event.release.tag_name }}-${{ matrix.config.arch }}.zip wlink-${{ matrix.config.arch }}
+        else
+          tar -czvf wlink-${{ github.event.release.tag_name }}-${{ matrix.config.arch }}.tar.gz wlink-${{ matrix.config.arch }}
+        fi
+      shell: bash
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      if: github.event_name == 'release'
+      with:
+        fail_on_unmatched_files: false
+        files: |
+          wlink-*.tar.gz
+          wlink-*.zip
+
+  nightly-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./
+
+      - name: Prepare Nightly Asset
+        run: |
+          ls -R ./
+          for f in wlink-*; do
+            echo "Compressing $f"
+            if [[ $f == wlink-win* ]]; then
+              zip -r $f.zip $f
+            else
+              tar -czvf $f.tar.gz $f
+            fi
+          done
+          ls ./
+
+      - name: Update Nightly Release
+        uses: andelf/nightly-release@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: nightly
+          name: "wlink nightly release $$"
+          draft: false
+          prerelease: true
+          body: |
+            This is a nightly binary release of the wlink command line tool.
+
+            For Windows users, please use the x86 version since it has the Windows driver support.
+          files: |
+            wlink-*.tar.gz
+            wlink-*.zip
