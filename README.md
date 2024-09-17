@@ -62,7 +62,7 @@ Current firmware version: 2.11 (aka. v31).
 - [ ] [CH643] - I don't have this chip, help wanted
 - [ ] [CH641] - I don't have this chip, help wanted
 - [CH32X035]
-- [ ] [CH32L103] - I don't have this chip, help wanted
+- [CH32L103]
 - [ ] [CH8571] - No other source about this chip, help wanted
 - ... (Feel free to open an issue if you have tested on other chips)
 
