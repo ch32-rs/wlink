@@ -173,37 +173,37 @@ impl WchLink {
         Ok(())
     }
 
-    pub fn set_3v3_output_enabled(&mut self, enable: bool) -> Result<()> {
-        if !self.probe.info.variant.support_power_funcs() {
+    pub fn set_3v3_output_enabled(nth: usize, enable: bool) -> Result<()> {
+        let mut probe = Self::open_nth(nth)?;
+
+        if !probe.info.variant.support_power_funcs() {
             return Err(Error::Custom(
                 "Probe doesn't support power control".to_string(),
             ));
         }
 
         if enable {
-            self.probe
-                .send_command(commands::control::SetPower::Enable3V3)?;
+            probe.send_command(commands::control::SetPower::Enable3V3)?;
         } else {
-            self.probe
-                .send_command(commands::control::SetPower::Disable3V3)?;
+            probe.send_command(commands::control::SetPower::Disable3V3)?;
         }
 
         Ok(())
     }
 
-    pub fn set_5v_output_enabled(&mut self, enable: bool) -> Result<()> {
-        if !self.probe.info.variant.support_power_funcs() {
+    pub fn set_5v_output_enabled(nth: usize, enable: bool) -> Result<()> {
+        let mut probe = Self::open_nth(nth)?;
+
+        if !probe.info.variant.support_power_funcs() {
             return Err(Error::Custom(
                 "Probe doesn't support power control".to_string(),
             ));
         }
 
         if enable {
-            self.probe
-                .send_command(commands::control::SetPower::Enable5V)?;
+            probe.send_command(commands::control::SetPower::Enable5V)?;
         } else {
-            self.probe
-                .send_command(commands::control::SetPower::Disable5V)?;
+            probe.send_command(commands::control::SetPower::Disable5V)?;
         }
 
         Ok(())

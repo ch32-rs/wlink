@@ -214,19 +214,19 @@ fn main() -> Result<()> {
         }
         Some(Commands::Enable3V3 {}) => {
             log::info!("Enable 3.3V Output");
-            WchLink::set_3v3_output_enabled(true)?;
+            WchLink::set_3v3_output_enabled(device_index, true)?;
         }
         Some(Commands::Disable3V3 {}) => {
             log::info!("Disable 3.3V Output");
-            WchLink::set_3v3_output_enabled(false)?;
+            WchLink::set_3v3_output_enabled(device_index, false)?;
         }
         Some(Commands::Enable5V {}) => {
             log::info!("Enable 5V Output");
-            WchLink::set_5v_output_enabled(true)?;
+            WchLink::set_5v_output_enabled(device_index, true)?;
         }
         Some(Commands::Disable5V {}) => {
             log::info!("Disable 5V Output");
-            WchLink::set_5v_output_enabled(false)?;
+            WchLink::set_5v_output_enabled(device_index, false)?;
         }
 
         Some(Commands::Erase { method }) if method != EraseMode::Default => {
