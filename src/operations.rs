@@ -339,9 +339,9 @@ impl ProbeSession {
         }
 
         if enable {
-            self.send_command(control::SetPower::Enable3V3)?;
+            self.send_command(commands::control::SetPower::Enable3V3)?;
         } else {
-            self.send_command(control::SetPower::Disable3V3)?;
+            self.send_command(commands::control::SetPower::Disable3V3)?;
         }
 
         Ok(())
@@ -355,9 +355,9 @@ impl ProbeSession {
         }
 
         if enable {
-            self.send_command(control::SetPower::Enable5V)?;
+            self.send_command(commands::control::SetPower::Enable5V)?;
         } else {
-            self.send_command(control::SetPower::Disable5V)?;
+            self.send_command(commands::control::SetPower::Disable5V)?;
         }
 
         Ok(())
