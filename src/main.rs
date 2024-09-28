@@ -148,6 +148,12 @@ enum Commands {
     },
     /// List probes
     List {},
+    /// Enable 3.3V output
+    Enable3V3 {},
+    /// Disable 3.3V output
+    Disable3V3 {},
+    /// Enable 5V output
+    Enable5V {},
     /// SDI virtual serial port,
     #[command(subcommand)]
     SdiPrint(SdiPrint),
@@ -401,6 +407,22 @@ fn main() -> Result<()> {
                     sess.dump_info()?;
                     sess.dump_core_csrs()?;
                     sess.dump_dmi()?;
+                }               
+                Commands::Enable3V3 {} => {
+                    log::info!("Enable 3.3V Output");
+                    sess.set_3v3_output_enabled(true)?;
+                }
+                Commands::Disable3V3 {} => {
+                    log::info!("Disable 3.3V Output");
+                    sess.set_3v3_output_enabled(false)?;
+                }
+                Commands::Enable5V {} => {
+                    log::info!("Enable 5V Output");
+                    sess.set_5v_output_enabled(true)?;
+                }
+                Commands::Disable5V {} => {
+                    log::info!("Disable 5V Output");
+                    sess.set_5v_output_enabled(false)?;
                 }
                 Commands::SdiPrint(v) => match v {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,

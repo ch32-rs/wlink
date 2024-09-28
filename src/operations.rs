@@ -331,6 +331,38 @@ impl ProbeSession {
         Ok(mem)
     }
 
+    pub fn set_3v3_output_enabled(&mut self, enable: bool) -> Result<()> {
+        if !probe.info.variant.support_power_funcs() {
+            return Err(Error::Custom(
+                "Probe doesn't support power control".to_string(),
+            ));
+        }
+
+        if enable {
+            self.send_command(control::SetPower::Enable3V3)?;
+        } else {
+            self.send_command(control::SetPower::Disable3V3)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn set_5v_output_enabled(&mut self, enable: bool) -> Result<()> {
+        if !probe.info.variant.support_power_funcs() {
+            return Err(Error::Custom(
+                "Probe doesn't support power control".to_string(),
+            ));
+        }
+
+        if enable {
+            self.send_command(control::SetPower::Enable5V)?;
+        } else {
+            self.send_command(control::SetPower::Disable5V)?;
+        }
+
+        Ok(())
+    }
+
     pub fn set_sdi_print_enabled(&mut self, enable: bool) -> Result<()> {
         if !self.probe.info.variant.support_sdi_print() {
             return Err(Error::Custom(
