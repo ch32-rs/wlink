@@ -183,8 +183,10 @@ impl WchLink {
         }
 
         if enable {
+            log::info!("Enable 3.3V Output");
             probe.send_command(commands::control::SetPower::Enable3V3)?;
         } else {
+            log::info!("Disable 3.3V Output");
             probe.send_command(commands::control::SetPower::Disable3V3)?;
         }
 
@@ -201,8 +203,10 @@ impl WchLink {
         }
 
         if enable {
+            log::info!("Enable 5V Output");
             probe.send_command(commands::control::SetPower::Enable5V)?;
         } else {
+            log::info!("Disable 5V Output");
             probe.send_command(commands::control::SetPower::Disable5V)?;
         }
 
