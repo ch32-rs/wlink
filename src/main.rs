@@ -154,6 +154,8 @@ enum Commands {
     Disable3V3 {},
     /// Enable 5V output
     Enable5V {},
+    /// Disable 5V output
+    Disable5V {},
     /// SDI virtual serial port,
     #[command(subcommand)]
     SdiPrint(SdiPrint),
