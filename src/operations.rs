@@ -332,7 +332,7 @@ impl ProbeSession {
     }
 
     pub fn set_3v3_output_enabled(&mut self, enable: bool) -> Result<()> {
-        if !probe.info.variant.support_power_funcs() {
+        if !self.probe.info.variant.support_power_funcs() {
             return Err(Error::Custom(
                 "Probe doesn't support power control".to_string(),
             ));
@@ -348,7 +348,7 @@ impl ProbeSession {
     }
 
     pub fn set_5v_output_enabled(&mut self, enable: bool) -> Result<()> {
-        if !probe.info.variant.support_power_funcs() {
+        if !self.probe.info.variant.support_power_funcs() {
             return Err(Error::Custom(
                 "Probe doesn't support power control".to_string(),
             ));
