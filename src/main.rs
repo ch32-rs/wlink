@@ -421,7 +421,7 @@ fn main() -> Result<()> {
                     sess.dump_info()?;
                     sess.dump_core_csrs()?;
                     sess.dump_dmi()?;
-                }               
+                }
                 Commands::SdiPrint(v) => match v {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,
                     // the WCH-Link can be used to read data from the debug interface of the mcu
