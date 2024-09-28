@@ -212,6 +212,22 @@ fn main() -> Result<()> {
         Some(Commands::List {}) => {
             WchLink::list_probes()?;
         }
+        Some(Commands::Enable3V3 {}) => {
+            log::info!("Enable 3.3V Output");
+            WchLink::set_3v3_output_enabled(true)?;
+        }
+        Some(Commands::Disable3V3 {}) => {
+            log::info!("Disable 3.3V Output");
+            WchLink::set_3v3_output_enabled(false)?;
+        }
+        Some(Commands::Enable5V {}) => {
+            log::info!("Enable 5V Output");
+            WchLink::set_5v_output_enabled(true)?;
+        }
+        Some(Commands::Disable5V {}) => {
+            log::info!("Disable 5V Output");
+            WchLink::set_5v_output_enabled(false)?;
+        }
 
         Some(Commands::Erase { method }) if method != EraseMode::Default => {
             // Special handling for non-default erase: bypass attach chip
@@ -410,22 +426,6 @@ fn main() -> Result<()> {
                     sess.dump_core_csrs()?;
                     sess.dump_dmi()?;
                 }               
-                Commands::Enable3V3 {} => {
-                    log::info!("Enable 3.3V Output");
-                    sess.set_3v3_output_enabled(true)?;
-                }
-                Commands::Disable3V3 {} => {
-                    log::info!("Disable 3.3V Output");
-                    sess.set_3v3_output_enabled(false)?;
-                }
-                Commands::Enable5V {} => {
-                    log::info!("Enable 5V Output");
-                    sess.set_5v_output_enabled(true)?;
-                }
-                Commands::Disable5V {} => {
-                    log::info!("Disable 5V Output");
-                    sess.set_5v_output_enabled(false)?;
-                }
                 Commands::SdiPrint(v) => match v {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,
                     // the WCH-Link can be used to read data from the debug interface of the mcu

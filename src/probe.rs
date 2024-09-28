@@ -173,6 +173,42 @@ impl WchLink {
         Ok(())
     }
 
+    pub fn set_3v3_output_enabled(&mut self, enable: bool) -> Result<()> {
+        if !self.probe.info.variant.support_power_funcs() {
+            return Err(Error::Custom(
+                "Probe doesn't support power control".to_string(),
+            ));
+        }
+
+        if enable {
+            self.probe
+                .send_command(commands::control::SetPower::Enable3V3)?;
+        } else {
+            self.probe
+                .send_command(commands::control::SetPower::Disable3V3)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn set_5v_output_enabled(&mut self, enable: bool) -> Result<()> {
+        if !self.probe.info.variant.support_power_funcs() {
+            return Err(Error::Custom(
+                "Probe doesn't support power control".to_string(),
+            ));
+        }
+
+        if enable {
+            self.probe
+                .send_command(commands::control::SetPower::Enable5V)?;
+        } else {
+            self.probe
+                .send_command(commands::control::SetPower::Disable5V)?;
+        }
+
+        Ok(())
+    }
+
     fn write_raw_cmd(&mut self, buf: &[u8]) -> Result<()> {
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         self.device.write_endpoint(ENDPOINT_OUT, buf)?;
