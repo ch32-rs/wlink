@@ -173,7 +173,7 @@ impl WchLink {
         Ok(())
     }
 
-    pub fn set_3v3_output_enabled(nth: usize, enable: bool) -> Result<()> {
+    pub fn set_power_output_enabled(nth: usize, cmd: commands::control::SetPower) -> Result<()> {
         let mut probe = Self::open_nth(nth)?;
 
         if !probe.info.variant.support_power_funcs() {
@@ -182,32 +182,13 @@ impl WchLink {
             ));
         }
 
-        if enable {
-            log::info!("Enable 3.3V Output");
-            probe.send_command(commands::control::SetPower::Enable3V3)?;
-        } else {
-            log::info!("Disable 3.3V Output");
-            probe.send_command(commands::control::SetPower::Disable3V3)?;
-        }
+        probe.send_command(cmd)?;
 
-        Ok(())
-    }
-
-    pub fn set_5v_output_enabled(nth: usize, enable: bool) -> Result<()> {
-        let mut probe = Self::open_nth(nth)?;
-
-        if !probe.info.variant.support_power_funcs() {
-            return Err(Error::Custom(
-                "Probe doesn't support power control".to_string(),
-            ));
-        }
-
-        if enable {
-            log::info!("Enable 5V Output");
-            probe.send_command(commands::control::SetPower::Enable5V)?;
-        } else {
-            log::info!("Disable 5V Output");
-            probe.send_command(commands::control::SetPower::Disable5V)?;
+        match cmd {
+            commands::control::SetPower::Enable3v3 => log::info!("Enable 3.3V Output"),
+            commands::control::SetPower::Disable3v3 => log::info!("Disable 3.3V Output"),
+            commands::control::SetPower::Enable5v => log::info!("Enable 5V Output"),
+            commands::control::SetPower::Disable5v => log::info!("Disable 5V Output"),
         }
 
         Ok(())

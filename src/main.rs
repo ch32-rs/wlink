@@ -148,14 +148,11 @@ enum Commands {
     },
     /// List probes
     List {},
-    /// Enable 3.3V output
-    Enable3v3 {},
-    /// Disable 3.3V output
-    Disable3v3 {},
-    /// Enable 5V output
-    Enable5v {},
-    /// Disable 5V output
-    Disable5v {},
+    /// Enable or disable power output
+    SetPower {
+        #[command(subcommand)]
+        cmd: commands::control::SetPower,
+    },
     /// SDI virtual serial port,
     #[command(subcommand)]
     SdiPrint(SdiPrint),
@@ -212,17 +209,8 @@ fn main() -> Result<()> {
         Some(Commands::List {}) => {
             WchLink::list_probes()?;
         }
-        Some(Commands::Enable3v3 {}) => {
-            WchLink::set_3v3_output_enabled(device_index, true)?;
-        }
-        Some(Commands::Disable3v3 {}) => {
-            WchLink::set_3v3_output_enabled(device_index, false)?;
-        }
-        Some(Commands::Enable5v {}) => {
-            WchLink::set_5v_output_enabled(device_index, true)?;
-        }
-        Some(Commands::Disable5v {}) => {
-            WchLink::set_5v_output_enabled(device_index, false)?;
+        Some(Commands::SetPower { cmd }) => {
+            WchLink::set_power_output_enabled(device_index, cmd)?;
         }
 
         Some(Commands::Erase { method }) if method != EraseMode::Default => {
