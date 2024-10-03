@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.9] - 2024-10-03
+
+### Added
+
+- Add functions to control 3.3V and 5V outputs of probe, #72
+
 ### Fixed
 
 - Rename ChipUID response to ESignature, #58
-- Add functions to control 3.3V and 5V outputs of probe
+- Ensure consistent nanosecond precision in log timestamps, #64
 
 ## [0.0.8] - 2024-03-30
 
