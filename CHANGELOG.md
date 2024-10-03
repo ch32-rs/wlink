@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Rename ChipUID response to ESignature, #58
+- Add functions to control 3.3V and 5V outputs of probe
 
 ## [0.0.8] - 2024-03-30
 

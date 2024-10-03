@@ -160,22 +160,26 @@ impl Command for OptEnd {
 }
 
 /// Set Power, from pow3v3, pow5v fn
-#[derive(Debug)]
+#[derive(clap::Subcommand, PartialEq, Clone, Copy, Debug)]
 pub enum SetPower {
-    Enable3V3,
-    Disable3V3,
-    Enable5V,
-    Disable5V,
+    /// Enable 3.3V output
+    Enable3v3,
+    /// Disable 3.3V output
+    Disable3v3,
+    /// Enable 5V output
+    Enable5v,
+    /// Disable 5V output
+    Disable5v,
 }
 impl Command for SetPower {
     type Response = ();
     const COMMAND_ID: u8 = 0x0d;
     fn payload(&self) -> Vec<u8> {
         match self {
-            SetPower::Enable3V3 => vec![0x09],
-            SetPower::Disable3V3 => vec![0x0A],
-            SetPower::Enable5V => vec![0x0B],
-            SetPower::Disable5V => vec![0x0C],
+            SetPower::Enable3v3 => vec![0x09],
+            SetPower::Disable3v3 => vec![0x0A],
+            SetPower::Enable5v => vec![0x0B],
+            SetPower::Disable5v => vec![0x0C],
         }
     }
 }

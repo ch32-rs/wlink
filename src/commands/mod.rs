@@ -425,4 +425,4 @@ impl Command for DisableDebug {
 // 81 0D 01 0F ClearCodeFlashB
 // 81 0D 02 08 xx ClearCodeFlash
 // 81 11 01 0D unknown in query info, before GetChipRomRamSplit
-// 81 0d 02 ee 00 stop flash ?
+// 81 0D 02 EE 00 stop flash ?

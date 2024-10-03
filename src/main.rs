@@ -148,6 +148,11 @@ enum Commands {
     },
     /// List probes
     List {},
+    /// Enable or disable power output
+    SetPower {
+        #[command(subcommand)]
+        cmd: commands::control::SetPower,
+    },
     /// SDI virtual serial port,
     #[command(subcommand)]
     SdiPrint(SdiPrint),
@@ -203,6 +208,9 @@ fn main() -> Result<()> {
         }
         Some(Commands::List {}) => {
             WchLink::list_probes()?;
+        }
+        Some(Commands::SetPower { cmd }) => {
+            WchLink::set_power_output_enabled(device_index, cmd)?;
         }
 
         Some(Commands::Erase { method }) if method != EraseMode::Default => {
