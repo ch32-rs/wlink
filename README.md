@@ -175,3 +175,7 @@ x5     t0: 0xb4a9b38a
 
 - [docs/references.md](docs/references.md)
 - WCH's openocd fork: <https://github.com/treideme/openocd-hacks>
+
+## License
+
+This project is licensed under the MIT or Apache-2.0 license, at your option.
