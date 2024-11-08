@@ -62,8 +62,9 @@ Current firmware version: 2.11 (aka. v31).
 - [CH585]/CH584
 - [CH592]/CH591
 - [ ] [CH643] - I don't have this chip, help wanted
+- [ ] [CH32V317] - I don't have this chip, help wanted
 - [CH641]
-- [CH32X035]/CH32X034/CH32X033
+- [CH32X035]/CH32X033
 - [CH32L103]
 - [ ] [CH8571] - No other source about this chip, help wanted
 - ... (Feel free to open an issue if you have tested on other chips)
@@ -73,6 +74,7 @@ Current firmware version: 2.11 (aka. v31).
 [CH32V203]: https://www.wch-ic.com/products/CH32V203.html
 [CH32V208]: https://www.wch-ic.com/products/CH32V208.html
 [CH32V307]: https://www.wch-ic.com/products/CH32V307.html
+[CH32V317]: https://www.wch.cn/products/CH32V317.html
 [CH32X035]: https://www.wch-ic.com/products/CH32X035.html
 [CH32L103]: https://www.wch-ic.com/products/CH32L103.html
 [CH569]: https://www.wch-ic.com/products/CH569.html
