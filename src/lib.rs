@@ -50,13 +50,19 @@ pub enum RiscvChip {
     /// CH585/CH584 RISC-V3C series, BLE 5.4, NFC, USB HS, fallback as CH582
     CH585 = 0x4B,
 
-    // The following are
+    // The following are possible riscvchip code of:
+    // - CH32M007
+    // - CH32V002/4/5/6/7
+    // - CH645
+    // - CH653
+    // - CH654
+    // - CH32V317?
     Unknown0x0F = 0x0F,
     // 1024, 256
     Unknown0x4E = 0x4E,
     // V002/4/5/6/7, or M007
     Unknown0x46 = 0x46,
-    // V002/4/5/6/7, or M007  ??
+    // V002/4/5/6/7, or M007
     Unknown0x86 = 0x86,
 }
 
