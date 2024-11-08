@@ -10,6 +10,8 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
         0x810_00000 => Some("CH581"),
         0x820_00000 => Some("CH582"),
         0x830_00000 => Some("CH583"),
+        0x840_00000 => Some("CH584"),
+        0x850_00000 => Some("CH585"),
         0x920_00000 => Some("CH592"),
         0x003_00000 => match chip_id & 0xFFFFFF0F {
             0x003_00500 => Some("CH32V003F4P6"),

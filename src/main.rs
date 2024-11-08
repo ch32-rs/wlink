@@ -27,7 +27,7 @@ struct Cli {
     #[arg(long, global = true, default_value = "false")]
     no_detach: bool,
 
-    /// Specify the chip type, e.g. CH32V30X
+    /// Specify the chip type
     #[arg(long, global = true, ignore_case = true)]
     chip: Option<RiscvChip>,
 
