@@ -20,6 +20,40 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x003_30500 => Some("CH32V003J4M6"),
             _ => None,
         },
+        // https://github.com/openwch/ch32v002_004_005_006_007/blob/main/EVT/EXAM/SRC/Peripheral/src/ch32v00X_dbgmcu.c
+        0x006_00000 => match chip_id & 0xFFFFFF0F {
+            0x006_00600 => Some("CH32V006K8U6"),
+            0x006_10600 => Some("CH32V006E8R6"),
+            0x006_20600 => Some("CH32V006F8U6"),
+            0x006_30600 => Some("CH32V006F8P6"),
+            _ => None,
+        },
+        0x007_00000 => match chip_id & 0xFFFFFF0F {
+            0x007_00800 => Some("CH32M007G8R6"),
+            0x007_10600 => Some("CH32V007E8R6"),
+            0x007_20600 => Some("CH32V007F8U6"),
+            _ => None,
+        },
+        0x005_00000 => match chip_id & 0xFFFFFF0F {
+            0x005_00600 => Some("CH32V005E6R6"),
+            0x005_10600 => Some("CH32V005F6U6"),
+            0x005_20600 => Some("CH32V005F6P6"),
+            0x005_30600 => Some("CH32V005D6U6"),
+            _ => None,
+        },
+        0x002_00000 => match chip_id & 0xFFFFFF0F {
+            0x002_00600 => Some("CH32V002F4P6"),
+            0x002_10600 => Some("CH32V002F4U6"),
+            0x002_20600 => Some("CH32V002A4M6"),
+            0x002_30600 => Some("CH32V002D4U6"),
+            0x002_40600 => Some("CH32V002J4M6"),
+            _ => None,
+        },
+        0x004_00000 => match chip_id & 0xFFFFFF0F {
+            0x004_00600 => Some("CH32V004F6P1"),
+            0x004_10600 => Some("CH32V004F6U1"),
+            _ => None,
+        },
         0x035_00000 => match chip_id & 0xFFFFFF0F {
             0x035_00601 => Some("CH32X035R8T6"),
             0x035_10601 => Some("CH32X035C8T6"),
@@ -67,7 +101,7 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x208_3050C => Some("CH32V208GBU6"),
             _ => None,
         },
-        0x303_00000 | 0x305_00000 | 0x307_00000 => match chip_id & 0xFFFFFF0F {
+        0x303_00000 | 0x305_00000 | 0x307_00000 | 0x317_00000 => match chip_id & 0xFFFFFF0F {
             0x303_30504 => Some("CH32V303CBT6"),
             0x303_20504 => Some("CH32V303RBT6"),
             0x303_10504 => Some("CH32V303RCT6"),
@@ -79,6 +113,9 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x307_20508 => Some("CH32V307FBP6"),
             0x307_10508 => Some("CH32V307RCT6"),
             0x307_00508 => Some("CH32V307VCT6"),
+            0x317_0B508 => Some("CH32V317VCT6"),
+            0x317_3B508 => Some("CH32V317WCU6"),
+            0x317_5B508 => Some("CH32V317TCU6"),
             _ => None,
         },
         0x641 => match chip_id & 0xFFFFFF0F {
