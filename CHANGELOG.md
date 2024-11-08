@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support CH585/CH584, CH32V317, CH32V002/4/5/6/7, CH32M007, #76
+
 ## [0.0.9] - 2024-10-03
 
 ### Added
