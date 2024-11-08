@@ -69,7 +69,7 @@ impl WchLinkVariant {
             ),
             WchLinkVariant::WCh32v208 => !matches!(
                 chip,
-                RiscvChip::CH56X | RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X
+                RiscvChip::CH56X | RiscvChip::CH57X | RiscvChip::CH582 | RiscvChip::CH59X
             ),
             _ => true,
         }

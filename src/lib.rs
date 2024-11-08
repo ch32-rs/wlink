@@ -1,4 +1,4 @@
-use std::str::FromStr;
+//! The wlink library.
 
 pub mod chips;
 pub mod commands;
@@ -11,13 +11,13 @@ pub mod probe;
 pub mod regs;
 pub mod usb_device;
 
-use clap::ValueEnum;
+use clap::{builder::PossibleValue, ValueEnum};
 use probe::WchLink;
 
 pub use crate::error::{Error, Result};
 
 /// Currently supported RISC-V chip series/family
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum RiscvChip {
     /// CH32V103 RISC-V3A series
@@ -30,12 +30,12 @@ pub enum RiscvChip {
     CH32V20X = 0x05,
     /// CH32V30X RISC-V4C/V4F series, The same as type 5
     CH32V30X = 0x06,
-    /// CH58x RISC-V4A BLE 5.3 series
-    CH58X = 0x07,
+    /// CH583/CH582/CH581 RISC-V4A BLE 5.3 series
+    CH582 = 0x07,
     /// CH32V003 RISC-V2A series
     CH32V003 = 0x09,
-    // The only reference I can find is <https://www.wch.cn/news/606.html>.
     /// RISC-V EC controller, undocumented.
+    /// The only reference I can find is <https://www.wch.cn/news/606.html>.
     CH8571 = 0x0A, // 10,
     /// CH59x RISC-V4C BLE 5.4 series, fallback as CH58X
     CH59X = 0x0B, // 11
@@ -47,6 +47,87 @@ pub enum RiscvChip {
     CH32L103 = 0x0E, // 14
     /// CH641 RISC-V2A series, USB-PD, fallback as CH32V003
     CH641 = 0x49,
+    /// CH585/CH584 RISC-V3C series, BLE 5.4, NFC, USB HS, fallback as CH582
+    CH585 = 0x4B,
+
+    // The following are
+    Unknown0x0F = 0x0F,
+    // 1024, 256
+    Unknown0x4E = 0x4E,
+    // V002/4/5/6/7, or M007
+    Unknown0x46 = 0x46,
+    // V002/4/5/6/7, or M007  ??
+    Unknown0x86 = 0x86,
+}
+
+impl ValueEnum for RiscvChip {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[
+            RiscvChip::CH32V103,
+            RiscvChip::CH57X,
+            RiscvChip::CH56X,
+            RiscvChip::CH32V20X,
+            RiscvChip::CH32V30X,
+            RiscvChip::CH582,
+            RiscvChip::CH585,
+            RiscvChip::CH32V003,
+            RiscvChip::CH8571,
+            RiscvChip::CH59X,
+            RiscvChip::CH643,
+            RiscvChip::CH32X035,
+            RiscvChip::CH32L103,
+            RiscvChip::CH641,
+        ]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        match self {
+            RiscvChip::CH32V103 => Some(PossibleValue::new("CH32V103")),
+            RiscvChip::CH57X => Some(PossibleValue::new("CH57X")),
+            RiscvChip::CH56X => Some(PossibleValue::new("CH56X")),
+            RiscvChip::CH32V20X => Some(PossibleValue::new("CH32V20X")),
+            RiscvChip::CH32V30X => Some(PossibleValue::new("CH32V30X")),
+            RiscvChip::CH582 => Some(PossibleValue::new("CH582")),
+            RiscvChip::CH585 => Some(PossibleValue::new("CH585")),
+            RiscvChip::CH32V003 => Some(PossibleValue::new("CH32V003")),
+            RiscvChip::CH8571 => Some(PossibleValue::new("CH8571")),
+            RiscvChip::CH59X => Some(PossibleValue::new("CH59X")),
+            RiscvChip::CH643 => Some(PossibleValue::new("CH643")),
+            RiscvChip::CH32X035 => Some(PossibleValue::new("CH32X035")),
+            RiscvChip::CH32L103 => Some(PossibleValue::new("CH32L103")),
+            RiscvChip::CH641 => Some(PossibleValue::new("CH641")),
+            RiscvChip::Unknown0x0F => todo!(),
+            RiscvChip::Unknown0x4E => todo!(),
+            RiscvChip::Unknown0x46 => todo!(),
+            RiscvChip::Unknown0x86 => todo!(),
+        }
+    }
+
+    fn from_str(input: &str, ignore_case: bool) -> std::result::Result<Self, String> {
+        let s = if ignore_case {
+            input.to_ascii_uppercase()
+        } else {
+            input.to_string()
+        };
+        match &*s {
+            "CH32V103" => Ok(RiscvChip::CH32V103),
+            "CH32V20X" | "CH32V203" | "CH32V208" => Ok(RiscvChip::CH32V20X),
+            "CH32V30X" | "CH32V303" | "CH32V305" | "CH32V307" => Ok(RiscvChip::CH32V30X),
+            "CH32V003" => Ok(RiscvChip::CH32V003),
+            "CH56X" | "CH565" | "CH569" => Ok(RiscvChip::CH56X),
+            "CH57X" | "CH571" | "CH573" => Ok(RiscvChip::CH57X),
+            "CH581" | "CH582" | "CH583" => Ok(RiscvChip::CH582),
+            "CH584" | "CH585" => Ok(RiscvChip::CH585),
+            "CH59X" | "CH591" | "CH592" => Ok(RiscvChip::CH59X),
+            "CH32X0" | "CH32X03X" | "CH32X033" | "CH32X034" | "CH32X035" => Ok(RiscvChip::CH32X035),
+            "CH643" => Ok(RiscvChip::CH643),
+            "CH32L103" => Ok(RiscvChip::CH32L103),
+            "CH8571" => Ok(RiscvChip::CH8571),
+            "CH641" => Ok(RiscvChip::CH641),
+            "CH58X" => Err("Ambiguous chip family, use either CH582 or CH585".to_string()),
+            _ => Err(format!("Unknown chip: {}", s)),
+        }
+    }
 }
 
 impl RiscvChip {
@@ -74,7 +155,11 @@ impl RiscvChip {
     pub fn support_query_info(&self) -> bool {
         !matches!(
             self,
-            RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X | RiscvChip::CH59X
+            RiscvChip::CH57X
+                | RiscvChip::CH56X
+                | RiscvChip::CH582
+                | RiscvChip::CH585
+                | RiscvChip::CH59X
         )
     }
 
@@ -84,7 +169,11 @@ impl RiscvChip {
     pub fn support_disable_debug(&self) -> bool {
         matches!(
             self,
-            RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X | RiscvChip::CH59X
+            RiscvChip::CH57X
+                | RiscvChip::CH56X
+                | RiscvChip::CH582
+                | RiscvChip::CH585
+                | RiscvChip::CH59X
         )
     }
 
@@ -92,7 +181,11 @@ impl RiscvChip {
     pub fn support_special_erase(&self) -> bool {
         !matches!(
             self,
-            RiscvChip::CH57X | RiscvChip::CH56X | RiscvChip::CH58X | RiscvChip::CH59X
+            RiscvChip::CH57X
+                | RiscvChip::CH56X
+                | RiscvChip::CH582
+                | RiscvChip::CH585
+                | RiscvChip::CH59X
         )
     }
 
@@ -117,7 +210,7 @@ impl RiscvChip {
 
     pub fn reset_command(&self) -> crate::commands::Reset {
         match self {
-            RiscvChip::CH57X | RiscvChip::CH58X | RiscvChip::CH59X => crate::commands::Reset::Chip,
+            RiscvChip::CH57X | RiscvChip::CH582 | RiscvChip::CH59X => crate::commands::Reset::Chip,
             _ => crate::commands::Reset::Normal,
         }
     }
@@ -135,7 +228,7 @@ impl RiscvChip {
                 // 81 0d 01 03
                 // let _ = probe.send_command(commands::RawCommand::<0x0d>(vec![0x03]))?;
             }
-            RiscvChip::CH57X | RiscvChip::CH58X => {
+            RiscvChip::CH57X | RiscvChip::CH582 => {
                 log::warn!("The debug interface has been opened, there is a risk of code leakage.");
                 log::warn!("Please ensure that the debug interface has been closed before leaving factory!");
             }
@@ -160,10 +253,14 @@ impl RiscvChip {
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::CH56X => &flash_op::CH569,
             RiscvChip::CH57X => &flash_op::CH573,
-            RiscvChip::CH58X | RiscvChip::CH59X => &flash_op::CH583,
+            RiscvChip::CH582 | RiscvChip::CH59X | RiscvChip::CH585 => &flash_op::CH583,
             RiscvChip::CH8571 => &flash_op::OP8571,
             RiscvChip::CH32X035 | RiscvChip::CH643 => &flash_op::CH643,
             RiscvChip::CH32L103 => &flash_op::CH32L103,
+            RiscvChip::Unknown0x0F => todo!(),
+            RiscvChip::Unknown0x4E => todo!(),
+            RiscvChip::Unknown0x46 => todo!(),
+            RiscvChip::Unknown0x86 => todo!(),
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {
@@ -173,7 +270,7 @@ impl RiscvChip {
             0x03 => Ok(RiscvChip::CH56X),
             0x05 => Ok(RiscvChip::CH32V20X),
             0x06 => Ok(RiscvChip::CH32V30X),
-            0x07 => Ok(RiscvChip::CH58X),
+            0x07 => Ok(RiscvChip::CH582),
             0x09 => Ok(RiscvChip::CH32V003),
             0x0A => Ok(RiscvChip::CH8571),
             0x0B => Ok(RiscvChip::CH59X),
@@ -181,6 +278,7 @@ impl RiscvChip {
             0x0D => Ok(RiscvChip::CH32X035),
             0x0E => Ok(RiscvChip::CH32L103),
             0x49 => Ok(RiscvChip::CH641),
+            0x4B => Ok(RiscvChip::CH585),
             _ => Err(Error::UnknownChip(value)),
         }
     }
@@ -198,7 +296,8 @@ impl RiscvChip {
         match self {
             RiscvChip::CH56X
             | RiscvChip::CH57X
-            | RiscvChip::CH58X
+            | RiscvChip::CH582
+            | RiscvChip::CH585
             | RiscvChip::CH59X
             | RiscvChip::CH8571 => 0x0000_0000,
             _ => 0x0800_0000,
@@ -219,32 +318,8 @@ impl RiscvChip {
     pub fn write_pack_size(&self) -> u32 {
         match self {
             RiscvChip::CH32V003 | RiscvChip::CH641 => 1024,
+            RiscvChip::Unknown0x4E => 1024,
             _ => 4096,
-        }
-    }
-}
-
-// for clap parser
-impl FromStr for RiscvChip {
-    type Err = Error;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match &*s.to_ascii_uppercase() {
-            "CH32V103" => Ok(RiscvChip::CH32V103),
-            "CH32V20X" => Ok(RiscvChip::CH32V20X),
-            "CH32V30X" => Ok(RiscvChip::CH32V30X),
-            "CH32V003" => Ok(RiscvChip::CH32V003),
-            "CH56X" => Ok(RiscvChip::CH56X),
-            "CH57X" => Ok(RiscvChip::CH57X),
-            "CH58X" => Ok(RiscvChip::CH58X),
-            "CH59X" => Ok(RiscvChip::CH59X),
-            "CH32X035" => Ok(RiscvChip::CH32X035),
-            "CH32X033" => Ok(RiscvChip::CH32X035),
-            "CH643" => Ok(RiscvChip::CH643),
-            "CH32L103" => Ok(RiscvChip::CH32L103),
-            "CH8571" => Ok(RiscvChip::CH8571),
-            "CH641" => Ok(RiscvChip::CH641),
-            _ => Err(Error::UnknownChip(0)),
         }
     }
 }
