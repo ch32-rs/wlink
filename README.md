@@ -59,10 +59,11 @@ Current firmware version: 2.11 (aka. v31).
 - [CH569]/CH565
 - [CH573]/CH571
 - [CH583]/CH582/CH581
+- [CH585]/CH584
 - [CH592]/CH591
 - [ ] [CH643] - I don't have this chip, help wanted
-- [ ] [CH641] - I don't have this chip, help wanted
-- [CH32X035]
+- [CH641]
+- [CH32X035]/CH32X034/CH32X033
 - [CH32L103]
 - [ ] [CH8571] - No other source about this chip, help wanted
 - ... (Feel free to open an issue if you have tested on other chips)
@@ -77,8 +78,9 @@ Current firmware version: 2.11 (aka. v31).
 [CH569]: https://www.wch-ic.com/products/CH569.html
 [CH573]: https://www.wch-ic.com/products/CH573.html
 [CH583]: https://www.wch-ic.com/products/CH583.html
+[CH585]: https://www.wch-ic.com/products/CH585.html
 [CH592]: https://www.wch-ic.com/products/CH592.html
-[CH641]: https://www.wch.cn/downloads/CH641DS0_PDF.html
+[CH641]: https://www.wch-ic.com/products/CH641.html
 [CH643]: https://www.wch-ic.com/products/CH643.html
 [CH8571]: https://www.wch.cn/news/606.html
 
