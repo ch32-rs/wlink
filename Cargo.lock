@@ -874,7 +874,7 @@ checksum = "bec47e5bfd1bff0eeaf6d8b485cc1074891a197ab4225d504cb7a1ab88b02bf0"
 
 [[package]]
 name = "wlink"
-version = "0.0.9"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bitfield",

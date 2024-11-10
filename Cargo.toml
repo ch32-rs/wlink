@@ -1,6 +1,6 @@
 [package]
 name = "wlink"
-version = "0.0.9"
+version = "0.1.0"
 edition = "2021"
 authors = ["Andelf <andelf@gmail.com>"]
 repository = "https://github.com/ch32-rs/wlink"
