@@ -196,6 +196,11 @@ pub fn read_elf(elf_data: &[u8]) -> Result<Firmware> {
 
         let flags = segment.p_flags(endian);
 
+        // The number of bytes in the file image of the segment, which can be zero.
+        if segment.p_filesz(endian) == 0 {
+            // skip empty segment
+            continue;
+        }
         let segment_data = segment
             .data(endian, elf_data)
             .map_err(|_| anyhow::format_err!("Failed to access data for an ELF segment."))?;
