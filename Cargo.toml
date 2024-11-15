@@ -1,6 +1,6 @@
 [package]
 name = "wlink"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Andelf <andelf@gmail.com>"]
 repository = "https://github.com/ch32-rs/wlink"
@@ -22,7 +22,7 @@ clap = { version = "4", features = ["derive"] }
 hex = "0.4.3"
 ihex = "3.0.0"
 log = "0.4"
-nu-pretty-hex = "0.99.1"
+nu-pretty-hex = "0.100.0"
 rusb = "0.9.1"
 simplelog = "0.12.0"
 thiserror = "2"
