@@ -39,6 +39,7 @@ pub enum RiscvChip {
     /// The only reference I can find is <https://www.wch.cn/news/606.html>.
     CH8571 = 0x0A, // 10,
     /// CH59x RISC-V4C BLE 5.4 series, fallback as CH58X
+    /// FIXME: CH585 also reported as this
     CH59X = 0x0B, // 11
     /// CH643 RISC-V4C series, RGB Display Driver MCU
     CH643 = 0x0C, // 12
