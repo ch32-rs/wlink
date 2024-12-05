@@ -32,7 +32,7 @@ jobs:
             arch: linux-x64
           - os: macos-latest
             arch: macos-arm64
-          - os: macos-12
+          - os: macos-13
             arch: macos-x64
     runs-on: ${{ matrix.config.os }}
 
