@@ -34,7 +34,9 @@
 
 ### Probes
 
-Current firmware version: 2.11 (aka. v31).
+Current firmware version: 2.15 (aka. v35).
+
+> **NOTE**: If you are using newer chips like CH32V317 or CH585, be sure to use the latest firmware.
 
 > **NOTE**: The firmware version is not the same as the version shown by WCH's toolchain. Because WCH calculates the version number by `major * 10 + minor`, so the firmware version 2.10 is actually v30 `0x020a`.
 
