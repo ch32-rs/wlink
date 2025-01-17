@@ -191,14 +191,12 @@ impl WchLink {
 
         // Check device mode
         let vid; let pid; let endp_out;
-        let devs = usb_device::list_devices(VENDOR_ID, PRODUCT_ID)?;
-        if !devs.is_empty() {
+        if crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth).is_ok() {
             vid = VENDOR_ID;
             pid = PRODUCT_ID;
             endp_out = ENDPOINT_OUT;
         } else {
-            let devs = usb_device::list_devices(VENDOR_ID_DAP, PRODUCT_ID_DAP)?;
-            if !devs.is_empty() {
+            if crate::usb_device::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth).is_ok() {
                 vid = VENDOR_ID_DAP;
                 pid = PRODUCT_ID_DAP;
                 endp_out = ENDPOINT_OUT_DAP;
