@@ -427,3 +427,4 @@ impl Command for DisableDebug {
 // 81 11 01 0D unknown in query info, before GetChipRomRamSplit
 // 81 0D 02 EE 00/02/03 SetSDLineMode
 // 81 0F 01 01 SetIAPMode
+// 83 02 00 00 QuitIAPMode

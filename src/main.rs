@@ -146,6 +146,13 @@ enum Commands {
         #[arg(long)]
         dap: bool,
     },
+    /// Enter or quit IAP mode
+    Iap {
+        #[arg(long)]
+        enter: bool,
+        #[arg(long)]
+        quit: bool,
+    },
     /// List probes
     List {},
     /// Enable or disable power output
@@ -204,6 +211,17 @@ fn main() -> Result<()> {
                 WchLink::switch_from_rv_to_dap(device_index)?;
             } else {
                 WchLink::switch_from_dap_to_rv(device_index)?;
+            }
+        }
+        Some(Commands::Iap { enter, quit }) => {
+            WchLink::list_probes()?;
+            log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
+            if !(enter ^ quit) {
+                println!("Please choose one mode to switch, either --enter or --quit");
+            } else if enter {
+                WchLink::enter_iap(device_index)?;
+            } else {
+                WchLink::quit_iap(device_index)?;
             }
         }
         Some(Commands::List {}) => {

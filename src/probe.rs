@@ -19,6 +19,12 @@ pub const PRODUCT_ID_DAP: u16 = 0x8012;
 
 pub const ENDPOINT_OUT_DAP: u8 = 0x02;
 
+pub const VENDOR_ID_IAP: u16 = 0x4348;
+pub const PRODUCT_ID_IAP: u16 = 0x55e0;
+
+pub const ENDPOINT_OUT_IAP: u8 = 0x02;
+// pub const ENDPOINT_IN_IAP: u8 = 0x02;
+
 /// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[repr(u8)]
@@ -99,8 +105,10 @@ impl WchLink {
         let device = match crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth) {
             Ok(dev) => dev,
             Err(e) => {
-                // Detect if it is in DAP mode
+                // Detect if it is in DAP or IAP mode
                 if crate::usb_device::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth).is_ok() {
+                    return Err(Error::ProbeModeNotSupported);
+                } else if crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth).is_ok() {
                     return Err(Error::ProbeModeNotSupported);
                 } else {
                     return Err(e);
@@ -134,6 +142,10 @@ impl WchLink {
         let devs = usb_device::list_devices(VENDOR_ID_DAP, PRODUCT_ID_DAP)?;
         for dev in devs {
             println!("{} (DAP mode)", dev)
+        }
+        let devs = usb_device::list_devices(VENDOR_ID_IAP, PRODUCT_ID_IAP)?;
+        for dev in devs {
+            println!("{} (IAP mode)", dev)
         }
         Ok(())
     }
@@ -169,6 +181,49 @@ impl WchLink {
         let buf = [0x81, 0xff, 0x01, 0x52];
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         let _ = dev.write_endpoint(ENDPOINT_OUT_DAP, &buf);
+
+        Ok(())
+    }
+
+    /// Switch IAP mode
+    // ref: https://github.com/cjacker/wlink-iap/blob/main/src/main.c
+    pub fn enter_iap(nth: usize) -> Result<()> {
+
+        // Check device mode
+        let vid; let pid; let endp_out;
+        let devs = usb_device::list_devices(VENDOR_ID, PRODUCT_ID)?;
+        if !devs.is_empty() {
+            vid = VENDOR_ID;
+            pid = PRODUCT_ID;
+            endp_out = ENDPOINT_OUT;
+        } else {
+            let devs = usb_device::list_devices(VENDOR_ID_DAP, PRODUCT_ID_DAP)?;
+            if !devs.is_empty() {
+                vid = VENDOR_ID_DAP;
+                pid = PRODUCT_ID_DAP;
+                endp_out = ENDPOINT_OUT_DAP;
+            } else {
+                return Err(crate::Error::ProbeNotFound);
+            }
+        }
+
+        let mut dev = crate::usb_device::open_nth(vid, pid, nth)?;
+        log::info!("Enter IAP mode");
+
+        let buf = [0x81, 0x0f, 0x01, 0x01];
+        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+        let _ = dev.write_endpoint(endp_out, &buf);
+
+        Ok(())
+    }
+
+    pub fn quit_iap(nth: usize) -> Result<()> {
+        let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
+        log::info!("Quit IAP mode");
+
+        let buf = [0x83, 0x02, 0x00, 0x00];
+        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+        let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
 
         Ok(())
     }

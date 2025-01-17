@@ -117,9 +117,12 @@ pub mod libusb {
 
             log::trace!("Device: {:?}", &device);
 
-            let desc = device.device_descriptor()?;
-            let serial_number = handle.read_serial_number_string_ascii(&desc)?;
-            log::debug!("Serial number: {:?}", serial_number);
+            // In IAP mode, the device does not have a serial number
+            if !(vid == crate::probe::VENDOR_ID_IAP && pid == crate::probe::PRODUCT_ID_IAP) {
+                let desc = device.device_descriptor()?;
+                let serial_number = handle.read_serial_number_string_ascii(&desc)?;
+                log::debug!("Serial number: {:?}", serial_number);
+            }
 
             handle.claim_interface(0)?;
 
