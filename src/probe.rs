@@ -23,7 +23,7 @@ pub const VENDOR_ID_IAP: u16 = 0x4348;
 pub const PRODUCT_ID_IAP: u16 = 0x55e0;
 
 pub const ENDPOINT_OUT_IAP: u8 = 0x02;
-// pub const ENDPOINT_IN_IAP: u8 = 0x02;
+pub const ENDPOINT_IN_IAP: u8 = 0x02;
 
 /// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
