@@ -219,9 +219,9 @@ fn main() -> Result<()> {
             if !(enter ^ quit) {
                 println!("Please choose one mode to switch, either --enter or --quit");
             } else if enter {
-                WchLink::enter_iap(device_index)?;
+                WchLink::iap_enter(device_index)?;
             } else {
-                WchLink::quit_iap(device_index)?;
+                WchLink::iap_quit(device_index)?;
             }
         }
         Some(Commands::List {}) => {

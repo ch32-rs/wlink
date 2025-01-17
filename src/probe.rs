@@ -187,7 +187,7 @@ impl WchLink {
 
     /// Switch IAP mode
     // ref: https://github.com/cjacker/wlink-iap/blob/main/src/main.c
-    pub fn enter_iap(nth: usize) -> Result<()> {
+    pub fn iap_enter(nth: usize) -> Result<()> {
 
         // Check device mode
         let vid; let pid; let endp_out;
@@ -206,8 +206,8 @@ impl WchLink {
         }
 
         let mut dev = crate::usb_device::open_nth(vid, pid, nth)?;
-        log::info!("Enter IAP mode");
 
+        log::info!("Enter IAP mode");
         let buf = [0x81, 0x0f, 0x01, 0x01];
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         let _ = dev.write_endpoint(endp_out, &buf);
@@ -215,10 +215,10 @@ impl WchLink {
         Ok(())
     }
 
-    pub fn quit_iap(nth: usize) -> Result<()> {
+    pub fn iap_quit(nth: usize) -> Result<()> {
         let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
-        log::info!("Quit IAP mode");
 
+        log::info!("Quit IAP mode");
         let buf = [0x83, 0x02, 0x00, 0x00];
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
