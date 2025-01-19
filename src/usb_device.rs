@@ -175,8 +175,8 @@ pub mod ch375_driver {
         unsafe {
             if CH375_DRIVER.is_none() {
                 CH375_DRIVER = Some(
-                    Library::new("WCHLinkDLL.dll")
-                        .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?,
+                    //Library::new("WCHLinkDLL.dll")
+                        //.map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?,
                     Library::new("CH375DLL64.dll")
                         .map_err(|_| Error::Custom("CH375DLL64.dll not found".to_string()))?,
                 );
