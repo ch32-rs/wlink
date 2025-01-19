@@ -177,6 +177,8 @@ pub mod ch375_driver {
                 CH375_DRIVER = Some(
                     Library::new("WCHLinkDLL.dll")
                         .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?,
+                    Library::new("CH375DLL64.dll")
+                        .map_err(|_| Error::Custom("CH375DLL64.dll not found".to_string()))?,
                 );
                 let lib = CH375_DRIVER.as_ref().unwrap();
                 let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
