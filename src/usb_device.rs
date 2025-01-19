@@ -178,7 +178,19 @@ pub mod ch375_driver {
                     Library::new("WCHLinkDLL.dll")
                         .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?,
                 );
-                let lib = CH375_DRIVER.as_ref().unwrap();
+                let mut lib = CH375_DRIVER.as_ref().unwrap();
+
+                // For IAP mode, load CH375DLL.dll if USB ID is zero
+                let get_usb_id: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
+                    { lib.get(b"CH375GetUsbID").unwrap() };
+                if get_usb_id(0) == 0x0000_0000 {
+                    CH375_DRIVER = Some(
+                        Library::new("CH375DLL.dll")
+                            .map_err(|_| Error::Custom("CH375DLL.dll not found".to_string()))?,
+                    );
+                    lib = CH375_DRIVER.as_ref().unwrap();
+                }
+
                 let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
                     { lib.get(b"CH375GetVersion").unwrap() };
                 let get_driver_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
