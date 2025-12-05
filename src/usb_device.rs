@@ -162,35 +162,30 @@ pub mod libusb {
 pub mod ch375_driver {
     use libloading::os::windows::*;
     use std::fmt;
+    use std::sync::OnceLock;
 
     use super::*;
     use crate::Error;
 
-    static mut CH375_DRIVER: Option<Library> = None;
+    static CH375_DRIVER: OnceLock<Library> = OnceLock::new();
 
     fn ensure_library_load() -> Result<&'static Library> {
-        unsafe {
-            if CH375_DRIVER.is_none() {
-                CH375_DRIVER = Some(
-                    Library::new("WCHLinkDLL.dll")
-                        .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?,
-                );
-                let lib = CH375_DRIVER.as_ref().unwrap();
-                let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
-                    { lib.get(b"CH375GetVersion").unwrap() };
-                let get_driver_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
-                    { lib.get(b"CH375GetDrvVersion").unwrap() };
+        CH375_DRIVER.get_or_try_init(|| {
+            let lib = Library::new("WCHLinkDLL.dll")
+                .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?;
 
-                log::debug!(
-                    "DLL version {}, driver version {}",
-                    get_version(),
-                    get_driver_version()
-                );
-                Ok(lib)
-            } else {
-                Ok(CH375_DRIVER.as_ref().unwrap())
-            }
-        }
+            let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
+                unsafe { lib.get(b"CH375GetVersion").unwrap() };
+            let get_driver_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
+                unsafe { lib.get(b"CH375GetDrvVersion").unwrap() };
+
+            log::debug!(
+                "DLL version {}, driver version {}",
+                unsafe { get_version() },
+                unsafe { get_driver_version() }
+            );
+            Ok(lib)
+        })
     }
 
     #[allow(non_snake_case, unused)]
@@ -344,11 +339,7 @@ pub mod ch375_driver {
             let ret = unsafe {
                 write_end_point(self.index, ep as u32, buf.as_ptr() as *mut u8, &mut len)
             };
-            if ret {
-                Ok(())
-            } else {
-                Err(Error::Driver)
-            }
+            if ret { Ok(()) } else { Err(Error::Driver) }
         }
 
         fn set_timeout(&mut self, timeout: Duration) {
