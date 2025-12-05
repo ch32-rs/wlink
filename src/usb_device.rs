@@ -167,12 +167,14 @@ pub mod ch375_driver {
     use super::*;
     use crate::Error;
 
-    static CH375_DRIVER: OnceLock<Library> = OnceLock::new();
+    static CH375_DRIVER: OnceLock<std::result::Result<Library, String>> = OnceLock::new();
 
     fn ensure_library_load() -> Result<&'static Library> {
-        CH375_DRIVER.get_or_try_init(|| {
-            let lib = Library::new("WCHLinkDLL.dll")
-                .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?;
+        let result = CH375_DRIVER.get_or_init(|| {
+            let lib = match unsafe { Library::new("WCHLinkDLL.dll") } {
+                Ok(lib) => lib,
+                Err(_) => return Err("WCHLinkDLL.dll not found".to_string()),
+            };
 
             let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
                 unsafe { lib.get(b"CH375GetVersion").unwrap() };
@@ -185,7 +187,12 @@ pub mod ch375_driver {
                 unsafe { get_driver_version() }
             );
             Ok(lib)
-        })
+        });
+
+        match result {
+            Ok(lib) => Ok(lib),
+            Err(e) => Err(Error::Custom(e.clone())),
+        }
     }
 
     #[allow(non_snake_case, unused)]
