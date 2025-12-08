@@ -153,6 +153,11 @@ enum Commands {
         #[arg(long)]
         quit: bool,
     },
+    /// Upgrade WCH-Link firmware
+    Upgrade {
+        /// Path to the upgrade firmware file to flash
+        path: String,
+    },
     /// List probes
     List {},
     /// Enable or disable power output
@@ -192,7 +197,7 @@ fn main() -> Result<()> {
     )
     .expect("initialize simple logger");
 
-    let device_index = cli.device.unwrap_or(0);
+    let mut device_index = cli.device.unwrap_or(0);
     let mut will_detach = !cli.no_detach;
 
     match cli.command {
@@ -222,6 +227,45 @@ fn main() -> Result<()> {
                 WchLink::iap_enter(device_index)?;
             } else {
                 WchLink::iap_quit(device_index)?;
+            }
+        }
+        Some(Commands::Upgrade { path }) => {
+            WchLink::list_probes()?;
+            log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
+
+            let firmware = read_firmware_from_file(path)?;
+
+            match firmware {
+                Firmware::Binary(data) => {
+                    // Enter IAP mode
+                    WchLink::iap_enter(device_index)?;
+
+                    // Refresh probe list
+                    sleep(Duration::from_millis(500));
+                    device_index = cli.device.unwrap_or(0);
+                    sleep(Duration::from_millis(500));
+
+                    // Erase flash
+                    //WchLink::iap_erase(device_index)?;
+
+                    // Flash firmware
+                    log::info!("Flashing {} bytes", data.len());
+                    WchLink::iap_flash_firmware(device_index, &data, 0x80)?;
+                    log::info!("Flash done");
+                    sleep(Duration::from_millis(500));
+
+                    // Verify firmware
+                    log::info!("Verifying");
+                    WchLink::iap_flash_firmware(device_index, &data, 0x82)?;
+                    log::info!("Verify OK");
+                    sleep(Duration::from_millis(500));
+
+                    // Quit IAP mode
+                    WchLink::iap_quit(device_index)?;
+                }
+                Firmware::Sections(_sections) => {
+                    log::error!("HEX firmware format not supported for WCH-Link upgrade");
+                }
             }
         }
         Some(Commands::List {}) => {

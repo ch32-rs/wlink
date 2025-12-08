@@ -190,6 +190,13 @@ impl WchLink {
     pub fn iap_enter(nth: usize) -> Result<()> {
 
         // Check device mode
+
+        // If device is already in IAP mode, return OK
+        if crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth).is_ok() {
+            log::info!("Device is already in IAP mode");
+            return Ok(());
+        }
+
         let vid; let pid; let endp_out;
         if crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth).is_ok() {
             vid = VENDOR_ID;
@@ -222,6 +229,36 @@ impl WchLink {
         let buf = [0x83, 0x02, 0x00, 0x00];
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
+
+        Ok(())
+    }
+
+    pub fn iap_erase(nth: usize) -> Result<()> {
+        let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
+
+        log::info!("Erase flash");
+        let buf = [0x81, 0x02, 0x00, 0x00];
+        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+        let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
+
+        Ok(())
+    }
+
+    pub fn iap_flash_firmware(nth: usize, data: &[u8], cmd: u8) -> Result<()> {
+        let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
+
+        log::info!("Flash firmware");
+        //let buf = [0x00, 0x00, 0x00, 0x00];
+        //log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+
+        // memset 0 (64byte)
+        
+        // small_buf[0] = cmd;
+        // small_buf[1] = copy_size;
+        // small_buf[2] = offset;
+        // small_buf[3] = offset >>8;
+        
+        //let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
 
         Ok(())
     }

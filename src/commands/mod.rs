@@ -428,3 +428,4 @@ impl Command for DisableDebug {
 // 81 0D 02 EE 00/02/03 SetSDLineMode
 // 81 0F 01 01 EnterIAPMode
 // 83 02 00 00 QuitIAPMode
+// 81 02 00 00 EraseAppFlash

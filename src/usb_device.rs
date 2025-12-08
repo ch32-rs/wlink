@@ -181,8 +181,8 @@ pub mod ch375_driver {
 
             // For IAP mode, load CH375DLL.dll if USB ID is zero
             let get_usb_id: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
-                { lib.get(b"CH375GetUsbID").unwrap() };
-            if get_usb_id(0) == 0x0000_0000 {
+                unsafe { lib.get(b"CH375GetUsbID").unwrap() };
+            if unsafe { get_usb_id(0) } == 0x0000_0000 {
                 lib = match unsafe { Library::new("CH375DLL.dll") } {
                     Ok(lib) => lib,
                     Err(_) => return Err("CH375DLL.dll not found".to_string()),
