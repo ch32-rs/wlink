@@ -4,6 +4,7 @@ use crate::commands::{self, RawCommand, Response};
 use crate::{commands::control::ProbeInfo, usb_device::USBDeviceBackend};
 use crate::{usb_device, Error, Result, RiscvChip};
 use std::fmt;
+use std::{thread, time::Duration};
 
 pub const VENDOR_ID: u16 = 0x1a86;
 pub const PRODUCT_ID: u16 = 0x8010;
@@ -18,12 +19,13 @@ pub const VENDOR_ID_DAP: u16 = 0x1a86;
 pub const PRODUCT_ID_DAP: u16 = 0x8012;
 
 pub const ENDPOINT_OUT_DAP: u8 = 0x02;
+pub const ENDPOINT_IN_DAP: u8 = 0x83;
 
 pub const VENDOR_ID_IAP: u16 = 0x4348;
 pub const PRODUCT_ID_IAP: u16 = 0x55e0;
 
 pub const ENDPOINT_OUT_IAP: u8 = 0x02;
-pub const ENDPOINT_IN_IAP: u8 = 0x02;
+pub const ENDPOINT_IN_IAP: u8 = 0x82;
 
 /// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -190,6 +192,13 @@ impl WchLink {
     pub fn iap_enter(nth: usize) -> Result<()> {
 
         // Check device mode
+
+        // If device is already in IAP mode, return OK
+        if crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth).is_ok() {
+            log::info!("Device is already in IAP mode");
+            return Ok(());
+        }
+
         let vid; let pid; let endp_out;
         if crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth).is_ok() {
             vid = VENDOR_ID;
@@ -222,6 +231,57 @@ impl WchLink {
         let buf = [0x83, 0x02, 0x00, 0x00];
         log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
         let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
+
+        Ok(())
+    }
+
+    pub fn iap_erase(nth: usize) -> Result<()> {
+        let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
+
+        log::info!("Erase flash");
+        let buf = [0x81, 0x02, 0x00, 0x00];
+        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+        let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
+
+        Ok(())
+    }
+
+    pub fn iap_flash_firmware(nth: usize, data: &[u8], cmd: u8) -> Result<()> {
+        let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
+
+        let mut txbuf: [u8; 64] = [0; 64];
+        let mut rxbuf = [0u8; 2];
+
+        let mut offset: usize = 0;
+        let mut copy_size: usize = 60;
+
+        while offset < data.len() {
+            if offset + copy_size > data.len() {
+                copy_size = data.len() - offset;
+            }
+
+            txbuf.fill(0);
+
+            // First 4 bytes: cmd, size, addr low, addr high
+            txbuf[0] = cmd;
+            txbuf[1] = copy_size as u8;
+            txbuf[2] = (offset & 0xFF) as u8;
+            txbuf[3] = ((offset >> 8) & 0xFF) as u8;
+
+            // Next 60 bytes: firmware binary
+            txbuf[4..4 + copy_size]
+                .copy_from_slice(&data[offset..offset + copy_size]);
+
+            // Write or verify binary
+            let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf[0..4 + copy_size]);
+            thread::sleep(Duration::from_millis(1));
+            let bytes_read = dev.read_endpoint(ENDPOINT_IN_IAP, &mut rxbuf)?;
+            if bytes_read != 2 || rxbuf[0] != 0x00 || rxbuf[1] != 0x00 {
+                return Err(Error::Custom("IAP flash/verify failed".to_string()));
+            }
+
+            offset += copy_size;
+        }
 
         Ok(())
     }
