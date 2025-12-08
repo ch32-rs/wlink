@@ -266,19 +266,22 @@ impl WchLink {
 
             txbuf.fill(0);
 
+            // First 4 bytes: cmd, size, addr low, addr high
             txbuf[0] = cmd;
             txbuf[1] = copy_size as u8;
             txbuf[2] = (offset & 0xFF) as u8;
             txbuf[3] = ((offset >> 8) & 0xFF) as u8;
 
+            // Next 60 bytes: firmware binary
             txbuf[4..4 + copy_size]
                 .copy_from_slice(&data[offset..offset + copy_size]);
 
+            // Write or verify binary
             let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf[0..4 + copy_size]);
             thread::sleep(Duration::from_millis(1));
             let bytes_read = dev.read_endpoint(ENDPOINT_IN_IAP, &mut rxbuf)?;
             if bytes_read != 2 || rxbuf[0] != 0x00 || rxbuf[1] != 0x00 {
-                log::error!("Fail");
+                return Err(Error::Custom("IAP flash/verify failed".to_string()));
             }
 
             offset += copy_size;
