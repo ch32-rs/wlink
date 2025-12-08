@@ -10,7 +10,7 @@ pub enum Error {
     #[error("{0}")]
     Custom(String),
     #[error("USB error: {0}")]
-    Rusb(#[from] rusb::Error),
+    Usb(nusb::Error),
     #[error("WCH-Link not found, please check your connection")]
     ProbeNotFound,
     #[error("WCH-Link is connected, but is not in RV mode")]
@@ -21,7 +21,9 @@ pub enum Error {
     UnknownLinkVariant(u8),
     #[error("Unknown RISC-V Chip: 0x{0:02x}")]
     UnknownChip(u8),
-    #[error("Probe is not attached to an MCU, or debug is not enabled. (hint: use wchisp to enable debug)")]
+    #[error(
+        "Probe is not attached to an MCU, or debug is not enabled. (hint: use wchisp to enable debug)"
+    )]
     NotAttached,
     #[error("Chip mismatch: expected {0:?}, got {1:?}")]
     ChipMismatch(RiscvChip, RiscvChip),

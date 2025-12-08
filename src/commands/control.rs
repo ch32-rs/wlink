@@ -1,6 +1,6 @@
 //! Probe control commands. COMMAND_ID = 0x0d
 
-use crate::{probe::WchLinkVariant, RiscvChip};
+use crate::{RiscvChip, probe::WchLinkVariant};
 
 use super::*;
 

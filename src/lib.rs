@@ -11,7 +11,7 @@ pub mod probe;
 pub mod regs;
 pub mod usb_device;
 
-use clap::{builder::PossibleValue, ValueEnum};
+use clap::{ValueEnum, builder::PossibleValue};
 use probe::WchLink;
 
 pub use crate::error::{Error, Result};
@@ -270,11 +270,15 @@ impl RiscvChip {
             }
             RiscvChip::CH57X | RiscvChip::CH582 => {
                 log::warn!("The debug interface has been opened, there is a risk of code leakage.");
-                log::warn!("Please ensure that the debug interface has been closed before leaving factory!");
+                log::warn!(
+                    "Please ensure that the debug interface has been closed before leaving factory!"
+                );
             }
             RiscvChip::CH56X => {
                 log::warn!("The debug interface has been opened, there is a risk of code leakage.");
-                log::warn!("Please ensure that the debug interface has been closed before leaving factory!");
+                log::warn!(
+                    "Please ensure that the debug interface has been closed before leaving factory!"
+                );
                 // 81 0d 01 04
                 // should test return value
                 let resp = probe.send_command(commands::RawCommand::<0x0d>(vec![0x04]))?;

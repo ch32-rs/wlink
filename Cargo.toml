@@ -23,7 +23,7 @@ hex = "0.4.3"
 ihex = "3.0.0"
 log = "0.4"
 nu-pretty-hex = "0.109"
-rusb = "0.9.1"
+nusb = "0.2"
 simplelog = "0.12.0"
 thiserror = "2"
 object = { version = "0.38", default-features = false, features = [
@@ -32,7 +32,7 @@ object = { version = "0.38", default-features = false, features = [
     "std",
 ] }
 indicatif = "0.18"
-serialport = "4.6"
+serialport = "4.7"
 libloading = "0.9"
 chrono = "0.4"
 clap-verbosity-flag = "3"
