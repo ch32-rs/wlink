@@ -251,7 +251,7 @@ fn main() -> Result<()> {
 
                     // Flash firmware
                     log::info!("Flashing {} bytes", data.len());
-                    if WchLink::iap_flash_firmware(device_index, &data, 0x80).is_err() {
+                    if WchLink::iap_flash_firmware(device_index, &data, commands::IapProgram::Write as u8).is_err() {
                         log::error!("Firmware flash failed");
                         WchLink::iap_quit(device_index)?;
                         return Err(wlink::Error::Custom("Firmware flash failed".into()).into());
@@ -261,7 +261,7 @@ fn main() -> Result<()> {
 
                     // Verify firmware
                     log::info!("Verifying");
-                    if WchLink::iap_flash_firmware(device_index, &data, 0x82).is_err() {
+                    if WchLink::iap_flash_firmware(device_index, &data, commands::IapProgram::Verify as u8).is_err() {
                         log::error!("Firmware verify failed");
                         WchLink::iap_quit(device_index)?;
                         return Err(wlink::Error::Custom("Firmware verify failed".into()).into());

@@ -417,6 +417,15 @@ impl Command for DisableDebug {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum IapProgram {
+    // Write flash
+    Write = 0x80,
+    // Verify flash
+    Verify = 0x82,
+}
+
 // 81 0D 05 11 SetAccessAddress
 // 81 0F 01 02 GetDeviceMode
 // 81 0D 01 07 EnableQE
