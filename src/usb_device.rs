@@ -117,7 +117,7 @@ pub mod libusb {
 
             log::trace!("Device: {:?}", &device);
 
-            // In IAP mode, the device does not have a serial number
+            // In IAP mode, the device does not have a descriptor, so skip reading serial number.
             if !(vid == crate::probe::VENDOR_ID_IAP && pid == crate::probe::PRODUCT_ID_IAP) {
                 let desc = device.device_descriptor()?;
                 let serial_number = handle.read_serial_number_string_ascii(&desc)?;
@@ -299,11 +299,15 @@ pub mod ch375_driver {
             for i in 0..8 {
                 let h = unsafe { open_device(i) };
                 if h != INVALID_HANDLE {
+                    // In IAP mode, the device does not have a descriptor, so skip checking vid and pid.
                     let mut descr = unsafe { core::mem::zeroed() };
-                    let mut len = core::mem::size_of::<UsbDeviceDescriptor>() as u32;
-                    let _ = unsafe { get_device_descriptor(i, &mut descr, &mut len) };
+                    let iap = vid == crate::probe::VENDOR_ID_IAP && pid == crate::probe::PRODUCT_ID_IAP;
+                    if !iap {
+                        let mut len = core::mem::size_of::<UsbDeviceDescriptor>() as u32;
+                        let _ = unsafe { get_device_descriptor(i, &mut descr, &mut len) };
+                    }
 
-                    if descr.idVendor == vid && descr.idProduct == pid {
+                    if iap || (descr.idVendor == vid && descr.idProduct == pid) {
                         if idx == nth {
                             log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
                             return Ok(Box::new(CH375USBDevice { index: i }));

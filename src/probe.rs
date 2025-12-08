@@ -192,13 +192,6 @@ impl WchLink {
     pub fn iap_enter(nth: usize) -> Result<()> {
 
         // Check device mode
-
-        // If device is already in IAP mode, return OK
-        if crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth).is_ok() {
-            log::info!("Device is already in IAP mode");
-            return Ok(());
-        }
-
         let vid; let pid; let endp_out;
         if crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth).is_ok() {
             vid = VENDOR_ID;
@@ -210,16 +203,23 @@ impl WchLink {
                 pid = PRODUCT_ID_DAP;
                 endp_out = ENDPOINT_OUT_DAP;
             } else {
-                return Err(crate::Error::ProbeNotFound);
+                // Assume device is in already IAP mode.
+                vid = VENDOR_ID_IAP;
+                pid = PRODUCT_ID_IAP;
+                endp_out = ENDPOINT_OUT_IAP;
             }
         }
 
         let mut dev = crate::usb_device::open_nth(vid, pid, nth)?;
-
-        log::info!("Enter IAP mode");
-        let buf = [0x81, 0x0f, 0x01, 0x01];
-        log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
-        let _ = dev.write_endpoint(endp_out, &buf);
+        
+        if vid == VENDOR_ID_IAP && pid == PRODUCT_ID_IAP {
+            log::info!("Device is already in IAP mode");
+        } else {
+            log::info!("Enter IAP mode");
+            let buf = [0x81, 0x0f, 0x01, 0x01];
+            log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
+            let _ = dev.write_endpoint(endp_out, &buf);
+        }
 
         Ok(())
     }
