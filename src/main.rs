@@ -241,7 +241,8 @@ fn main() -> Result<()> {
                     WchLink::iap_enter(device_index)?;
 
                     // Refresh probe list
-                    sleep(Duration::from_millis(500));
+                    // CH549 need to wait for a long time to enter IAP mode.
+                    sleep(Duration::from_millis(3500));
                     device_index = cli.device.unwrap_or(0);
                     sleep(Duration::from_millis(500));
 
