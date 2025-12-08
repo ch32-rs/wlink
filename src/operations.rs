@@ -4,9 +4,9 @@ use indicatif::ProgressBar;
 use std::{thread::sleep, time::Duration};
 
 use crate::{
+    Error, Result, RiscvChip,
     commands::{self, Speed},
     probe::WchLink,
-    Error, Result, RiscvChip,
 };
 
 /// A running probe session, flash, erase, inspect, etc.
@@ -324,7 +324,9 @@ impl ProbeSession {
 
         if mem.starts_with(&[0xA9, 0xBD, 0xF9, 0xF3]) {
             log::warn!("A9 BD F9 F3 sequence detected!");
-            log::warn!("If the chip is just put into debug mode, you should flash the new firmware to the chip first");
+            log::warn!(
+                "If the chip is just put into debug mode, you should flash the new firmware to the chip first"
+            );
             log::warn!("Or else this indicates a reading to invalid location");
         }
 

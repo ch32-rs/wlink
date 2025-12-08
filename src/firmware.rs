@@ -4,8 +4,8 @@ use std::str;
 
 use anyhow::Result;
 use object::{
-    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
-    Object, ObjectSection,
+    Endianness, Object, ObjectSection, elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader,
+    read::elf::ProgramHeader,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -206,11 +206,11 @@ pub fn read_elf(elf_data: &[u8]) -> Result<Firmware> {
             .map_err(|_| anyhow::format_err!("Failed to access data for an ELF segment."))?;
         if !segment_data.is_empty() && segment.p_type(endian) == PT_LOAD {
             log::debug!(
-                    "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
-                    p_paddr,
-                    p_vaddr,
-                    flags
-                );
+                "Found loadable segment, physical address: {:#010x}, virtual address: {:#010x}, flags: {:#x}",
+                p_paddr,
+                p_vaddr,
+                flags
+            );
             let (segment_offset, segment_filesize) = segment.file_range(endian);
             let mut section_names = vec![];
             for section in binary.sections() {
