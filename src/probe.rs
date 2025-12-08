@@ -4,6 +4,7 @@ use crate::commands::{self, RawCommand, Response};
 use crate::{commands::control::ProbeInfo, usb_device::USBDeviceBackend};
 use crate::{usb_device, Error, Result, RiscvChip};
 use std::fmt;
+use std::{thread, time::Duration};
 
 pub const VENDOR_ID: u16 = 0x1a86;
 pub const PRODUCT_ID: u16 = 0x8010;
@@ -248,17 +249,43 @@ impl WchLink {
         let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
 
         log::info!("Flash firmware");
-        //let buf = [0x00, 0x00, 0x00, 0x00];
-        //log::trace!("send {} {}", hex::encode(&buf[..3]), hex::encode(&buf[3..]));
 
-        // memset 0 (64byte)
-        
-        // small_buf[0] = cmd;
-        // small_buf[1] = copy_size;
-        // small_buf[2] = offset;
-        // small_buf[3] = offset >>8;
-        
-        //let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &buf);
+        let mut txbuf: [u8; 64] = [0; 64];
+        let rxbuf: [u8; 2] = [0; 2];
+
+        let mut offset: usize = 0;
+        let mut copy_size: usize = 60;
+
+        loop {
+            if offset >= data.len() {
+                break;
+            }
+
+            if offset + copy_size > data.len() {
+                copy_size = data.len() - offset;
+            }
+
+            txbuf.fill(0);
+
+            txbuf[0] = cmd;
+            txbuf[1] = copy_size as u8;
+            txbuf[2] = (offset & 0xFF) as u8;
+            txbuf[3] = ((offset >> 8) & 0xFF) as u8;
+
+            txbuf[4..4 + copy_size]
+                .copy_from_slice(&data[offset..offset + copy_size]);
+            txbuf[4 + copy_size..].fill(0xFF);
+
+            let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf);
+            thread::sleep(Duration::from_millis(1));
+            let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &rxbuf);
+
+            if rxbuf[0] != 0x00 || rxbuf[1] != 0x00 {
+                log::error!("Fail");
+            }
+
+            offset += copy_size;
+        }
 
         Ok(())
     }

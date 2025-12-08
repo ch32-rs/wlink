@@ -246,7 +246,7 @@ fn main() -> Result<()> {
                     sleep(Duration::from_millis(500));
 
                     // Erase flash
-                    //WchLink::iap_erase(device_index)?;
+                    WchLink::iap_erase(device_index)?;
 
                     // Flash firmware
                     log::info!("Flashing {} bytes", data.len());
