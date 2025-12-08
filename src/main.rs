@@ -240,6 +240,11 @@ fn main() -> Result<()> {
                     // Enter IAP mode
                     WchLink::iap_enter(device_index)?;
 
+                    log::info!("Start firmware upgrade");
+                    log::info!("######################################");
+                    log::info!("DO NOT UNPLUG WCH-Link/E until done!!!");
+                    log::info!("######################################");
+
                     // Refresh probe list
                     // CH549 need to wait for a long time to enter IAP mode.
                     sleep(Duration::from_millis(3500));
@@ -268,6 +273,8 @@ fn main() -> Result<()> {
                     }
                     log::info!("Verify OK");
                     sleep(Duration::from_millis(500));
+
+                    log::info!("Firmware upgrade completed successfully");
 
                     // Quit IAP mode
                     WchLink::iap_quit(device_index)?;
