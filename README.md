@@ -27,7 +27,7 @@
 - [x] Code-Protect & Code-Unprotect for supported chips
 - [x] Enable or Disable 3.3V, 5V output
 - [x] Switch IAP mode
-- [x] Upgrade WCH-LinkE firmware
+- [x] Upgrade WCH-Link/E firmware
 - [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support, requires 2.10+ firmware
 - [x] [Serial port watching](https://github.com/ch32-rs/wlink/pull/36) for a smooth development experience
 - [x] Windows native driver support, no need to install libusb manually (requires x86 build)
