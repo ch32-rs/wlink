@@ -255,11 +255,7 @@ impl WchLink {
         let mut offset: usize = 0;
         let mut copy_size: usize = 60;
 
-        loop {
-            if offset >= data.len() {
-                break;
-            }
-
+        while offset < data.len() {
             if offset + copy_size > data.len() {
                 copy_size = data.len() - offset;
             }
