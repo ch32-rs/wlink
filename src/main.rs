@@ -153,7 +153,7 @@ enum Commands {
         #[arg(long)]
         quit: bool,
     },
-    /// Upgrade WCH-LinkE firmware
+    /// Upgrade WCH-Link/E firmware
     Upgrade {
         /// Path to the upgrade firmware file to flash
         path: String,
