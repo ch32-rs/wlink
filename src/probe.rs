@@ -1,8 +1,8 @@
 //! The probe - WCH-Link
 
 use crate::commands::{self, RawCommand, Response};
+use crate::{Error, Result, RiscvChip, usb_device};
 use crate::{commands::control::ProbeInfo, usb_device::USBDeviceBackend};
-use crate::{usb_device, Error, Result, RiscvChip};
 use std::fmt;
 
 pub const VENDOR_ID: u16 = 0x1a86;
