@@ -249,8 +249,6 @@ impl WchLink {
     pub fn iap_flash_firmware(nth: usize, data: &[u8], cmd: u8) -> Result<()> {
         let mut dev = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth)?;
 
-        log::info!("Flash firmware");
-
         let mut txbuf: [u8; 64] = [0; 64];
         let mut rxbuf = [0u8; 2];
 
@@ -279,7 +277,6 @@ impl WchLink {
             let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf[0..4 + copy_size]);
             thread::sleep(Duration::from_millis(1));
             let bytes_read = dev.read_endpoint(ENDPOINT_IN_IAP, &mut rxbuf)?;
-
             if bytes_read != 2 || rxbuf[0] != 0x00 || rxbuf[1] != 0x00 {
                 log::error!("Fail");
             }
