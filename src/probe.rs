@@ -19,12 +19,13 @@ pub const VENDOR_ID_DAP: u16 = 0x1a86;
 pub const PRODUCT_ID_DAP: u16 = 0x8012;
 
 pub const ENDPOINT_OUT_DAP: u8 = 0x02;
+pub const ENDPOINT_IN_DAP: u8 = 0x83;
 
 pub const VENDOR_ID_IAP: u16 = 0x4348;
 pub const PRODUCT_ID_IAP: u16 = 0x55e0;
 
 pub const ENDPOINT_OUT_IAP: u8 = 0x02;
-pub const ENDPOINT_IN_IAP: u8 = 0x02;
+pub const ENDPOINT_IN_IAP: u8 = 0x82;
 
 /// All WCH-Link probe variants, see-also: <http://www.wch-ic.com/products/WCH-Link.html>
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -251,7 +252,7 @@ impl WchLink {
         log::info!("Flash firmware");
 
         let mut txbuf: [u8; 64] = [0; 64];
-        let rxbuf: [u8; 2] = [0; 2];
+        let mut rxbuf = [0u8; 2];
 
         let mut offset: usize = 0;
         let mut copy_size: usize = 60;
@@ -277,9 +278,9 @@ impl WchLink {
 
             let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf[0..4 + copy_size]);
             thread::sleep(Duration::from_millis(1));
-            let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &rxbuf);
+            let bytes_read = dev.read_endpoint(ENDPOINT_IN_IAP, &mut rxbuf)?;
 
-            if rxbuf[0] != 0x00 || rxbuf[1] != 0x00 {
+            if bytes_read != 2 || rxbuf[0] != 0x00 || rxbuf[1] != 0x00 {
                 log::error!("Fail");
             }
 
