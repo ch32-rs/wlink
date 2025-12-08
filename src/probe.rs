@@ -274,9 +274,8 @@ impl WchLink {
 
             txbuf[4..4 + copy_size]
                 .copy_from_slice(&data[offset..offset + copy_size]);
-            txbuf[4 + copy_size..].fill(0xFF);
 
-            let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf);
+            let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &txbuf[0..4 + copy_size]);
             thread::sleep(Duration::from_millis(1));
             let _ = dev.write_endpoint(ENDPOINT_OUT_IAP, &rxbuf);
 
