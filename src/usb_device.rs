@@ -165,46 +165,46 @@ pub mod libusb {
 pub mod ch375_driver {
     use libloading::os::windows::*;
     use std::fmt;
+    use std::sync::OnceLock;
 
     use super::*;
     use crate::Error;
 
-    static mut CH375_DRIVER: Option<Library> = None;
+    static CH375_DRIVER: OnceLock<std::result::Result<Library, String>> = OnceLock::new();
 
     fn ensure_library_load() -> Result<&'static Library> {
-        unsafe {
-            if CH375_DRIVER.is_none() {
-                CH375_DRIVER = Some(
-                    Library::new("WCHLinkDLL.dll")
-                        .map_err(|_| Error::Custom("WCHLinkDLL.dll not found".to_string()))?,
-                );
-                let mut lib = CH375_DRIVER.as_ref().unwrap();
+        let result = CH375_DRIVER.get_or_init(|| {
+            let mut lib = match unsafe { Library::new("WCHLinkDLL.dll") } {
+                Ok(lib) => lib,
+                Err(_) => return Err("WCHLinkDLL.dll not found".to_string()),
+            };
 
-                // For IAP mode, load CH375DLL.dll if USB ID is zero
-                let get_usb_id: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
-                    { lib.get(b"CH375GetUsbID").unwrap() };
-                if get_usb_id(0) == 0x0000_0000 {
-                    CH375_DRIVER = Some(
-                        Library::new("CH375DLL.dll")
-                            .map_err(|_| Error::Custom("CH375DLL.dll not found".to_string()))?,
-                    );
-                    lib = CH375_DRIVER.as_ref().unwrap();
-                }
-
-                let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
-                    { lib.get(b"CH375GetVersion").unwrap() };
-                let get_driver_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
-                    { lib.get(b"CH375GetDrvVersion").unwrap() };
-
-                log::debug!(
-                    "DLL version {}, driver version {}",
-                    get_version(),
-                    get_driver_version()
-                );
-                Ok(lib)
-            } else {
-                Ok(CH375_DRIVER.as_ref().unwrap())
+            // For IAP mode, load CH375DLL.dll if USB ID is zero
+            let get_usb_id: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
+                { lib.get(b"CH375GetUsbID").unwrap() };
+            if get_usb_id(0) == 0x0000_0000 {
+                lib = match unsafe { Library::new("CH375DLL.dll") } {
+                    Ok(lib) => lib,
+                    Err(_) => return Err("CH375DLL.dll not found".to_string()),
+                };
             }
+
+            let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
+                unsafe { lib.get(b"CH375GetVersion").unwrap() };
+            let get_driver_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
+                unsafe { lib.get(b"CH375GetDrvVersion").unwrap() };
+
+            log::debug!(
+                "DLL version {}, driver version {}",
+                unsafe { get_version() },
+                unsafe { get_driver_version() }
+            );
+            Ok(lib)
+        });
+
+        match result {
+            Ok(lib) => Ok(lib),
+            Err(e) => Err(Error::Custom(e.clone())),
         }
     }
 
@@ -359,11 +359,7 @@ pub mod ch375_driver {
             let ret = unsafe {
                 write_end_point(self.index, ep as u32, buf.as_ptr() as *mut u8, &mut len)
             };
-            if ret {
-                Ok(())
-            } else {
-                Err(Error::Driver)
-            }
+            if ret { Ok(()) } else { Err(Error::Driver) }
         }
 
         fn set_timeout(&mut self, timeout: Duration) {
