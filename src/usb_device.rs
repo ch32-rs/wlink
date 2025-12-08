@@ -65,8 +65,11 @@ pub mod libusb {
         for device in devices.iter() {
             let device_desc = device.device_descriptor()?;
             if device_desc.vendor_id() == vid && device_desc.product_id() == pid {
-                let handle = device.open()?;
-                let serialnumber = handle.read_serial_number_string_ascii(&device_desc)?;
+                let serialnumber = match device.open() {
+                    Ok(handle) => handle.read_serial_number_string_ascii(&device_desc)
+                        .unwrap_or_else(|_| String::from("N/A")),
+                    Err(_) => String::from("N/A"),
+                };
                 result.push(format!(
                     "<WCH-Link#{} libusb device> Bus {:03} Device {:03} ID {:04x}:{:04x} Serial {} ({})",
                     idx,
