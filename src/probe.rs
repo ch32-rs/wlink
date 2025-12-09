@@ -192,25 +192,15 @@ impl WchLink {
     pub fn iap_enter(nth: usize) -> Result<()> {
 
         // Check device mode
-        let vid; let pid; let endp_out;
-        if crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth).is_ok() {
-            vid = VENDOR_ID;
-            pid = PRODUCT_ID;
-            endp_out = ENDPOINT_OUT;
+        let (vid, pid, endp_out, mut dev) = if let Ok(dev) = crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth) {
+            (VENDOR_ID, PRODUCT_ID, ENDPOINT_OUT, dev)
+        } else if let Ok(dev) = crate::usb_device::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth) {
+            (VENDOR_ID_DAP, PRODUCT_ID_DAP, ENDPOINT_OUT_DAP, dev)
+        } else if let Ok(dev) = crate::usb_device::open_nth(VENDOR_ID_IAP, PRODUCT_ID_IAP, nth) {
+            (VENDOR_ID_IAP, PRODUCT_ID_IAP, ENDPOINT_OUT_IAP, dev)
         } else {
-            if crate::usb_device::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth).is_ok() {
-                vid = VENDOR_ID_DAP;
-                pid = PRODUCT_ID_DAP;
-                endp_out = ENDPOINT_OUT_DAP;
-            } else {
-                // Assume device is in already IAP mode.
-                vid = VENDOR_ID_IAP;
-                pid = PRODUCT_ID_IAP;
-                endp_out = ENDPOINT_OUT_IAP;
-            }
-        }
-
-        let mut dev = crate::usb_device::open_nth(vid, pid, nth)?;
+            return Err(Error::ProbeNotFound);
+        };
         
         if vid == VENDOR_ID_IAP && pid == PRODUCT_ID_IAP {
             log::info!("Device is already in IAP mode");
