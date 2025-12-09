@@ -197,7 +197,7 @@ fn main() -> Result<()> {
     )
     .expect("initialize simple logger");
 
-    let mut device_index = cli.device.unwrap_or(0);
+    let device_index = cli.device.unwrap_or(0);
     let mut will_detach = !cli.no_detach;
 
     match cli.command {
@@ -245,11 +245,8 @@ fn main() -> Result<()> {
                     log::info!("DO NOT UNPLUG WCH-Link/E until done!!!");
                     log::info!("######################################");
 
-                    // Refresh probe list
                     // CH549 need to wait for a long time to enter IAP mode.
                     sleep(Duration::from_millis(3500));
-                    device_index = cli.device.unwrap_or(0);
-                    sleep(Duration::from_millis(500));
 
                     // Erase flash
                     WchLink::iap_erase(device_index)?;

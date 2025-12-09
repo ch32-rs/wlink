@@ -175,42 +175,75 @@ pub mod ch375_driver {
     use super::*;
     use crate::Error;
 
-    static CH375_DRIVER: OnceLock<std::result::Result<Library, String>> = OnceLock::new();
+    struct CH375Libraries {
+        wchlink_dll: Option<Library>,
+        ch375_dll: Option<Library>,
+    }
 
-    fn ensure_library_load() -> Result<&'static Library> {
-        let result = CH375_DRIVER.get_or_init(|| {
-            let mut lib = match unsafe { Library::new("WCHLinkDLL.dll") } {
-                Ok(lib) => lib,
-                Err(_) => return Err("WCHLinkDLL.dll not found".to_string()),
-            };
+    static CH375_DRIVERS: OnceLock<std::result::Result<CH375Libraries, String>> = OnceLock::new();
 
-            // For IAP mode, load CH375DLL.dll if USB ID is zero
-            let get_usb_id: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
-                unsafe { lib.get(b"CH375GetUsbID").unwrap() };
-            if unsafe { get_usb_id(0) } == 0x0000_0000 {
-                lib = match unsafe { Library::new("CH375DLL.dll") } {
-                    Ok(lib) => lib,
-                    Err(_) => return Err("CH375DLL.dll not found".to_string()),
-                };
+    fn ensure_libraries_load() -> Result<&'static CH375Libraries> {
+        let result = CH375_DRIVERS.get_or_init(|| {
+            let wchlink_dll = unsafe { Library::new("WCHLinkDLL.dll") }.ok();
+            let ch375_dll = unsafe { Library::new("CH375DLL.dll") }.ok();
+
+            if wchlink_dll.is_none() && ch375_dll.is_none() {
+                return Err("Neither WCHLinkDLL.dll nor CH375DLL.dll found".to_string());
             }
 
-            let get_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
-                unsafe { lib.get(b"CH375GetVersion").unwrap() };
-            let get_driver_version: Symbol<unsafe extern "stdcall" fn() -> u32> =
-                unsafe { lib.get(b"CH375GetDrvVersion").unwrap() };
+            // Log version info for loaded libraries
+            if let Some(ref lib) = wchlink_dll {
+                if let Ok(get_version) = unsafe { lib.get::<Symbol<unsafe extern "stdcall" fn() -> u32>>(b"CH375GetVersion") } {
+                    if let Ok(get_driver_version) = unsafe { lib.get::<Symbol<unsafe extern "stdcall" fn() -> u32>>(b"CH375GetDrvVersion") } {
+                        log::debug!(
+                            "WCHLinkDLL.dll version {}, driver version {}",
+                            unsafe { get_version() },
+                            unsafe { get_driver_version() }
+                        );
+                    }
+                }
+            }
 
-            log::debug!(
-                "DLL version {}, driver version {}",
-                unsafe { get_version() },
-                unsafe { get_driver_version() }
-            );
-            Ok(lib)
+            if let Some(ref lib) = ch375_dll {
+                if let Ok(get_version) = unsafe { lib.get::<Symbol<unsafe extern "stdcall" fn() -> u32>>(b"CH375GetVersion") } {
+                    if let Ok(get_driver_version) = unsafe { lib.get::<Symbol<unsafe extern "stdcall" fn() -> u32>>(b"CH375GetDrvVersion") } {
+                        log::debug!(
+                            "CH375DLL.dll version {}, driver version {}",
+                            unsafe { get_version() },
+                            unsafe { get_driver_version() }
+                        );
+                    }
+                }
+            }
+
+            Ok(CH375Libraries {
+                wchlink_dll,
+                ch375_dll,
+            })
         });
 
         match result {
-            Ok(lib) => Ok(lib),
+            Ok(libs) => Ok(libs),
             Err(e) => Err(Error::Custom(e.clone())),
         }
+    }
+
+    fn get_library_for_device(vid: u16, pid: u16) -> Result<&'static Library> {
+        let libs = ensure_libraries_load()?;
+
+        // For IAP mode devices, prefer CH375DLL.dll if available
+        if vid == crate::probe::VENDOR_ID_IAP && pid == crate::probe::PRODUCT_ID_IAP {
+            if let Some(ref lib) = libs.ch375_dll {
+                return Ok(lib);
+            }
+        }
+
+        // For normal mode devices, prefer WCHLinkDLL.dll if available
+        if let Some(ref lib) = libs.wchlink_dll {
+            return Ok(lib);
+        }
+
+        Err(Error::Custom("No suitable DLL found".to_string()))
     }
 
     #[allow(non_snake_case, unused)]
@@ -234,7 +267,7 @@ pub mod ch375_driver {
     }
 
     pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<impl Display>> {
-        let lib = ensure_library_load()?;
+        let lib = get_library_for_device(vid, pid)?;
         let mut ret: Vec<String> = vec![];
 
         let open_device: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
@@ -272,6 +305,8 @@ pub mod ch375_driver {
     /// USB Device implementation provided by CH375 Windows driver
     pub struct CH375USBDevice {
         index: u32,
+        vid: u16,
+        pid: u16,
     }
 
     impl fmt::Debug for CH375USBDevice {
@@ -285,7 +320,7 @@ pub mod ch375_driver {
 
     impl USBDeviceBackend for CH375USBDevice {
         fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
-            let lib = ensure_library_load()?;
+            let lib = get_library_for_device(vid, pid)?;
             /*HANDLE WINAPI CH375OpenDevice( // Open CH375 device, return the handle, invalid if error
             ULONG	iIndex );  */
             let open_device: Symbol<unsafe extern "stdcall" fn(u32) -> u32> =
@@ -315,7 +350,7 @@ pub mod ch375_driver {
                     if iap || (descr.idVendor == vid && descr.idProduct == pid) {
                         if idx == nth {
                             log::debug!("Device #{}: {:04x}:{:04x}", i, vid, pid);
-                            return Ok(Box::new(CH375USBDevice { index: i }));
+                            return Ok(Box::new(CH375USBDevice { index: i, vid, pid }));
                         } else {
                             idx += 1;
                         }
@@ -328,7 +363,7 @@ pub mod ch375_driver {
         }
 
         fn read_endpoint(&mut self, ep: u8, buf: &mut [u8]) -> Result<usize> {
-            let lib = ensure_library_load()?;
+            let lib = get_library_for_device(self.vid, self.pid)?;
             /*
             BOOL WINAPI CH375ReadEndP( // read data block
             ULONG	iIndex,        // Specify the serial number of the CH375 device
@@ -353,7 +388,7 @@ pub mod ch375_driver {
         }
 
         fn write_endpoint(&mut self, ep: u8, buf: &[u8]) -> Result<()> {
-            let lib = ensure_library_load()?;
+            let lib = get_library_for_device(self.vid, self.pid)?;
             /*
                 BOOL WINAPI CH375WriteEndP( // write out data block
             ULONG	iIndex,         // Specify the serial number of the CH375 device
@@ -372,7 +407,7 @@ pub mod ch375_driver {
         }
 
         fn set_timeout(&mut self, timeout: Duration) {
-            let lib = ensure_library_load().unwrap();
+            let lib = get_library_for_device(self.vid, self.pid).unwrap();
 
             let set_timeout_ex: Symbol<
                 unsafe extern "stdcall" fn(u32, u32, u32, u32, u32) -> bool,
@@ -388,7 +423,7 @@ pub mod ch375_driver {
 
     impl Drop for CH375USBDevice {
         fn drop(&mut self) {
-            if let Ok(lib) = ensure_library_load() {
+            if let Ok(lib) = get_library_for_device(self.vid, self.pid) {
                 let close_device: Symbol<unsafe extern "stdcall" fn(u32)> =
                     unsafe { lib.get(b"CH375CloseDevice").unwrap() };
                 unsafe {
