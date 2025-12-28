@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrate from rusb to nusb 0.2
+
+### Fixed
+
+- Fix compile error on Windows
+- Fix CH585 incorrectly reporting itself as CH59x
+
 ## [0.1.1] - 2024-11-15
 
 ### Fixed
