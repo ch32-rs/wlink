@@ -7,9 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Add a function for switching IAP mode, #84
-- Add a function for upgrade WCH-LinkE firmware, #84
-
 ## [0.1.1] - 2024-11-15
 
 ### Fixed
