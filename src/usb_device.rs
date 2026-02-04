@@ -65,11 +65,17 @@ pub mod libusb {
 
         for device in devices {
             if device.vendor_id() == vid && device.product_id() == pid {
+                let serial = device
+                    .serial_number()
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "N/A".to_string());
+
                 result.push(format!(
-                    "<WCH-Link#{} nusb device> ID {:04x}:{:04x}({})",
+                    "<WCH-Link#{} nusb device> ID {:04x}:{:04x} Serial {} ({})",
                     idx,
                     device.vendor_id(),
                     device.product_id(),
+                    serial,
                     get_speed(device.speed())
                 ));
                 idx += 1;

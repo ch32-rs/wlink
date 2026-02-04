@@ -65,7 +65,7 @@ Current firmware version: 2.15 (aka. v35).
 - [CH583]/CH582/CH581
 - [CH585]/CH584
 - [CH592]/CH591
-- [ ] [CH643] - I don't have this chip, help wanted
+- [CH643]
 - [ ] [CH32V317] - I don't have this chip, help wanted
 - [CH641]
 - [CH32X035]/CH32X033
