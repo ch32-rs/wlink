@@ -350,7 +350,7 @@ impl ProbeSession {
         let dpc = self.read_reg(regs::DPC)?;
         println!("dpc(pc):   0x{dpc:08x}");
 
-        let gprs = if self.chip_family.is_rv32ec() {
+        let gprs = if self.chip_family.is_rv32e() {
             regs::GPRS_RVE
         } else {
             regs::GPRS_RVI
