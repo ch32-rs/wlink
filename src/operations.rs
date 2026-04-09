@@ -9,6 +9,21 @@ use crate::{
     probe::WchLink,
 };
 
+/// CH32V00x user option bytes: first 32-bit word at `0x1FFFF800` is RDPR, nRDPR, USER, nUSER
+const CH32V00X_OB_ADDR: u32 = 0x1FFFF800;
+/// Bit 5 of USER (`START_MODE`): 1 = boot from System/BOOT FLASH, 0 = boot from user Code FLASH.
+const CH32V00X_USER_START_MODE_MASK: u8 = 0x20;
+
+/// Decode boot source from the first option-byte word returned by [`ProbeSession::read_memory`].
+#[inline]
+fn ch32v00x_boot_from_system_flash(ob_word0: &[u8]) -> Option<bool> {
+    if ob_word0.len() < 4 {
+        return None;
+    }
+    let user = ob_word0[2];
+    Some((user & CH32V00X_USER_START_MODE_MASK) != 0)
+}
+
 /// A running probe session, flash, erase, inspect, etc.
 pub struct ProbeSession {
     pub probe: WchLink,
@@ -114,6 +129,35 @@ impl ProbeSession {
             if protected {
                 log::warn!("Flash is protected, debug access is not available");
             }
+
+
+            // Boot mode: read raw option bytes in flash (RM)
+            if matches!(self.chip_family,
+                crate::RiscvChip::CH32V003 | crate::RiscvChip::CH32V007 | crate::RiscvChip::CH641
+            ) {
+                match self.read_memory(CH32V00X_OB_ADDR, 4) {
+                    Ok(data) => {
+                        log::info!("Option bytes at 0x{:08x}: {:02x?}", CH32V00X_OB_ADDR, data);
+                        if let Some(boot_from_system) = ch32v00x_boot_from_system_flash(&data) {
+                            let user = data[2];
+                            log::info!("USER option byte: 0x{:02x} (binary: {:08b})", user, user);
+                            let boot_from = if boot_from_system { "System FLASH" } else { "Code FLASH" };
+                            log::info!(
+                                "Boot from (flash read): {} (USER bit 5 START_MODE = {})",
+                                boot_from,
+                                if boot_from_system { 1 } else { 0 }
+                            );
+                        } else {
+                            log::warn!("Option byte read returned {} bytes, expected 4", data.len());
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Could not read option bytes from flash: {}", e);
+                    }
+                }
+            } else {
+                log::debug!("Skipping boot mode option byte read: not supported on this MCU family");
+            }
         }
         if self.chip_family.support_ram_rom_mode() {
             let sram_code_mode = self
@@ -175,6 +219,64 @@ impl ProbeSession {
         Ok(())
     }
 
+    pub fn configure_boot_area(&mut self, system_flash: bool) -> Result<()> {
+        if !self.chip_family.support_boot_area() {
+            return Err(Error::Custom(
+                "Boot area selection is only supported on CH32V00x MCUs (CH32V003, CH32V007, CH641)".to_string(),
+            ));
+        }
+
+        let read_protected = self
+            .probe
+            .send_command(commands::ConfigChip::CheckReadProtect)?;
+        log::debug!("CheckReadProtect returned: 0x{:02x}", read_protected);
+
+        self.probe
+            .send_command(commands::ConfigChip::BootFrom { system_flash })?;
+
+        Ok(())
+    }
+
+    /// Sets USER option byte bit 5 (`START_MODE`) using the same requirement as WCH-LinkUtility:
+    /// the WCH-Link applies [`ConfigChip::BootFrom`] during an active fast-program session, not as a
+    /// standalone packet. This halts the core, reads the first `write_pack_size` bytes of code flash,
+    /// sends `BootFrom`, then re-flashes that region unchanged so existing firmware is preserved.
+    pub fn set_boot_area_with_program_operation(&mut self, system_flash: bool) -> Result<()> {
+        if !self.chip_family.support_boot_area() {
+            return Err(Error::Custom(
+                "Boot area selection is only supported on CH32V00x MCUs (CH32V003, CH32V007, CH641)"
+                    .to_string(),
+            ));
+        }
+
+        let start = self.chip_family.code_flash_start();
+        let len = self.chip_family.write_pack_size() as usize;
+
+        // `read_memory` requires a halted core (probe memory read path).
+        self.ensure_mcu_halt()?;
+        log::info!(
+            "halt + read {} bytes @ 0x{:08x} (preserve code flash for boot-area update)",
+            len,
+            start
+        );
+        let buf = self.read_memory(start, len as u32)?;
+        if buf.len() < len {
+            return Err(Error::Custom(format!(
+                "short flash read: got {} bytes, need {}",
+                buf.len(),
+                len
+            )));
+        }
+
+        log::info!(
+            "program {} KiB @ 0x{:08x} (START_MODE via BootFrom inside program session)",
+            len / 1024,
+            start
+        );
+        self.write_flash(&buf[..len], start, Some(system_flash))?;
+        Ok(())
+    }
+
     pub fn protect_flash(&mut self) -> Result<()> {
         // HACK: requires a fresh attach
         self.reattach_chip()?;
@@ -225,7 +327,7 @@ impl ProbeSession {
     }
 
     // wlink_write
-    pub fn write_flash(&mut self, data: &[u8], address: u32) -> Result<()> {
+    pub fn write_flash(&mut self, data: &[u8], address: u32, boot_from_system_flash: Option<bool>) -> Result<()> {
         let chip_family = self.chip_family;
         let write_pack_size = chip_family.write_pack_size();
         let data_packet_size = chip_family.data_packet_size();
@@ -268,6 +370,22 @@ impl ProbeSession {
             return Err(Error::Custom(
                 "Unknown07AfterFlashOPWritten failed".to_string(),
             ));
+        }
+
+        if let Some(system_flash) = boot_from_system_flash {
+            if chip_family.support_boot_area() {
+                log::info!(
+                    "set START_MODE → {}",
+                    if system_flash {
+                        "System FLASH"
+                    } else {
+                        "Code FLASH"
+                    }
+                );
+                self.configure_boot_area(system_flash)?;
+            } else {
+                log::warn!("--system-boot ignored: not supported on this MCU family");
+            }
         }
 
         // wlink_fastprogram

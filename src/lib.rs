@@ -197,6 +197,14 @@ impl RiscvChip {
         )
     }
 
+    /// Boot area selection is only supported on CH32V00x devices.
+    pub fn support_boot_area(&self) -> bool {
+        matches!(
+            self,
+            RiscvChip::CH32V003 | RiscvChip::CH32V007 | RiscvChip::CH641
+        )
+    }
+
     /// Very unsafe.
     /// This disables the debug interface of the chip.
     /// Command sequence is 810e0101
