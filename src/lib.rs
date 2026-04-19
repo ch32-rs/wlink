@@ -63,6 +63,8 @@ pub enum RiscvChip {
     // Cortex-M chips
     CH32F10X = 0x04,
     CH32F20X = 0x08,
+    /// CH32H417/CH32H416/CH32H415 (TODO unsure about latter 2)
+    CH32H41X = 0xC6,
 }
 
 impl ValueEnum for RiscvChip {
@@ -86,6 +88,7 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V007,
             RiscvChip::CH645,
             RiscvChip::CH32V317,
+            RiscvChip::CH32H41X,
         ]
     }
 
@@ -109,6 +112,7 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V007 => Some(PossibleValue::new("CH32V007")),
             RiscvChip::CH645 => Some(PossibleValue::new("CH645")),
             RiscvChip::CH32V317 => Some(PossibleValue::new("CH32V317")),
+            RiscvChip::CH32H41X => Some(PossibleValue::new("CH32H41X")),
             _ => None,
         }
     }
@@ -153,6 +157,7 @@ impl ValueEnum for RiscvChip {
                 );
                 Ok(RiscvChip::CH582)
             }
+            "CH32H41X" => Ok(RiscvChip::CH32H41X),
             _ => Err(format!("Unknown chip: {}", s)),
         }
     }
@@ -307,6 +312,7 @@ impl RiscvChip {
             RiscvChip::CH32V317 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
+            RiscvChip::CH32H41X => todo!("ch32h41X"),
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {
@@ -331,6 +337,7 @@ impl RiscvChip {
             0x86 => Ok(RiscvChip::CH32V317),
             0x04 => Ok(RiscvChip::CH32F10X),
             0x08 => Ok(RiscvChip::CH32F20X),
+            0xC6 => Ok(RiscvChip::CH32H41X),
             _ => Err(Error::UnknownChip(value)),
         }
     }
