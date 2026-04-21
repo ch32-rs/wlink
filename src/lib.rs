@@ -312,7 +312,7 @@ impl RiscvChip {
             RiscvChip::CH32V317 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
-            RiscvChip::CH32H41X => todo!("ch32h41X"),
+            RiscvChip::CH32H41X => &flash_op::CH32H417,
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {

@@ -797,6 +797,29 @@ pub const CH32V317_ALT: [u8; 460] = [
     0x98, 0x4b, 0xf2, 0x47, 0xe3, 0x09, 0xf7, 0xfa, 0x41, 0x45, 0xb1, 0xbf,
 ];
 
+pub const CH32H417: [u8; 618] = str_to_hex(concat!(
+    "011102ce9377150099cfb7066745b7270240938636123797efcdd4c31307b79a",
+    "d8c3d4d3d8d393772500c1e393774500ede793778500638d071c9307f60f2ec6",
+    "a1833eca372702401c4bc1664168d58f1ccbb7161020b7270240930800043703",
+    "2000984b3367070198cbd847058b75ff32473ac846cc6247631e0714984b3367",
+    "670098cbd847058b75ffd847418b63030716d847c176fd1613670701d8c7984b",
+    "2145758f98cb056102908568ad663708fcff02ca3943b7270240138e0880b70e",
+    "0400373f00409386a6aa7d185247e36fe3f4d857931f3700524763da0f027297",
+    "42073ac6984b3367d70198cb3247d8cb984b1367070498cbd847058b01ef984b",
+    "3377070198cb524705073acac1b746973e07c1bf2320df00c5b7b7270240dc57",
+    "13973700635f070493973501e3c307f08567fd17b297b1832ec6ad663ecab738",
+    "0040b72702409386a6aa0568984b1367270098cb3247d8cb984b1367070498cb",
+    "d847058b01ef984b759b98cb324742973ac652477d173aca71fb65bd23a0d800",
+    "c5b78567fd17b297b1832ec6ad663ecab7380040b72702409386a6aa0568984b",
+    "1367270098cb3247d8cb984b1367070498cbd847058b01ef984b759b98cb3247",
+    "42973ac652477d173aca71fb9db523a0d800c5b74247138e4600944214c34247",
+    "11073ac862477d173accd847098b75fff28651b53247130707103ac652477d17",
+    "3acae31007e6984bc176fd16758f98cb418919e1014541bd2ec60d0602ca0982",
+    "32ccb7171020984313864700d247b2468a07b6979c436318f702d24732478a07",
+    "ba979843f247ba973eced24785073ecad2466247b287e3e8e6fcb7271020984b",
+    "f247e309f7fa41453dbd",
+));
+
 // CH564
 // 0xF
 pub const CH564: [u8; 1532] = [
@@ -897,3 +920,29 @@ pub const CH564: [u8; 1532] = [
     0xb5, 0x3f, 0x83, 0x47, 0xf4, 0xfe, 0x93, 0xf7, 0xf7, 0x0f, 0x85, 0x8b, 0x91, 0xc3, 0x4d, 0xb7,
     0x01, 0x00, 0x01, 0x00, 0xf2, 0x40, 0x62, 0x44, 0x05, 0x61, 0x82, 0x80,
 ];
+
+/// You can nicely format the hex string with
+///
+/// ```sh
+/// (fold -w64 | sed 's/.*/    "\0",/') < /path/to/str
+/// ```
+const fn str_to_hex<const N: usize>(s: &str) -> [u8; N] {
+    assert!(s.len() == N * 2);
+    let mut buf = [0; N];
+    let mut i = 0;
+    while i < N {
+        let x = s.as_bytes()[2 * i + 0];
+        let y = s.as_bytes()[2 * i + 1];
+        buf[i] = chr_to_hex(x) << 4 | chr_to_hex(y);
+        i += 1;
+    }
+    buf
+}
+
+const fn chr_to_hex(x: u8) -> u8 {
+    match x.to_ascii_lowercase() {
+        b'0'..=b'9' => x - b'0',
+        b'a'..=b'f' => x - b'a' + 10,
+        _ => panic!("invalid char"),
+    }
+}
