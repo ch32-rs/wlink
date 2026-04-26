@@ -940,7 +940,8 @@ const fn str_to_hex<const N: usize>(s: &str) -> [u8; N] {
 }
 
 const fn chr_to_hex(x: u8) -> u8 {
-    match x.to_ascii_lowercase() {
+    let x = x.to_ascii_lowercase();
+    match x {
         b'0'..=b'9' => x - b'0',
         b'a'..=b'f' => x - b'a' + 10,
         _ => panic!("invalid char"),
