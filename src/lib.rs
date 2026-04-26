@@ -157,7 +157,7 @@ impl ValueEnum for RiscvChip {
                 );
                 Ok(RiscvChip::CH582)
             }
-            "CH32H41X" => Ok(RiscvChip::CH32H41X),
+            "CH32H41X" | "CH32H415" | "CH32H416" | "CH32H417" => Ok(RiscvChip::CH32H41X),
             _ => Err(format!("Unknown chip: {}", s)),
         }
     }
