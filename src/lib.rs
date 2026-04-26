@@ -55,7 +55,7 @@ pub enum RiscvChip {
     /// CH564 RISC-V4J series
     CH564 = 0x0F,
     /// CH32V002/4/5/6/7, CH32M007
-    CH32V007 = 0x4E,
+    CH32V00X = 0x4E,
     /// CH645, CH653, RISC-V4C
     CH645 = 0x46,
     /// CH32V317 RISC-V4 series
@@ -83,7 +83,7 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH641,
             RiscvChip::CH585,
             RiscvChip::CH564,
-            RiscvChip::CH32V007,
+            RiscvChip::CH32V00X,
             RiscvChip::CH645,
             RiscvChip::CH32V317,
         ]
@@ -106,7 +106,7 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32L103 => Some(PossibleValue::new("CH32L103")),
             RiscvChip::CH641 => Some(PossibleValue::new("CH641")),
             RiscvChip::CH564 => Some(PossibleValue::new("CH564")),
-            RiscvChip::CH32V007 => Some(PossibleValue::new("CH32V007")),
+            RiscvChip::CH32V00X => Some(PossibleValue::new("CH32V00X")),
             RiscvChip::CH645 => Some(PossibleValue::new("CH645")),
             RiscvChip::CH32V317 => Some(PossibleValue::new("CH32V317")),
             _ => None,
@@ -129,7 +129,7 @@ impl ValueEnum for RiscvChip {
             // Note that CH32X034 seems never released
             "CH32X0" | "CH32X03X" | "CH32X033" | "CH32X034" | "CH32X035" => Ok(RiscvChip::CH32X035),
             "CH32V002" | "CH32V004" | "CH32V005" | "CH32V006" | "CH32V007" | "CH32M007" => {
-                Ok(RiscvChip::CH32V007)
+                Ok(RiscvChip::CH32V00X)
             }
             "CH565" | "CH569" => Ok(RiscvChip::CH56X),
             "CH57X" | "CH571" | "CH573" => Ok(RiscvChip::CH57X),
@@ -168,7 +168,7 @@ impl RiscvChip {
                 | RiscvChip::CH32V20X
                 | RiscvChip::CH32V30X
                 | RiscvChip::CH32V003
-                | RiscvChip::CH32V007
+                | RiscvChip::CH32V00X
                 | RiscvChip::CH32L103
                 | RiscvChip::CH32X035
                 | RiscvChip::CH641
@@ -229,7 +229,7 @@ impl RiscvChip {
             self,
             RiscvChip::CH32V003
                 | RiscvChip::CH645
-                | RiscvChip::CH32V007
+                | RiscvChip::CH32V00X
                 | RiscvChip::CH32V103
                 | RiscvChip::CH32V20X
                 | RiscvChip::CH32V30X
@@ -241,10 +241,11 @@ impl RiscvChip {
         )
     }
 
-    pub fn is_rv32ec(&self) -> bool {
+    pub fn is_rv32e(&self) -> bool {
         matches!(
             self,
-            RiscvChip::CH32V003 | RiscvChip::CH641 | RiscvChip::CH32V007
+            RiscvChip::CH32V003 | RiscvChip::CH641 // rv32ec
+                | RiscvChip::CH32V00X // rv32emc
         )
     }
 
@@ -302,7 +303,7 @@ impl RiscvChip {
             RiscvChip::CH32X035 | RiscvChip::CH643 => &flash_op::CH643,
             RiscvChip::CH32L103 => &flash_op::CH32L103,
             RiscvChip::CH564 => &flash_op::CH564,
-            RiscvChip::CH32V007 => &flash_op::CH32V007,
+            RiscvChip::CH32V00X => &flash_op::CH32V00X,
             RiscvChip::CH645 => &flash_op::CH645,
             RiscvChip::CH32V317 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
@@ -326,7 +327,7 @@ impl RiscvChip {
             0x49 => Ok(RiscvChip::CH641),
             0x4B => Ok(RiscvChip::CH585),
             0x0F => Ok(RiscvChip::CH564),
-            0x4E => Ok(RiscvChip::CH32V007),
+            0x4E => Ok(RiscvChip::CH32V00X),
             0x46 => Ok(RiscvChip::CH645),
             0x86 => Ok(RiscvChip::CH32V317),
             0x04 => Ok(RiscvChip::CH32F10X),
@@ -369,7 +370,7 @@ impl RiscvChip {
     /// pack size for fastprogram
     pub fn write_pack_size(&self) -> u32 {
         match self {
-            RiscvChip::CH32V003 | RiscvChip::CH641 | RiscvChip::CH32V007 => 1024,
+            RiscvChip::CH32V003 | RiscvChip::CH641 | RiscvChip::CH32V00X => 1024,
             _ => 4096,
         }
     }
