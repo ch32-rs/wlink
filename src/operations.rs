@@ -136,7 +136,7 @@ impl ProbeSession {
 
             // Boot mode: read raw option bytes in flash (RM)
             if matches!(self.chip_family,
-                crate::RiscvChip::CH32V003 | crate::RiscvChip::CH32V007 | crate::RiscvChip::CH641
+                crate::RiscvChip::CH32V003 | crate::RiscvChip::CH32V00X | crate::RiscvChip::CH641
             ) {
                 match self.read_memory(CH32V00X_OB_ADDR, 4) {
                     Ok(data) => {

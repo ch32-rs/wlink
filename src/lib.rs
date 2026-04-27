@@ -201,7 +201,7 @@ impl RiscvChip {
     pub fn support_boot_area(&self) -> bool {
         matches!(
             self,
-            RiscvChip::CH32V003 | RiscvChip::CH32V007 | RiscvChip::CH641
+            RiscvChip::CH32V003 | RiscvChip::CH32V00X | RiscvChip::CH641
         )
     }
 
