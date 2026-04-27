@@ -45,44 +45,47 @@ impl ProbeSession {
             return Err(Error::UnsupportedChip(chip));
         }
 
-        let mut chip_info = None;
-
-        for _ in 0..3 {
+        let mut attempts = 0;
+        let chip_info = loop {
             probe.send_command(commands::SetSpeed {
                 riscvchip: chip as u8,
                 speed,
             })?;
 
-            if let Ok(resp) = probe.send_command(commands::control::AttachChip) {
-                log::info!("Attached chip: {}", resp);
-                chip_info = Some(resp);
-
-                if let Some(expected_chip) = expected_chip {
-                    if resp.chip_family != expected_chip {
-                        log::error!(
-                            "Attached chip type ({:?}) does not match expected chip type ({:?})",
-                            resp.chip_family,
-                            expected_chip
-                        );
-                        return Err(Error::ChipMismatch(expected_chip, resp.chip_family));
+            match probe.send_command(commands::control::AttachChip) {
+                Ok(resp) => break resp,
+                Err(e) => {
+                    log::debug!("error {e:?}, retrying...");
+                    if attempts >= 3 {
+                        return Err(e);
                     }
+                    sleep(Duration::from_millis(100));
                 }
-                // set speed again
-                if expected_chip.is_none() {
-                    probe.send_command(commands::SetSpeed {
-                        riscvchip: resp.chip_family as u8,
-                        speed,
-                    })?;
-                }
+            }
 
-                break;
-            } else {
-                log::debug!("retrying...");
-                sleep(Duration::from_millis(100));
+            attempts += 1;
+        };
+
+        log::info!("Attached chip: {}", chip_info);
+
+        if let Some(expected_chip) = expected_chip {
+            if chip_info.chip_family != expected_chip {
+                log::error!(
+                    "Attached chip type ({:?}) does not match expected chip type ({:?})",
+                    chip_info.chip_family,
+                    expected_chip
+                );
+                return Err(Error::ChipMismatch(expected_chip, chip_info.chip_family));
             }
         }
+        // set speed again
+        if expected_chip.is_none() {
+            probe.send_command(commands::SetSpeed {
+                riscvchip: chip_info.chip_family as u8,
+                speed,
+            })?;
+        }
 
-        let chip_info = chip_info.ok_or(Error::NotAttached)?;
         chip_info.chip_family.do_post_init(&mut probe)?;
 
         //let ret = self.send_command(control::CheckQE)?;
