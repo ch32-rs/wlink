@@ -55,8 +55,8 @@ pub mod libusb {
     use std::io::{Read, Write};
 
     use super::*;
-    use nusb::transfer::{Bulk, In, Out};
     use nusb::MaybeFuture;
+    use nusb::transfer::{Bulk, In, Out};
 
     pub fn list_libusb_devices(vid: u16, pid: u16) -> Result<Vec<impl Display>> {
         let devices = nusb::list_devices().wait().map_err(crate::Error::Usb)?;
@@ -115,7 +115,11 @@ pub mod libusb {
             }
 
             let device_info = &devices[nth];
-            log::trace!("Device: {:04x}:{:04x}", device_info.vendor_id(), device_info.product_id());
+            log::trace!(
+                "Device: {:04x}:{:04x}",
+                device_info.vendor_id(),
+                device_info.product_id()
+            );
 
             if let Some(serial) = device_info.serial_number() {
                 log::debug!("Serial number: {:?}", serial);
@@ -130,7 +134,10 @@ pub mod libusb {
                 crate::Error::Usb(e)
             })?;
 
-            let interface = device.claim_interface(0).wait().map_err(crate::Error::Usb)?;
+            let interface = device
+                .claim_interface(0)
+                .wait()
+                .map_err(crate::Error::Usb)?;
 
             Ok(Box::new(NusbDevice {
                 interface,
