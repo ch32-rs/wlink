@@ -63,7 +63,7 @@ pub enum RiscvChip {
     // Cortex-M chips
     CH32F10X = 0x04,
     CH32F20X = 0x08,
-    /// CH32H417/CH32H416/CH32H415 (TODO unsure about latter 2)
+    /// CH32H415/CH32H416/CH32H417 RISC-V5F+RISC-V3F series
     CH32H41X = 0xC6,
 }
 
@@ -112,7 +112,21 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V007 => Some(PossibleValue::new("CH32V007")),
             RiscvChip::CH645 => Some(PossibleValue::new("CH645")),
             RiscvChip::CH32V317 => Some(PossibleValue::new("CH32V317")),
-            RiscvChip::CH32H41X => Some(PossibleValue::new("CH32H41X")),
+            RiscvChip::CH32H41X => Some(PossibleValue::new("CH32H41X").aliases([
+                "CH32H415",
+                "CH32H415REU",
+                "CH32H415REU6",
+                "CH32H416",
+                "CH32H416RDU",
+                "CH32H416RDU6",
+                "CH32H417",
+                "CH32H417QEU",
+                "CH32H417QEU6",
+                "CH32H417MEU",
+                "CH32H417MEU6",
+                "CH32H417WEU",
+                "CH32H417WEU6",
+            ])),
             _ => None,
         }
     }
@@ -157,7 +171,11 @@ impl ValueEnum for RiscvChip {
                 );
                 Ok(RiscvChip::CH582)
             }
-            "CH32H41X" | "CH32H415" | "CH32H416" | "CH32H417" => Ok(RiscvChip::CH32H41X),
+            "CH32H41X" | "CH32H415" | "CH32H415REU" | "CH32H415REU6" | "CH32H416"
+            | "CH32H416RDU" | "CH32H416RDU6" | "CH32H417" | "CH32H417QEU" | "CH32H417QEU6"
+            | "CH32H417MEU" | "CH32H417MEU6" | "CH32H417WEU" | "CH32H417WEU6" => {
+                Ok(RiscvChip::CH32H41X)
+            }
             _ => Err(format!("Unknown chip: {}", s)),
         }
     }
@@ -179,6 +197,7 @@ impl RiscvChip {
                 | RiscvChip::CH641
                 | RiscvChip::CH645
                 | RiscvChip::CH32V317
+                | RiscvChip::CH32H41X
         )
     }
 
@@ -378,6 +397,41 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V003 | RiscvChip::CH641 | RiscvChip::CH32V007 => 1024,
             _ => 4096,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RiscvChip;
+
+    #[test]
+    fn ch32h41x_supports_flash_protect_commands() {
+        assert!(RiscvChip::CH32H41X.support_flash_protect());
+    }
+
+    #[test]
+    fn ch32h41x_aliases_match_openwch_packages() {
+        for alias in [
+            "CH32H41X",
+            "CH32H415",
+            "CH32H415REU",
+            "CH32H415REU6",
+            "CH32H416",
+            "CH32H416RDU",
+            "CH32H416RDU6",
+            "CH32H417",
+            "CH32H417QEU",
+            "CH32H417QEU6",
+            "CH32H417MEU",
+            "CH32H417MEU6",
+            "CH32H417WEU",
+            "CH32H417WEU6",
+        ] {
+            assert_eq!(
+                <RiscvChip as clap::ValueEnum>::from_str(alias, false),
+                Ok(RiscvChip::CH32H41X)
+            );
         }
     }
 }

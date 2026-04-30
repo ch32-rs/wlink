@@ -118,6 +118,15 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x317_5B508 => Some("CH32V317TCU6"),
             _ => None,
         },
+        // https://github.com/openwch/ch32h417/blob/main/EVT/EXAM/SRC/Peripheral/src/ch32h417_dbgmcu.c
+        0x415_00000 | 0x416_00000 | 0x417_00000 => match chip_id & !0x0000_00F0 {
+            0x415_0050D => Some("CH32H415REU"),
+            0x416_0050D => Some("CH32H416RDU"),
+            0x417_0050D => Some("CH32H417QEU"),
+            0x417_1050D => Some("CH32H417MEU"),
+            0x417_2050D => Some("CH32H417WEU"),
+            _ => None,
+        },
         0x641 => match chip_id & 0xFFFFFF0F {
             0x641_00500 => Some("CH641F"),
             0x641_10500 => Some("CH641D"),
@@ -133,5 +142,20 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             _ => None,
         },
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::chip_id_to_chip_name;
+
+    #[test]
+    fn ch32h41x_package_ids_ignore_variant_nibble() {
+        assert_eq!(chip_id_to_chip_name(0x4170_052D), Some("CH32H417QEU"));
+        assert_eq!(chip_id_to_chip_name(0x4170_050D), Some("CH32H417QEU"));
+        assert_eq!(chip_id_to_chip_name(0x4171_050D), Some("CH32H417MEU"));
+        assert_eq!(chip_id_to_chip_name(0x4172_050D), Some("CH32H417WEU"));
+        assert_eq!(chip_id_to_chip_name(0x4150_050D), Some("CH32H415REU"));
+        assert_eq!(chip_id_to_chip_name(0x4160_050D), Some("CH32H416RDU"));
     }
 }
