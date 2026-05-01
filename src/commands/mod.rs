@@ -417,6 +417,15 @@ impl Command for DisableDebug {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum IapProgram {
+    // Write flash
+    Write = 0x80,
+    // Verify flash
+    Verify = 0x82,
+}
+
 // 81 0D 05 11 SetAccessAddress
 // 81 0F 01 02 GetDeviceMode
 // 81 0D 01 07 EnableQE
@@ -426,4 +435,6 @@ impl Command for DisableDebug {
 // 81 0D 02 08 xx ClearCodeFlash
 // 81 11 01 0D unknown in query info, before GetChipRomRamSplit
 // 81 0D 02 EE 00/02/03 SetSDLineMode
-// 81 0F 01 01 SetIAPMode
+// 81 0F 01 01 EnterIAPMode
+// 83 02 00 00 QuitIAPMode
+// 81 02 00 00 EraseAppFlash
