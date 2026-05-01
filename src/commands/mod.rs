@@ -184,7 +184,9 @@ pub enum ConfigChip {
 }
 impl ConfigChip {
     pub const FLAG_READ_PROTECTED: u8 = 0x01;
+    pub const FLAG_READ_UNPROTECTED: u8 = 0x02;
     pub const FLAG_WRITE_PROTECTED: u8 = 0x11;
+    pub const FLAG_WRITE_UNPROTECTED: u8 = 0x00;
 }
 impl Command for ConfigChip {
     type Response = u8;
