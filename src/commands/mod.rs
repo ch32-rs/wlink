@@ -172,6 +172,11 @@ pub enum ConfigChip {
     UnprotectEx(u8), // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     // prefix byte 0xe7 ? for ch32x035
     ProtectEx(u8), // with 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    /// Boot area selection on CH32V00x MCUs.
+    BootFrom {
+        /// true = System FLASH, false = Code FLASH
+        system_flash: bool,
+    },
     /// Config flags
     /// 81 06 08 02 3f 00 00  ff ff ff ff
     /// __ __ __ ?? ?? [DATA] [WRP      ]
@@ -200,6 +205,10 @@ impl Command for ConfigChip {
             ConfigChip::UnprotectEx(b) => vec![0x02, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
             // [0x03, 0xff, 0xff, 0xff, WPR0, WPR1, WPR2, WPR3]
             ConfigChip::ProtectEx(b) => vec![0x03, b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+            ConfigChip::BootFrom { system_flash } => {
+                let boot_flag = if system_flash { 0xff } else { 0xdf };
+                vec![0x02, boot_flag, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]
+            }
             ConfigChip::Config { data: _, wrp: _ } => todo!("ConfigChip: config flags"),
         }
     }

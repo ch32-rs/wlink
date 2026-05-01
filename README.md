@@ -25,6 +25,7 @@
 - [x] Read chip memory(flash)
 - [x] Read/write chip register - very handy for debugging
 - [x] Code-Protect & Code-Unprotect for supported chips
+- [x] Boot area selection for CH32V00x MCUs (System FLASH / Code FLASH)
 - [x] Enable or Disable 3.3V, 5V output
 - [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support, requires 2.10+ firmware
 - [x] [Serial port watching](https://github.com/ch32-rs/wlink/pull/36) for a smooth development experience
@@ -178,6 +179,32 @@ x5     t0: 0xb4a9b38a
 > # Set dpc(pc) to System Flash
 > wlink write-reg 0x7b1 0x000009a8
 ```
+
+### Boot Area Selection (CH32V00x only)
+
+Boot area selection via the **USER** option byte (`START_MODE`) is supported on CH32V00x only (CH32V003, CH32V007) and CH641.
+
+On the WCH-Link, the boot flag is **not** applied as a cold standalone USB packet: it must be sent **during** an active fast-program session (after the probe has set the write region and loaded the flash algorithm — same idea as WCH-LinkUtility). You can do that in two ways:
+
+1. **Flash a file and set boot in one step** — `wlink flash --system-boot …` applies `START_MODE` inside that program session, then programs your image.
+2. **Set boot without a new firmware file** — `wlink system-boot system|code` still runs a minimal program operation (it read‑backs the first 1 KiB of code flash and re‑writes it unchanged) so the link commits `START_MODE`. No `.bin` path is required.
+
+```console
+# Set START_MODE while flashing a build
+wlink flash --system-boot system firmware.bin
+wlink flash --system-boot code firmware.bin
+
+# Set START_MODE only (no new image; still uses a program session on the probe)
+wlink system-boot system
+wlink system-boot code
+
+# Current boot / option-byte word (reads flash at 0x1FFFF800)
+wlink status
+```
+
+**Terminology:**
+- **System FLASH** - The bootloader area (boot from system)
+- **Code FLASH** - The user application area (boot from user code)
 
 ## References
 
