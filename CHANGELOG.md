@@ -7,18 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-01
+
 ### Added
 
 - Add experimental CH32H41x support, including CH32H417 flashing, package ID reporting, and CH32H415/CH32H416/CH32H417 chip aliases.
+- Include USB serial numbers in probe listing output.
 
 ### Changed
 
 - Migrate from rusb to nusb 0.2
+- Rename the CH32V007 chip family to CH32V00X.
 
 ### Fixed
 
 - Fix compile error on Windows
 - Fix CH585 incorrectly reporting itself as CH59x
+- Preserve the original attach error details when chip attach fails.
+- Preserve option bytes by skipping read-unprotect when flash is already read-unprotected.
+- Preserve write-protect cleanup during erase after skipping unnecessary read-unprotect.
 
 ## [0.1.1] - 2024-11-15
 
