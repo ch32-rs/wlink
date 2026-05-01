@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add experimental CH32H41x support, including CH32H417 flashing, package ID reporting, and CH32H415/CH32H416/CH32H417 chip aliases.
+
 ### Changed
 
 - Migrate from rusb to nusb 0.2
