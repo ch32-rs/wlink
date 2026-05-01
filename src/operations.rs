@@ -213,7 +213,17 @@ impl ProbeSession {
             if ret == commands::ConfigChip::FLAG_READ_PROTECTED {
                 log::warn!("Flash is protected, unprotecting...");
                 self.unprotect_flash()?;
-            } else if ret != 2 {
+            } else if ret == commands::ConfigChip::FLAG_READ_UNPROTECTED {
+                let write_protected = self
+                    .probe
+                    .send_command(commands::ConfigChip::CheckReadProtectEx)?;
+                if write_protected == commands::ConfigChip::FLAG_WRITE_PROTECTED {
+                    log::warn!("Flash is write protected, unprotecting...");
+                    self.unprotect_flash()?;
+                } else if write_protected != commands::ConfigChip::FLAG_WRITE_UNPROTECTED {
+                    log::warn!("Unknown flash write protect status: {}", write_protected);
+                }
+            } else {
                 log::warn!("Unknown flash protect status: {}", ret);
             }
         }
