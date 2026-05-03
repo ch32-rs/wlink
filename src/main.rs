@@ -10,8 +10,23 @@ use wlink::{
     regs,
 };
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
+
+/// `wlink system-boot <system|code>`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum BootFlashTarget {
+    /// Boot from System FLASH (BFLASH)
+    System,
+    /// Boot from Code FLASH (user application)
+    Code,
+}
+
+impl BootFlashTarget {
+    fn system_flash(self) -> bool {
+        matches!(self, BootFlashTarget::System)
+    }
+}
 
 #[derive(clap::Parser)]
 #[command(author, version, about, long_about = None)]
@@ -96,6 +111,9 @@ enum Commands {
         /// Do not reset and run after flashing
         #[arg(long, short = 'R', default_value = "false")]
         no_run: bool,
+        /// Boot area during flash (CH32V00x only). Same as `wlink system-boot` but embedded in `flash`; the probe applies START_MODE during programming.
+        #[arg(long, value_parser = parse_boot_from)]
+        system_boot: Option<bool>, // true = System FLASH, false = Code FLASH
         /// Enable SDI print after reset
         #[arg(long, default_value = "false")]
         enable_sdi_print: bool,
@@ -104,6 +122,12 @@ enum Commands {
         watch_serial: bool,
         /// Path to the firmware file to flash
         path: String,
+    },
+    /// Set boot source for CH32V00x (START_MODE): re-flashes the first 1KiB read from code flash so the WCH-Link applies the option byte.
+    SystemBoot {
+        #[arg(value_enum)]
+        /// `system` or `code`
+        target: BootFlashTarget,
     },
     /// Unlock flash
     Unprotect {},
@@ -317,31 +341,44 @@ fn main() -> Result<()> {
                     address,
                     erase,
                     no_run,
+                    system_boot,
                     path,
                     enable_sdi_print,
                     watch_serial,
                 } => {
                     sess.dump_info()?;
 
+                    let firmware = read_firmware_from_file(path)?;
+
+                    if let Some(use_system_flash) = system_boot {
+                        log::info!(
+                            "Boot mode during flash: {}",
+                            if use_system_flash {
+                                "System FLASH"
+                            } else {
+                                "Code FLASH"
+                            }
+                        );
+                    }
+
                     if erase {
                         log::info!("Erase Flash");
                         sess.erase_flash()?;
                     }
-
-                    let firmware = read_firmware_from_file(path)?;
 
                     match firmware {
                         Firmware::Binary(data) => {
                             let start_address =
                                 address.unwrap_or_else(|| sess.chip_family.code_flash_start());
                             log::info!("Flashing {} bytes to 0x{:08x}", data.len(), start_address);
-                            sess.write_flash(&data, start_address)?;
+                            sess.write_flash(&data, start_address, system_boot)?;
                         }
                         Firmware::Sections(sections) => {
                             // Flash section by section
                             if address.is_some() {
                                 log::warn!("--address is ignored when flashing ELF or ihex");
                             }
+                            let mut first_section = true;
                             for section in sections {
                                 let start_address =
                                     sess.chip_family.fix_code_flash_start(section.address);
@@ -350,7 +387,13 @@ fn main() -> Result<()> {
                                     section.data.len(),
                                     start_address
                                 );
-                                sess.write_flash(&section.data, start_address)?;
+                                let boot = if first_section {
+                                    first_section = false;
+                                    system_boot
+                                } else {
+                                    None
+                                };
+                                sess.write_flash(&section.data, start_address, boot)?;
                             }
                         }
                     }
@@ -374,6 +417,21 @@ fn main() -> Result<()> {
                             sleep(Duration::from_millis(500));
                         }
                     }
+                }
+                Commands::SystemBoot { target } => {
+                    let system_flash = target.system_flash();
+                    sess.dump_info()?;
+                    log::info!(
+                        "system-boot: {}",
+                        if system_flash {
+                            "System FLASH"
+                        } else {
+                            "Code FLASH"
+                        }
+                    );
+                    sess.set_boot_area_with_program_operation(system_flash)?;
+                    log::info!("Done. Power-cycle or reset for option bytes to take full effect if needed.");
+                    sess.soft_reset()?;
                 }
                 Commands::Unprotect {} => {
                     log::info!("Unprotect Flash");
@@ -449,5 +507,13 @@ pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
         Ok(u32::from_str_radix(bin_str, 2).unwrap_or_else(|_| panic!("error while parsing {s:?}")))
     } else {
         Ok(s.parse().expect("must be a number"))
+    }
+}
+
+pub fn parse_boot_from(s: &str) -> std::result::Result<bool, String> {
+    match s.to_lowercase().as_str() {
+        "system" => Ok(true),
+        "code" => Ok(false),
+        _ => Err(format!("Invalid boot area: {}. Valid options are 'system' or 'code'", s))
     }
 }
