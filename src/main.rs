@@ -146,6 +146,18 @@ enum Commands {
         #[arg(long)]
         dap: bool,
     },
+    /// Enter or quit IAP mode
+    Iap {
+        #[arg(long)]
+        enter: bool,
+        #[arg(long)]
+        quit: bool,
+    },
+    /// Upgrade WCH-Link/E firmware
+    Upgrade {
+        /// Path to the upgrade firmware file to flash
+        path: String,
+    },
     /// List probes
     List {},
     /// Enable or disable power output
@@ -204,6 +216,74 @@ fn main() -> Result<()> {
                 WchLink::switch_from_rv_to_dap(device_index)?;
             } else {
                 WchLink::switch_from_dap_to_rv(device_index)?;
+            }
+        }
+        Some(Commands::Iap { enter, quit }) => {
+            WchLink::list_probes()?;
+            log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
+            if !(enter ^ quit) {
+                println!("Please choose one mode to switch, either --enter or --quit");
+            } else if enter {
+                WchLink::iap_enter(device_index)?;
+            } else {
+                WchLink::iap_quit(device_index)?;
+            }
+        }
+        Some(Commands::Upgrade { path }) => {
+            WchLink::list_probes()?;
+            log::warn!("This is an experimental feature, better use the WCH-LinkUtility!");
+
+            let firmware = read_firmware_from_file(path)?;
+
+            match firmware {
+                Firmware::Binary(data) => {
+                    // Enter IAP mode
+                    WchLink::iap_enter(device_index)?;
+
+                    log::info!("Start firmware upgrade");
+                    log::info!("######################################");
+                    log::info!("DO NOT UNPLUG WCH-Link/E until done!!!");
+                    log::info!("######################################");
+
+                    // CH549 need to wait for a long time to enter IAP mode.
+                    sleep(Duration::from_millis(3500));
+
+                    // Erase flash
+                    WchLink::iap_erase(device_index)?;
+
+                    // Flash firmware
+                    log::info!("Flashing {} bytes", data.len());
+                    match WchLink::iap_flash_firmware(device_index, &data, commands::IapProgram::Write as u8) {
+                        Ok(_) => {},
+                        Err(e) => {
+                            log::error!("Firmware flash failed: {:?}", e);
+                            WchLink::iap_quit(device_index)?;
+                            return Err(wlink::Error::Custom("Firmware flash failed".into()).into());
+                        }
+                    }
+                    log::info!("Flash done");
+                    sleep(Duration::from_millis(500));
+                    // Verify firmware
+                    log::info!("Verifying");
+                    match WchLink::iap_flash_firmware(device_index, &data, commands::IapProgram::Verify as u8) {
+                        Ok(_) => {},
+                        Err(e) => {
+                            log::error!("Firmware verify failed: {:?}", e);
+                            WchLink::iap_quit(device_index)?;
+                            return Err(wlink::Error::Custom("Firmware verify failed".into()).into());
+                        }
+                    }
+                    log::info!("Verify OK");
+                    sleep(Duration::from_millis(500));
+
+                    log::info!("Firmware upgrade completed successfully");
+
+                    // Quit IAP mode
+                    WchLink::iap_quit(device_index)?;
+                }
+                Firmware::Sections(_sections) => {
+                    log::error!("HEX firmware format not supported for WCH-Link upgrade");
+                }
             }
         }
         Some(Commands::List {}) => {
