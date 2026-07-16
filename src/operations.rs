@@ -14,6 +14,9 @@ pub struct ProbeSession {
     pub probe: WchLink,
     pub chip_family: RiscvChip,
     pub speed: Speed,
+    /// rescue-attach session: the target firmware steals the SWD pins, so
+    /// any detach/reattach (which resumes the CPU) must be avoided
+    pub rescue: bool,
 }
 
 impl ProbeSession {
@@ -83,6 +86,7 @@ impl ProbeSession {
             probe,
             chip_family: chip_info.chip_family,
             speed,
+            rescue: false,
         })
     }
 
@@ -239,7 +243,9 @@ impl ProbeSession {
         let write_pack_size = chip_family.write_pack_size();
         let data_packet_size = chip_family.data_packet_size();
 
-        if chip_family.support_flash_protect() {
+        if chip_family.support_flash_protect() && !self.rescue {
+            // unprotect_flash reattaches (detach RESUMES the CPU) — fatal in
+            // a rescue session; the rescue path verified protection is off
             self.unprotect_flash()?;
         }
 
@@ -378,6 +384,105 @@ impl ProbeSession {
         })?;
         probe.send_command(commands::control::EraseCodeFlash::ByPowerOff(chip_family))?;
         Ok(())
+    }
+
+    /// Force-reset the target WITHOUT attaching (the unwedge lane for a
+    /// target that NAKs AttachChip with protocol error 0x55): set the wire
+    /// protocol for the family, fire the raw 0x0b reset ladder ignoring
+    /// refusals, then hammer AttachChip to catch the chip in early boot
+    /// (before running firmware can disturb the wire). Honours --speed —
+    /// use `--speed low` (400 kHz) on jumper-wire SWD harnesses.
+    pub fn force_reset(probe: &mut WchLink, chip_family: RiscvChip, speed: Speed) -> Result<()> {
+        probe.send_command(commands::SetSpeed {
+            riscvchip: chip_family as u8,
+            speed,
+        })?;
+
+        for (name, cmd) in [
+            ("chip", commands::Reset::Chip),
+            ("soft", commands::Reset::Soft),
+            ("normal", commands::Reset::Normal),
+        ] {
+            match probe.send_command(cmd) {
+                Ok(_) => log::info!("force-reset: {} reset sent", name),
+                Err(e) => log::warn!("force-reset: {} reset refused: {:?}", name, e),
+            }
+
+            // attach-hammer immediately after each reset flavour: the window
+            // right after release is the most permissive state the chip has
+            for attempt in 0..15 {
+                match probe.send_command(commands::control::AttachChip) {
+                    Ok(resp) => {
+                        log::info!(
+                            "target attached after {} reset (attempt {}): {}",
+                            name,
+                            attempt + 1,
+                            resp
+                        );
+                        let _ = probe.send_command(commands::control::OptEnd);
+                        return Ok(());
+                    }
+                    Err(_) => sleep(Duration::from_millis(50)),
+                }
+            }
+        }
+
+        log::warn!("target still not attaching after force-reset");
+        log::warn!(
+            "hint: reset reached the board if its LED blinked — attach refusal then means \
+             SWDIO wiring/speed (try --speed low) or a stale probe session (long link power-off)"
+        );
+        Err(Error::Custom("force-reset: attach still refused".into()))
+    }
+
+    /// Rescue attach: for a target whose RUNNING FIRMWARE steals the SWD
+    /// pins (e.g. nanoCH32H417 PB8/PB9 = SWCLK/SWDIO muxed with USB2 D+/D- —
+    /// a USB bring-up image kills debug a few ms into boot). Hammers
+    /// AttachChip in a tight loop for 15 s; the operator presses and RELEASES
+    /// the target RESET during the window. On attach the core is HALTED
+    /// immediately so user code never reaches its pin-remux — leaving the
+    /// SWD window open for a follow-up erase/flash (do NOT reset in between).
+    pub fn rescue_attach(
+        probe: WchLink,
+        chip_family: RiscvChip,
+        speed: Speed,
+    ) -> Result<ProbeSession> {
+        let mut probe = probe;
+        probe.send_command(commands::SetSpeed {
+            riscvchip: chip_family as u8,
+            speed,
+        })?;
+
+        log::info!("rescue: hammering attach for 15 s — press and RELEASE the target RESET now");
+        let start = std::time::Instant::now();
+        loop {
+            match probe.send_command(commands::control::AttachChip) {
+                Ok(resp) => {
+                    log::info!("rescue: ATTACHED {} — halting the core", resp);
+                    let mut sess = ProbeSession {
+                        probe,
+                        chip_family,
+                        speed,
+                        rescue: true,
+                    };
+                    sess.ensure_mcu_halt()?;
+                    // we caught the chip mid-boot: reset-and-halt gives the
+                    // flash stub clean peripheral/clock state while user
+                    // code still never runs
+                    sess.reset_mcu_and_halt()?;
+                    log::info!("rescue: core HALTED clean — proceeding with the requested command");
+                    return Ok(sess);
+                }
+                Err(_) => {
+                    if start.elapsed().as_secs() >= 15 {
+                        break;
+                    }
+                }
+            }
+        }
+        Err(Error::Custom(
+            "rescue: no attach window caught — run again and release RESET mid-window".into(),
+        ))
     }
 
     /// Clear All Code Flash - By RST pin

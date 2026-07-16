@@ -35,6 +35,11 @@ struct Cli {
     #[arg(long, global = true, default_value = "high")]
     speed: crate::commands::Speed,
 
+    /// Attach via the boot-window race (tap the target RESET during the
+    /// 15 s window) — for firmware that steals the SWD pins. Requires --chip
+    #[arg(long, global = true, default_value = "false")]
+    rescue: bool,
+
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -45,6 +50,9 @@ enum EraseMode {
     PowerOff,
     /// Erase code flash by RST pin, the probe will active the nRST line. Requires a RST pin connection
     PinRst,
+    /// Erase the first 64K by direct FLASH-register access over DMI — no
+    /// probe stub, works on a halted core (pair with --rescue)
+    Dmi,
     /// Erase code flash by probe command
     Default,
 }
@@ -59,6 +67,13 @@ enum ResetMode {
     Halt,
     /// Reset DM(Debug module)
     Dm,
+    /// Force reset WITHOUT attaching (unwedge a target that NAKs attach
+    /// with protocol error 0x55). Requires --chip
+    Force,
+    /// Rescue attach for firmware that steals the SWD pins: hammers attach
+    /// for 15 s while the operator releases the target RESET, then halts the
+    /// core inside the boot window. Requires --chip
+    Rescue,
 }
 
 #[derive(Subcommand)]
@@ -213,7 +228,35 @@ fn main() -> Result<()> {
             WchLink::set_power_output_enabled(device_index, cmd)?;
         }
 
-        Some(Commands::Erase { method }) if method != EraseMode::Default => {
+        Some(Commands::Reset {
+            mode: ResetMode::Force,
+        }) => {
+            // Special handling: bypass attach entirely (the whole point —
+            // the wedged target refuses AttachChip). Family info required.
+            let chip_family = cli.chip.ok_or(wlink::Error::Custom(
+                "--chip required for a force reset".into(),
+            ))?;
+
+            let mut probe = WchLink::open_nth(device_index)?;
+            log::info!("Force reset (no attach) for {:?}", chip_family);
+            ProbeSession::force_reset(&mut probe, chip_family, cli.speed)?;
+        }
+
+        Some(Commands::Reset {
+            mode: ResetMode::Rescue,
+        }) => {
+            let chip_family = cli.chip.ok_or(wlink::Error::Custom(
+                "--chip required for a rescue attach".into(),
+            ))?;
+
+            let probe = WchLink::open_nth(device_index)?;
+            let _sess = ProbeSession::rescue_attach(probe, chip_family, cli.speed)?;
+            log::info!("rescue: leaving the core halted (no detach)");
+        }
+
+        Some(Commands::Erase { method })
+            if method == EraseMode::PowerOff || method == EraseMode::PinRst =>
+        {
             // Special handling for non-default erase: bypass attach chip
             // So a chip family info is required, no detection
             let chip_family = cli.chip.ok_or(wlink::Error::Custom(
@@ -235,7 +278,14 @@ fn main() -> Result<()> {
         }
         Some(command) => {
             let probe = WchLink::open_nth(device_index)?;
-            let mut sess = ProbeSession::attach(probe, cli.chip, cli.speed)?;
+            let mut sess = if cli.rescue {
+                let chip_family = cli.chip.ok_or(wlink::Error::Custom(
+                    "--chip required for a rescue attach".into(),
+                ))?;
+                ProbeSession::rescue_attach(probe, chip_family, cli.speed)?
+            } else {
+                ProbeSession::attach(probe, cli.chip, cli.speed)?
+            };
 
             match command {
                 Commands::Dev {} => {
@@ -308,6 +358,13 @@ fn main() -> Result<()> {
                     match method {
                         EraseMode::Default => {
                             sess.erase_flash()?;
+                        }
+                        EraseMode::Dmi => {
+                            // blank the boot vectors + early code so the
+                            // resident firmware can never run (and steal
+                            // pins) again; full reflash follows normally
+                            sess.fast_erase_32k(0x0800_0000)?;
+                            sess.fast_erase_32k(0x0800_8000)?;
                         }
                         _ => unreachable!(),
                     }
@@ -401,6 +458,9 @@ fn main() -> Result<()> {
                             sess.reset_debug_module()?;
 
                             will_detach = false; // detach will resume the MCU
+                        }
+                        ResetMode::Force | ResetMode::Rescue => {
+                            unreachable!("handled before attach");
                         }
                     }
                     sleep(Duration::from_millis(300));
