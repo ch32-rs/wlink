@@ -469,4 +469,54 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn try_from_u8_new_chip_ids() {
+        assert!(matches!(super::RiscvChip::try_from_u8(0xAB), Ok(RiscvChip::CH586)));
+        assert!(matches!(super::RiscvChip::try_from_u8(0x8B), Ok(RiscvChip::CH570)));
+        assert!(matches!(super::RiscvChip::try_from_u8(0x8E), Ok(RiscvChip::CH32M030)));
+    }
+
+    #[test]
+    fn chip_id_round_trip() {
+        // New variants must round-trip back to their chip_id byte.
+        assert_eq!(RiscvChip::CH586 as u8, 0xAB);
+        assert_eq!(RiscvChip::CH570 as u8, 0x8B);
+        assert_eq!(RiscvChip::CH32M030 as u8, 0x8E);
+    }
+
+    #[test]
+    fn ch585_has_own_flash_op() {
+        use crate::flash_op;
+        // CH585 must NOT share CH583's blob (1326 B). It has its own 1222 B blob.
+        let op = RiscvChip::CH585.get_flash_op();
+        assert_eq!(op.len(), 1222, "CH585 must use its own 1222-byte blob");
+        // Rust const identity: upper layers must wire CH585 -> CH585_NEW blob.
+        // We assert size distinction rather than data equality to avoid pinning
+        // the array contents to the test.
+        assert_ne!(op.len(), flash_op::CH583.len());
+    }
+
+    #[test]
+    fn ch32h41x_blob_size_630() {
+        // DLL CH32H41X_new.bin is 630 B; wlink previously carried a 618-byte
+        // blob missing 12 bytes at offset 38 (see handoff §2.2).
+        let op = RiscvChip::CH32H41X.get_flash_op();
+        assert_eq!(op.len(), 630, "CH32H41X should use the 630-byte DLL blob");
+    }
+
+    #[test]
+    fn new_chips_data_packet_size() {
+        // Derived from DLL fcn.10003810 second switch calibration. See handoff §3.
+        assert_eq!(RiscvChip::CH586.data_packet_size(), 256);
+        assert_eq!(RiscvChip::CH570.data_packet_size(), 256);
+        assert_eq!(RiscvChip::CH32M030.data_packet_size(), 128);
+    }
+
+    #[test]
+    fn new_chips_write_pack_size_default() {
+        assert_eq!(RiscvChip::CH586.write_pack_size(), 4096);
+        assert_eq!(RiscvChip::CH570.write_pack_size(), 4096);
+        assert_eq!(RiscvChip::CH32M030.write_pack_size(), 4096);
+    }
 }
