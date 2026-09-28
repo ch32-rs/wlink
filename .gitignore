@@ -3,3 +3,14 @@ trash/
 test.py
 
 firmware.bin
+
+# Reverse engineering artifacts — only blobs + selected docs are tracked
+McuCompilerDll.dll
+reversed/E-*
+reversed/F-*.txt
+reversed/T-*
+reversed/_*
+reversed/*.j2
+reversed/*.json
+reversed/*.idb
+reversed/*.i64
