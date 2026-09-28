@@ -62,6 +62,16 @@ pub enum RiscvChip {
     CH32V317 = 0x86,
     /// CH32V407/CH32V467 RISC-V4 series
     CH32V4X7 = 0xa6,
+    /// CH586/CH587 RISC-V BLE 5.4 series
+    /// (extracted from McuCompilerDll.dll, chip_id 0xab)
+    CH586 = 0xAB,
+    /// CH570/CH572 RISC-V BLE series
+    /// (extracted from McuCompilerDll.dll, chip_id 0x8b)
+    CH570 = 0x8B,
+    /// CH32M030 RISC-V motor-control MCU
+    /// (extracted from McuCompilerDll.dll, chip_id 0x8e;
+    /// previously misnamed CH32M007 in docs/reversed/15_flash_op_blobs.md)
+    CH32M030 = 0x8E,
     // Cortex-M chips
     CH32F10X = 0x04,
     CH32F20X = 0x08,
@@ -96,6 +106,9 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V4X7,
             RiscvChip::CH32H41X,
             RiscvChip::CH32V205,
+            RiscvChip::CH586,
+            RiscvChip::CH570,
+            RiscvChip::CH32M030,
         ]
     }
 
@@ -119,10 +132,9 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V00X => Some(PossibleValue::new("CH32V00X")),
             RiscvChip::CH645 => Some(PossibleValue::new("CH645")),
             RiscvChip::CH32V317 => Some(PossibleValue::new("CH32V317")),
-            RiscvChip::CH32V4X7 => Some(PossibleValue::new("CH32V4X7").aliases([
-                "CH32V407",
-                "CH32V467",
-            ])),
+            RiscvChip::CH32V4X7 => {
+                Some(PossibleValue::new("CH32V4X7").aliases(["CH32V407", "CH32V467"]))
+            }
             RiscvChip::CH32H41X => Some(PossibleValue::new("CH32H41X").aliases([
                 "CH32H415",
                 "CH32H415REU",
@@ -145,6 +157,9 @@ impl ValueEnum for RiscvChip {
                 // The new-generation CH32V203CCT6; bare "CH32V203" stays with CH32V20X
                 "CH32V203CCT6",
             ])),
+            RiscvChip::CH586 => Some(PossibleValue::new("CH586").alias("CH587")),
+            RiscvChip::CH570 => Some(PossibleValue::new("CH570").alias("CH572")),
+            RiscvChip::CH32M030 => Some(PossibleValue::new("CH32M030")),
             _ => None,
         }
     }
@@ -195,6 +210,9 @@ impl ValueEnum for RiscvChip {
             | "CH32H417MEU" | "CH32H417MEU6" | "CH32H417WEU" | "CH32H417WEU6" => {
                 Ok(RiscvChip::CH32H41X)
             }
+            "CH586" | "CH587" => Ok(RiscvChip::CH586),
+            "CH570" | "CH572" => Ok(RiscvChip::CH570),
+            "CH32M030" => Ok(RiscvChip::CH32M030),
             "CH32V205" | "CH32V205CCT6" | "CH32V205RCT6" | "CH32V205VCT6" | "CH32V203CCT6" => {
                 Ok(RiscvChip::CH32V205)
             }
@@ -222,6 +240,11 @@ impl RiscvChip {
                 | RiscvChip::CH32V4X7
                 | RiscvChip::CH32H41X
                 | RiscvChip::CH32V205
+                // New variants — engineering inference, see
+                // docs/reversed/handoff.md §3.2.
+                | RiscvChip::CH586
+                | RiscvChip::CH570
+                | RiscvChip::CH32M030
         )
     }
 
@@ -241,6 +264,9 @@ impl RiscvChip {
                 | RiscvChip::CH56X
                 | RiscvChip::CH582
                 | RiscvChip::CH585
+                // see docs/reversed/handoff.md §3.2
+                | RiscvChip::CH586
+                | RiscvChip::CH570
                 | RiscvChip::CH59X
         )
     }
@@ -255,6 +281,9 @@ impl RiscvChip {
                 | RiscvChip::CH56X
                 | RiscvChip::CH582
                 | RiscvChip::CH585
+                // see docs/reversed/handoff.md §3.2
+                | RiscvChip::CH586
+                | RiscvChip::CH570
                 | RiscvChip::CH59X
         )
     }
@@ -267,6 +296,9 @@ impl RiscvChip {
                 | RiscvChip::CH56X
                 | RiscvChip::CH582
                 | RiscvChip::CH585
+                // see docs/reversed/handoff.md §3.2
+                | RiscvChip::CH586
+                | RiscvChip::CH570
                 | RiscvChip::CH59X
         )
     }
@@ -288,6 +320,8 @@ impl RiscvChip {
                 | RiscvChip::CH32V317
                 | RiscvChip::CH32V4X7
                 | RiscvChip::CH32H41X
+                // cap2 = 0x8000000 per fcn.100015a0. See docs/reversed/handoff.md §3.1.
+                | RiscvChip::CH32M030
         )
     }
 
@@ -348,7 +382,8 @@ impl RiscvChip {
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::CH56X => &flash_op::CH569,
             RiscvChip::CH57X => &flash_op::CH573,
-            RiscvChip::CH582 | RiscvChip::CH59X | RiscvChip::CH585 => &flash_op::CH583,
+            RiscvChip::CH582 | RiscvChip::CH59X => &flash_op::CH583,
+            RiscvChip::CH585 => &flash_op::CH585,
             RiscvChip::CH8571 => &flash_op::OP8571,
             RiscvChip::CH32X035 | RiscvChip::CH643 => &flash_op::CH643,
             RiscvChip::CH32L103 => &flash_op::CH32L103,
@@ -358,8 +393,11 @@ impl RiscvChip {
             RiscvChip::CH32V317 | RiscvChip::CH32V4X7 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
-            RiscvChip::CH32H41X => &flash_op::CH32H417,
+            RiscvChip::CH32H41X => &flash_op::CH32H41X,
             RiscvChip::CH32V205 => &flash_op::CH32V205,
+            RiscvChip::CH586 => &flash_op::CH586,
+            RiscvChip::CH570 => &flash_op::CH570,
+            RiscvChip::CH32M030 => &flash_op::CH32M030,
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {
@@ -383,6 +421,9 @@ impl RiscvChip {
             0x46 => Ok(RiscvChip::CH645),
             0x86 => Ok(RiscvChip::CH32V317),
             0xa6 => Ok(RiscvChip::CH32V4X7),
+            0xAB => Ok(RiscvChip::CH586),
+            0x8B => Ok(RiscvChip::CH570),
+            0x8E => Ok(RiscvChip::CH32M030),
             0x04 => Ok(RiscvChip::CH32F10X),
             0x08 => Ok(RiscvChip::CH32F20X),
             0xC6 => Ok(RiscvChip::CH32H41X),
@@ -396,6 +437,9 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V103 => 128,
             RiscvChip::CH32V003 | RiscvChip::CH641 => 64,
+            // CH32M030: DLL fcn.10003810 second switch, `lea esi,[ebx-0xe]`
+            // gives 0x80 = 128 (see docs/reversed/handoff.md §3).
+            RiscvChip::CH32M030 => 128,
             _ => 256,
         }
     }
@@ -408,6 +452,12 @@ impl RiscvChip {
             | RiscvChip::CH585
             | RiscvChip::CH59X
             | RiscvChip::CH8571 => 0x0000_0000,
+            // FIXME(needs hardware): inferred as BLE-family zero-base,
+            // same pattern as CH585; see docs/reversed/handoff.md §4.
+            RiscvChip::CH586 | RiscvChip::CH570 => 0x0000_0000,
+            // FIXME(needs hardware): motor-control MCU inferred as non-BLE
+            // family base; see docs/reversed/handoff.md §4.
+            RiscvChip::CH32M030 => 0x0800_0000,
             _ => 0x0800_0000,
         }
     }
@@ -468,5 +518,64 @@ mod tests {
                 Ok(RiscvChip::CH32H41X)
             );
         }
+    }
+
+    #[test]
+    fn try_from_u8_new_chip_ids() {
+        assert!(matches!(
+            super::RiscvChip::try_from_u8(0xAB),
+            Ok(RiscvChip::CH586)
+        ));
+        assert!(matches!(
+            super::RiscvChip::try_from_u8(0x8B),
+            Ok(RiscvChip::CH570)
+        ));
+        assert!(matches!(
+            super::RiscvChip::try_from_u8(0x8E),
+            Ok(RiscvChip::CH32M030)
+        ));
+    }
+
+    #[test]
+    fn chip_id_round_trip() {
+        // New variants must round-trip back to their chip_id byte.
+        assert_eq!(RiscvChip::CH586 as u8, 0xAB);
+        assert_eq!(RiscvChip::CH570 as u8, 0x8B);
+        assert_eq!(RiscvChip::CH32M030 as u8, 0x8E);
+    }
+
+    #[test]
+    fn ch585_has_own_flash_op() {
+        use crate::flash_op;
+        // CH585 must NOT share CH583's blob (1326 B). It has its own 1222 B blob.
+        let op = RiscvChip::CH585.get_flash_op();
+        assert_eq!(op.len(), 1222, "CH585 must use its own 1222-byte blob");
+        // Rust const identity: upper layers must wire CH585 -> CH585_NEW blob.
+        // We assert size distinction rather than data equality to avoid pinning
+        // the array contents to the test.
+        assert_ne!(op.len(), flash_op::CH583.len());
+    }
+
+    #[test]
+    fn ch32h41x_blob_size_630() {
+        // DLL CH32H41X_new.bin is 630 B; wlink previously carried a 618-byte
+        // blob missing 12 bytes at offset 38 (see handoff §2.2).
+        let op = RiscvChip::CH32H41X.get_flash_op();
+        assert_eq!(op.len(), 630, "CH32H41X should use the 630-byte DLL blob");
+    }
+
+    #[test]
+    fn new_chips_data_packet_size() {
+        // Derived from DLL fcn.10003810 second switch calibration. See handoff §3.
+        assert_eq!(RiscvChip::CH586.data_packet_size(), 256);
+        assert_eq!(RiscvChip::CH570.data_packet_size(), 256);
+        assert_eq!(RiscvChip::CH32M030.data_packet_size(), 128);
+    }
+
+    #[test]
+    fn new_chips_write_pack_size_default() {
+        assert_eq!(RiscvChip::CH586.write_pack_size(), 4096);
+        assert_eq!(RiscvChip::CH570.write_pack_size(), 4096);
+        assert_eq!(RiscvChip::CH32M030.write_pack_size(), 4096);
     }
 }
