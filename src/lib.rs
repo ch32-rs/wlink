@@ -348,7 +348,8 @@ impl RiscvChip {
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::CH56X => &flash_op::CH569,
             RiscvChip::CH57X => &flash_op::CH573,
-            RiscvChip::CH582 | RiscvChip::CH59X | RiscvChip::CH585 => &flash_op::CH583,
+            RiscvChip::CH582 | RiscvChip::CH59X => &flash_op::CH583,
+            RiscvChip::CH585 => &flash_op::CH585,
             RiscvChip::CH8571 => &flash_op::OP8571,
             RiscvChip::CH32X035 | RiscvChip::CH643 => &flash_op::CH643,
             RiscvChip::CH32L103 => &flash_op::CH32L103,
@@ -358,7 +359,7 @@ impl RiscvChip {
             RiscvChip::CH32V317 | RiscvChip::CH32V4X7 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
-            RiscvChip::CH32H41X => &flash_op::CH32H417,
+            RiscvChip::CH32H41X => &flash_op::CH32H41X,
             RiscvChip::CH32V205 => &flash_op::CH32V205,
         }
     }
