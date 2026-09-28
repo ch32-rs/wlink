@@ -248,7 +248,7 @@ impl RiscvChip {
     }
 
     pub fn support_sdi_print(&self) -> bool {
-        // CH641, CH643, CH32V00x, CH32V103, CH32V20x, CH32V30x, CH32X035, CH32L103
+        // CH641, CH643, CH32V00x, CH32V103, CH32V20x, CH32V30x, CH32X035, CH32L103, CH32H41x
         matches!(
             self,
             RiscvChip::CH32V003
@@ -262,6 +262,7 @@ impl RiscvChip {
                 | RiscvChip::CH643
                 | RiscvChip::CH641
                 | RiscvChip::CH32V317
+                | RiscvChip::CH32H41X
         )
     }
 
@@ -409,6 +410,11 @@ mod tests {
     #[test]
     fn ch32h41x_supports_flash_protect_commands() {
         assert!(RiscvChip::CH32H41X.support_flash_protect());
+    }
+
+    #[test]
+    fn ch32h41x_supports_sdi_print() {
+        assert!(RiscvChip::CH32H41X.support_sdi_print());
     }
 
     #[test]
