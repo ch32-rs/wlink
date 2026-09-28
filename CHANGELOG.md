@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Enable SDI print support for the CH32H41x family (CH32H415/CH32H416/CH32H417).
+- Add support for the new-generation CH32V205/CH32V203 family (QingKe V3B, riscvchip 0xce), including flashing and CH32V205RCT6 chip ID reporting. Verified against MounRiver Studio traffic captures on a CH32V205RCT6.
 
 ## [0.1.2] - 2026-05-01
 

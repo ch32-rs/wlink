@@ -30,6 +30,18 @@ impl ProbeSession {
             return Err(Error::UnsupportedChip(chip));
         }
 
+        // Older probe firmware misdetects the CH32V205 family as CH32V20X (riscvchip 0x05)
+        // and returns unstable ESIG/ChipID values. v2.22 is the first version known to
+        // report the correct 0xce family code.
+        if chip == RiscvChip::CH32V205 && probe.info.version() < (2, 22) {
+            log::warn!(
+                "CH32V205 requires WCH-Link firmware v2.22 or later, current is v{}.{}. \
+                 The chip may be misdetected as CH32V20X. Please update the probe firmware.",
+                probe.info.major_version,
+                probe.info.minor_version
+            );
+        }
+
         let mut attempts = 0;
         let chip_info = loop {
             probe.send_command(commands::SetSpeed {
@@ -52,6 +64,15 @@ impl ProbeSession {
         };
 
         log::info!("Attached chip: {}", chip_info);
+
+        if chip_info.chip_family == RiscvChip::CH32V205 && probe.info.version() < (2, 22) {
+            log::warn!(
+                "CH32V205 requires WCH-Link firmware v2.22 or later, current is v{}.{}. \
+                 Detection and flashing may misbehave. Please update the probe firmware.",
+                probe.info.major_version,
+                probe.info.minor_version
+            );
+        }
 
         if let Some(expected_chip) = expected_chip {
             if chip_info.chip_family != expected_chip {

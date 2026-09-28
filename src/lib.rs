@@ -65,6 +65,9 @@ pub enum RiscvChip {
     CH32F20X = 0x08,
     /// CH32H415/CH32H416/CH32H417 RISC-V5F+RISC-V3F series
     CH32H41X = 0xC6,
+    /// CH32V205/CH32V203 QingKe V3B series (new generation, USB2.0 HS).
+    /// Shares the CH32V203 name with, but is unrelated to, the older CH32V20X family.
+    CH32V205 = 0xCE,
 }
 
 impl ValueEnum for RiscvChip {
@@ -89,6 +92,7 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH645,
             RiscvChip::CH32V317,
             RiscvChip::CH32H41X,
+            RiscvChip::CH32V205,
         ]
     }
 
@@ -126,6 +130,13 @@ impl ValueEnum for RiscvChip {
                 "CH32H417MEU6",
                 "CH32H417WEU",
                 "CH32H417WEU6",
+            ])),
+            RiscvChip::CH32V205 => Some(PossibleValue::new("CH32V205").aliases([
+                "CH32V205CCT6",
+                "CH32V205RCT6",
+                "CH32V205VCT6",
+                // The new-generation CH32V203CCT6; bare "CH32V203" stays with CH32V20X
+                "CH32V203CCT6",
             ])),
             _ => None,
         }
@@ -176,6 +187,9 @@ impl ValueEnum for RiscvChip {
             | "CH32H417MEU" | "CH32H417MEU6" | "CH32H417WEU" | "CH32H417WEU6" => {
                 Ok(RiscvChip::CH32H41X)
             }
+            "CH32V205" | "CH32V205CCT6" | "CH32V205RCT6" | "CH32V205VCT6" | "CH32V203CCT6" => {
+                Ok(RiscvChip::CH32V205)
+            }
             _ => Err(format!("Unknown chip: {}", s)),
         }
     }
@@ -198,6 +212,7 @@ impl RiscvChip {
                 | RiscvChip::CH645
                 | RiscvChip::CH32V317
                 | RiscvChip::CH32H41X
+                | RiscvChip::CH32V205
         )
     }
 
@@ -334,6 +349,7 @@ impl RiscvChip {
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
             RiscvChip::CH32H41X => &flash_op::CH32H417,
+            RiscvChip::CH32V205 => &flash_op::CH32V205,
         }
     }
     fn try_from_u8(value: u8) -> Result<Self> {
@@ -359,6 +375,7 @@ impl RiscvChip {
             0x04 => Ok(RiscvChip::CH32F10X),
             0x08 => Ok(RiscvChip::CH32F20X),
             0xC6 => Ok(RiscvChip::CH32H41X),
+            0xCE => Ok(RiscvChip::CH32V205),
             _ => Err(Error::UnknownChip(value)),
         }
     }
