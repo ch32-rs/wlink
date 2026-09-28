@@ -635,9 +635,8 @@ pub const CH643: [u8; 488] = [
 ];
 
 // 14
-/// CH32L103 flash_op blob. Alias of [`CH32V205`]: the DLL jumps both
-/// chip_ids (0x0e, 0xce) to the same blob at VA 0x10170938 (488 bytes,
-/// wlink already pads to 512). See docs/reversed/handoff.md §2.3.
+/// CH32L103 flash_op blob. Alias of [`CH32V205`]: both chip_ids
+/// (0x0e, 0xce) share the same loader.
 pub use CH32V205 as CH32L103;
 
 /// CH32V002/4/5/6/7, CH32M007
@@ -741,9 +740,8 @@ pub const CH645_ALT: [u8; 486] = [
     0xf7, 0xfa, 0x41, 0x45, 0x89, 0xbf,
 ];
 
-/// CH32V317 flash_op blob. Alias of [`CH645`]: the bytecode for the
-/// two chip_ids is byte-identical (md5 896cf21134e2...). See
-/// docs/reversed/handoff.md §2.3.
+/// CH32V317 flash_op blob. Alias of [`CH645`]: the loader bytecode for
+/// the two chip_ids is byte-identical.
 // 0x86
 pub use CH645 as CH32V317;
 
@@ -880,8 +878,6 @@ pub const CH564: [u8; 1532] = [
     0x01, 0x00, 0x01, 0x00, 0xf2, 0x40, 0x62, 0x44, 0x05, 0x61, 0x82, 0x80,
 ];
 
-// Blob extracted from McuCompilerDll.dll fcn.10003810 jump table.
-// DLL VA: 0x10172878
 // chip_id: 0x4b
 // Size: 1222 bytes
 pub const CH585: [u8; 1222] = [
@@ -964,8 +960,6 @@ pub const CH585: [u8; 1222] = [
     0x09, 0xd8, 0xf1, 0x54, 0x59, 0xbb,
 ];
 
-// Blob extracted from McuCompilerDll.dll fcn.10003810 jump table.
-// DLL VA: 0x10173038
 // chip_id: 0xab
 // Size: 996 bytes
 pub const CH586: [u8; 996] = [
@@ -1034,8 +1028,6 @@ pub const CH586: [u8; 996] = [
     0x4a, 0x84, 0xe9, 0xb7,
 ];
 
-// Blob extracted from McuCompilerDll.dll fcn.10003810 jump table.
-// DLL VA: 0x101720e0
 // chip_id: 0x8b
 // Size: 1308 bytes
 pub const CH570: [u8; 1308] = [
@@ -1123,8 +1115,6 @@ pub const CH570: [u8; 1308] = [
     0x35, 0x31, 0xa5, 0xbb, 0xe3, 0x8b, 0x09, 0xd6, 0xf1, 0x54, 0x8d, 0xbb,
 ];
 
-// Blob extracted from McuCompilerDll.dll fcn.10003810 jump table.
-// DLL VA: 0x10171f28
 // chip_id: 0x8e
 // Size: 440 bytes
 pub const CH32M030: [u8; 440] = [
@@ -1158,8 +1148,6 @@ pub const CH32M030: [u8; 440] = [
     0xe3, 0x09, 0xf7, 0xfa, 0x41, 0x45, 0x61, 0xb7,
 ];
 
-// Blob extracted from McuCompilerDll.dll fcn.10003810 jump table.
-// DLL VA: 0x10172600
 // chip_id: 0xc6
 // Size: 630 bytes
 pub const CH32H41X: [u8; 630] = [

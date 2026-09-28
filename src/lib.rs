@@ -62,15 +62,11 @@ pub enum RiscvChip {
     CH32V317 = 0x86,
     /// CH32V407/CH32V467 RISC-V4 series
     CH32V4X7 = 0xa6,
-    /// CH586/CH587 RISC-V BLE 5.4 series
-    /// (extracted from McuCompilerDll.dll, chip_id 0xab)
+    /// CH586/CH587 RISC-V BLE 5.4 series, chip_id 0xab
     CH586 = 0xAB,
-    /// CH570/CH572 RISC-V BLE series
-    /// (extracted from McuCompilerDll.dll, chip_id 0x8b)
+    /// CH570/CH572 RISC-V BLE series, chip_id 0x8b
     CH570 = 0x8B,
-    /// CH32M030 RISC-V motor-control MCU
-    /// (extracted from McuCompilerDll.dll, chip_id 0x8e;
-    /// previously misnamed CH32M007 in docs/reversed/15_flash_op_blobs.md)
+    /// CH32M030 RISC-V motor-control MCU, chip_id 0x8e
     CH32M030 = 0x8E,
     // Cortex-M chips
     CH32F10X = 0x04,
@@ -240,8 +236,6 @@ impl RiscvChip {
                 | RiscvChip::CH32V4X7
                 | RiscvChip::CH32H41X
                 | RiscvChip::CH32V205
-                // New variants — engineering inference, see
-                // docs/reversed/handoff.md §3.2.
                 | RiscvChip::CH586
                 | RiscvChip::CH570
                 | RiscvChip::CH32M030
@@ -264,7 +258,6 @@ impl RiscvChip {
                 | RiscvChip::CH56X
                 | RiscvChip::CH582
                 | RiscvChip::CH585
-                // see docs/reversed/handoff.md §3.2
                 | RiscvChip::CH586
                 | RiscvChip::CH570
                 | RiscvChip::CH59X
@@ -281,7 +274,6 @@ impl RiscvChip {
                 | RiscvChip::CH56X
                 | RiscvChip::CH582
                 | RiscvChip::CH585
-                // see docs/reversed/handoff.md §3.2
                 | RiscvChip::CH586
                 | RiscvChip::CH570
                 | RiscvChip::CH59X
@@ -296,7 +288,6 @@ impl RiscvChip {
                 | RiscvChip::CH56X
                 | RiscvChip::CH582
                 | RiscvChip::CH585
-                // see docs/reversed/handoff.md §3.2
                 | RiscvChip::CH586
                 | RiscvChip::CH570
                 | RiscvChip::CH59X
@@ -320,7 +311,6 @@ impl RiscvChip {
                 | RiscvChip::CH32V317
                 | RiscvChip::CH32V4X7
                 | RiscvChip::CH32H41X
-                // cap2 = 0x8000000 per fcn.100015a0. See docs/reversed/handoff.md §3.1.
                 | RiscvChip::CH32M030
         )
     }
@@ -437,8 +427,6 @@ impl RiscvChip {
         match self {
             RiscvChip::CH32V103 => 128,
             RiscvChip::CH32V003 | RiscvChip::CH641 => 64,
-            // CH32M030: DLL fcn.10003810 second switch, `lea esi,[ebx-0xe]`
-            // gives 0x80 = 128 (see docs/reversed/handoff.md §3).
             RiscvChip::CH32M030 => 128,
             _ => 256,
         }
@@ -452,11 +440,9 @@ impl RiscvChip {
             | RiscvChip::CH585
             | RiscvChip::CH59X
             | RiscvChip::CH8571 => 0x0000_0000,
-            // FIXME(needs hardware): inferred as BLE-family zero-base,
-            // same pattern as CH585; see docs/reversed/handoff.md §4.
+            // FIXME(needs hardware): flash base inferred from family
+            // behaviour, not yet verified.
             RiscvChip::CH586 | RiscvChip::CH570 => 0x0000_0000,
-            // FIXME(needs hardware): motor-control MCU inferred as non-BLE
-            // family base; see docs/reversed/handoff.md §4.
             RiscvChip::CH32M030 => 0x0800_0000,
             _ => 0x0800_0000,
         }
@@ -558,15 +544,15 @@ mod tests {
 
     #[test]
     fn ch32h41x_blob_size_630() {
-        // DLL CH32H41X_new.bin is 630 B; wlink previously carried a 618-byte
-        // blob missing 12 bytes at offset 38 (see handoff §2.2).
+        // The flash_op blob for CH32H41X is 630 B; wlink previously carried
+        // a 618-byte blob missing 12 bytes at offset 38.
         let op = RiscvChip::CH32H41X.get_flash_op();
-        assert_eq!(op.len(), 630, "CH32H41X should use the 630-byte DLL blob");
+        assert_eq!(op.len(), 630, "CH32H41X should use the 630-byte blob");
     }
 
     #[test]
     fn new_chips_data_packet_size() {
-        // Derived from DLL fcn.10003810 second switch calibration. See handoff §3.
+        // CH32M030 uses 128-byte data packets; the others use the default.
         assert_eq!(RiscvChip::CH586.data_packet_size(), 256);
         assert_eq!(RiscvChip::CH570.data_packet_size(), 256);
         assert_eq!(RiscvChip::CH32M030.data_packet_size(), 128);
