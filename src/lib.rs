@@ -60,6 +60,8 @@ pub enum RiscvChip {
     CH645 = 0x46,
     /// CH32V317 RISC-V4 series
     CH32V317 = 0x86,
+    /// CH32V407/CH32V467 RISC-V4 series
+    CH32V4X7 = 0xa6,
     // Cortex-M chips
     CH32F10X = 0x04,
     CH32F20X = 0x08,
@@ -91,6 +93,7 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V00X,
             RiscvChip::CH645,
             RiscvChip::CH32V317,
+            RiscvChip::CH32V4X7,
             RiscvChip::CH32H41X,
             RiscvChip::CH32V205,
         ]
@@ -116,6 +119,10 @@ impl ValueEnum for RiscvChip {
             RiscvChip::CH32V00X => Some(PossibleValue::new("CH32V00X")),
             RiscvChip::CH645 => Some(PossibleValue::new("CH645")),
             RiscvChip::CH32V317 => Some(PossibleValue::new("CH32V317")),
+            RiscvChip::CH32V4X7 => Some(PossibleValue::new("CH32V4X7").aliases([
+                "CH32V407",
+                "CH32V467",
+            ])),
             RiscvChip::CH32H41X => Some(PossibleValue::new("CH32H41X").aliases([
                 "CH32H415",
                 "CH32H415REU",
@@ -153,6 +160,7 @@ impl ValueEnum for RiscvChip {
             "CH32V20X" | "CH32V203" | "CH32V208" => Ok(RiscvChip::CH32V20X),
             "CH32V30X" | "CH32V303" | "CH32V305" | "CH32V307" => Ok(RiscvChip::CH32V30X),
             "CH32V317" => Ok(RiscvChip::CH32V317),
+            "CH32V4X7" | "CH32V407" | "CH32V467" => Ok(RiscvChip::CH32V4X7),
             "CH32V003" => Ok(RiscvChip::CH32V003),
             "CH32L103" => Ok(RiscvChip::CH32L103),
             // Note that CH32X034 seems never released
@@ -211,6 +219,7 @@ impl RiscvChip {
                 | RiscvChip::CH641
                 | RiscvChip::CH645
                 | RiscvChip::CH32V317
+                | RiscvChip::CH32V4X7
                 | RiscvChip::CH32H41X
                 | RiscvChip::CH32V205
         )
@@ -220,7 +229,7 @@ impl RiscvChip {
     pub(crate) fn support_ram_rom_mode(&self) -> bool {
         matches!(
             self,
-            RiscvChip::CH32V20X | RiscvChip::CH32V30X | RiscvChip::CH32V317
+            RiscvChip::CH32V20X | RiscvChip::CH32V30X | RiscvChip::CH32V317 | RiscvChip::CH32V4X7
         )
     }
 
@@ -263,7 +272,7 @@ impl RiscvChip {
     }
 
     pub fn support_sdi_print(&self) -> bool {
-        // CH641, CH643, CH32V00x, CH32V103, CH32V20x, CH32V30x, CH32X035, CH32L103, CH32H41x
+        // CH641, CH643, CH32V00x, CH32V103, CH32V20x, CH32V30x, CH32X035, CH32L103, CH32V4x7, CH32H41x
         matches!(
             self,
             RiscvChip::CH32V003
@@ -277,6 +286,7 @@ impl RiscvChip {
                 | RiscvChip::CH643
                 | RiscvChip::CH641
                 | RiscvChip::CH32V317
+                | RiscvChip::CH32V4X7
                 | RiscvChip::CH32H41X
         )
     }
@@ -345,7 +355,7 @@ impl RiscvChip {
             RiscvChip::CH564 => &flash_op::CH564,
             RiscvChip::CH32V00X => &flash_op::CH32V00X,
             RiscvChip::CH645 => &flash_op::CH645,
-            RiscvChip::CH32V317 => &flash_op::CH32V317,
+            RiscvChip::CH32V317 | RiscvChip::CH32V4X7 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
             RiscvChip::CH32H41X => &flash_op::CH32H417,
@@ -372,6 +382,7 @@ impl RiscvChip {
             0x4E => Ok(RiscvChip::CH32V00X),
             0x46 => Ok(RiscvChip::CH645),
             0x86 => Ok(RiscvChip::CH32V317),
+            0xa6 => Ok(RiscvChip::CH32V4X7),
             0x04 => Ok(RiscvChip::CH32F10X),
             0x08 => Ok(RiscvChip::CH32F20X),
             0xC6 => Ok(RiscvChip::CH32H41X),

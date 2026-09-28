@@ -125,6 +125,15 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x317_5B508 => Some("CH32V317TCU6"),
             _ => None,
         },
+        0x467_00000 => match chip_id & !0x0000_00F0 {
+            0x4670_0000 => Some("CH32V407VET"),
+            0x4671_0001 => Some("CH32V407WEU"),
+            0x4672_0002 => Some("CH32V407RET"),
+            0x4673_0000 => Some("CH32V467VET"),
+            0x4674_0001 => Some("CH32V467WEU"),
+            0x4675_0002 => Some("CH32V467RET"),
+            _ => None,
+        },
         // https://github.com/openwch/ch32h417/blob/main/EVT/EXAM/SRC/Peripheral/src/ch32h417_dbgmcu.c
         0x415_00000 | 0x416_00000 | 0x417_00000 => match chip_id & !0x0000_00F0 {
             0x415_0050D => Some("CH32H415REU"),
