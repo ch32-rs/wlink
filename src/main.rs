@@ -162,6 +162,14 @@ enum Commands {
     /// SDI virtual serial port,
     #[command(subcommand)]
     SdiPrint(SdiPrint),
+    #[command(
+        after_help = "Quick mode map:\n  CH32V30X:\n    192-128 => 0x01 (also 0x00)\n    224-96  => 0x03 (also 0x02)\n    256-64  => 0x05 (also 0x04)\n    128-192 => 0x06\n    288-32  => 0x07\n\n  CH32V20X:\n    128-64  => 0x00 (also 0x01 by bit-pattern)\n    144-48  => 0x02 (also 0x03 by bit-pattern)\n    160-32  => 0x04..0x07 (legacy index commonly 0x02)\n\nFor full details run: wlink help mem-split set"
+    )]
+    /// Read or set MCU Memory Split (SRAM_CODE_MODE)
+    MemSplit {
+        #[command(subcommand)]
+        cmd: MemSplit,
+    },
     Dev {},
 }
 
@@ -177,6 +185,101 @@ impl SdiPrint {
     pub fn is_enable(&self) -> bool {
         *self == SdiPrint::Enable
     }
+}
+
+#[derive(clap::Subcommand, PartialEq, Clone, Debug)]
+pub enum MemSplit {
+    /// Read current SRAM_CODE_MODE
+    Get,
+    /// Set SRAM_CODE_MODE using hex value or compact profile alias
+    Set {
+        ///
+        /// Accepted values are chip-dependent:
+        /// - CH32V30X: 192-128, 224-96, 256-64, 128-192, 288-32
+        /// - CH32V20X: 128-64, 144-48, 160-32
+        ///
+        /// Raw values are also accepted: 0x00..0x07
+        #[arg(
+            value_name = "MODE",
+            long_help = "SRAM_CODE_MODE value.\n\nAliases are interpreted using the detected chip family.\n\nProtocol path by chip:\n  - CH32V30X read/write: 0x0d/0x17 and 0x0d/0x18\n  - CH32V20X read/write: legacy 0x0d/0x04 and 0x0d/0x05\n\nCH32V30X profiles:\n  - 192-128 / p0 / 192 -> writes 0x01 (equivalent read: 0x00 or 0x01)\n  - 224-96  / p1 / 224 -> writes 0x03 (equivalent read: 0x02 or 0x03)\n  - 256-64  / p2 / 256 -> writes 0x05 (equivalent read: 0x04 or 0x05)\n  - 128-192 / p3 / 128 -> writes 0x06\n  - 288-32  / p4 / 288 -> writes 0x07\n\nCH32V20X profiles:\n  - 128-64 / p0 / 128 -> writes 0x00 (equivalent bit-pattern: 0x01)\n  - 144-48 / p1 / 144 -> writes 0x02 (equivalent bit-pattern: 0x03)\n  - 160-32 / p2 / 160 -> writes 0x04 (equivalent bit-patterns: 0x05..0x07; legacy split index is often read back as 0x02)\n\nRaw input:\n  - Hex/raw 0x00..0x07 is always accepted.\n\nExamples:\n  - wlink mem-split set 224-96\n  - wlink mem-split set p1\n  - wlink mem-split set 0x03"
+        )]
+        mode: String,
+        /// Skip read-back verify after write
+        #[arg(long, default_value = "false")]
+        no_verify: bool,
+    },
+}
+
+fn decode_mcu_mem_split_mode_v30x(mode: u8) -> &'static str {
+    match mode & 0x07 {
+        0b000 | 0b001 => "CODE-192KB + RAM-128KB",
+        0b010 | 0b011 => "CODE-224KB + RAM-96KB",
+        0b100 | 0b101 => "CODE-256KB + RAM-64KB",
+        0b110 => "CODE-128KB + RAM-192KB",
+        0b111 => "CODE-288KB + RAM-32KB",
+        _ => "UNKNOWN",
+    }
+}
+
+fn decode_mcu_mem_split_mode_v20x(mode: u8) -> &'static str {
+    if mode <= 2 {
+        return match mode {
+            0 => "CODE-128KB + RAM-64KB",
+            1 => "CODE-144KB + RAM-48KB",
+            2 => "CODE-160KB + RAM-32KB",
+            _ => "UNKNOWN",
+        };
+    }
+
+    match mode & 0x07 {
+        0b000 | 0b001 => "CODE-128KB + RAM-64KB",
+        0b010 | 0b011 => "CODE-144KB + RAM-48KB",
+        0b100..=0b111 => "CODE-160KB + RAM-32KB",
+        _ => "UNKNOWN",
+    }
+}
+
+fn decode_mcu_mem_split_mode(chip: RiscvChip, mode: u8) -> &'static str {
+    match chip {
+        RiscvChip::CH32V20X => decode_mcu_mem_split_mode_v20x(mode),
+        _ => decode_mcu_mem_split_mode_v30x(mode),
+    }
+}
+
+fn mcu_mem_split_profile_id_v30x(mode: u8) -> u8 {
+    match mode & 0x07 {
+        0b000 | 0b001 => 0,
+        0b010 | 0b011 => 1,
+        0b100 | 0b101 => 2,
+        0b110 => 3,
+        0b111 => 4,
+        _ => 0xff,
+    }
+}
+
+fn mcu_mem_split_profile_id_v20x(mode: u8) -> u8 {
+    // Legacy read often returns 0..2 index; raw bit patterns can still appear.
+    if mode <= 2 {
+        return mode;
+    }
+
+    match mode & 0x07 {
+        0b000 | 0b001 => 0,
+        0b010 | 0b011 => 1,
+        0b100..=0b111 => 2,
+        _ => 0xff,
+    }
+}
+
+fn mcu_mem_split_profile_id(chip: RiscvChip, mode: u8) -> u8 {
+    match chip {
+        RiscvChip::CH32V20X => mcu_mem_split_profile_id_v20x(mode),
+        _ => mcu_mem_split_profile_id_v30x(mode),
+    }
+}
+
+fn is_same_mcu_mem_split_profile(chip: RiscvChip, expected: u8, observed: u8) -> bool {
+    mcu_mem_split_profile_id(chip, expected) == mcu_mem_split_profile_id(chip, observed)
 }
 
 fn main() -> Result<()> {
@@ -447,6 +550,43 @@ fn main() -> Result<()> {
                         sess.set_sdi_print_enabled(false)?;
                     }
                 },
+                Commands::MemSplit { cmd } => match cmd {
+                    MemSplit::Get => {
+                        let mode = sess.get_mcu_mem_split()?;
+                        let profile = decode_mcu_mem_split_mode(sess.chip_family, mode);
+                        log::info!(
+                            "MCU Memory Split: 0x{:02x} ({})",
+                            mode,
+                            profile
+                        );
+                        println!("0x{mode:02x} ({profile})");
+                    }
+                    MemSplit::Set { mode, no_verify } => {
+                        let mode = parse_mem_split_mode_for_chip(&mode, sess.chip_family)
+                            .map_err(wlink::Error::Custom)?;
+                        let profile = decode_mcu_mem_split_mode(sess.chip_family, mode);
+                        log::info!("Set MCU Memory Split to 0x{:02x} ({})", mode, profile);
+                        sess.set_mcu_mem_split(mode)?;
+
+                        if !no_verify {
+                            let read_back = sess.get_mcu_mem_split()?;
+                            let read_profile =
+                                decode_mcu_mem_split_mode(sess.chip_family, read_back);
+                            if !is_same_mcu_mem_split_profile(sess.chip_family, mode, read_back)
+                            {
+                                return Err(wlink::Error::Custom(format!(
+                                    "MCU Memory Split verify failed: wrote 0x{mode:02x} ({profile}), read back 0x{read_back:02x} ({read_profile})"
+                                ))
+                                .into());
+                            }
+                            log::info!(
+                                "MCU Memory Split verified: 0x{:02x} ({})",
+                                read_back,
+                                read_profile
+                            );
+                        }
+                    }
+                },
                 _ => unreachable!("unimplemented command"),
             }
             if will_detach {
@@ -470,4 +610,41 @@ pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
     } else {
         Ok(s.parse().expect("must be a number"))
     }
+}
+
+pub fn parse_mem_split_mode_for_chip(
+    s: &str,
+    chip: RiscvChip,
+) -> std::result::Result<u8, String> {
+    let norm = s.trim().to_lowercase().replace('_', "-");
+
+    let canonical = match chip {
+        RiscvChip::CH32V20X => match norm.as_str() {
+            "128-64" | "128/64" | "128:64" | "128" | "p0" => Some(0x00),
+            "144-48" | "144/48" | "144:48" | "144" | "p1" => Some(0x02),
+            "160-32" | "160/32" | "160:32" | "160" | "p2" => Some(0x04),
+            _ => None,
+        },
+        _ => match norm.as_str() {
+            // profile aliases (CODE-RAM)
+            "192-128" | "192/128" | "192:128" | "192" | "p0" => Some(0x01),
+            "224-96" | "224/96" | "224:96" | "224" | "p1" => Some(0x03),
+            "256-64" | "256/64" | "256:64" | "256" | "p2" => Some(0x05),
+            "128-192" | "128/192" | "128:192" | "128" | "p3" => Some(0x06),
+            "288-32" | "288/32" | "288:32" | "288" | "p4" => Some(0x07),
+            _ => None,
+        },
+    };
+
+    if let Some(mode) = canonical {
+        return Ok(mode);
+    }
+
+    let raw = parse_number(s)?;
+    let raw = u8::try_from(raw).map_err(|_| "mode must be in range 0x00..0x07".to_string())?;
+    if raw > 0x07 {
+        return Err("mode must be in range 0x00..0x07".to_string());
+    }
+
+    Ok(raw)
 }
