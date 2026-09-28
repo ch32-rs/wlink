@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Enable SDI print support for the CH32H41x family (CH32H415/CH32H416/CH32H417).
 - Add support for the new-generation CH32V205/CH32V203 family (QingKe V3B, riscvchip 0xce), including flashing and CH32V205RCT6 chip ID reporting. Verified against MounRiver Studio traffic captures on a CH32V205RCT6.
+- Support CH586/CH587 (chip_id 0xAB) — BLE 5.4 series.
+- Support CH570/CH572 (chip_id 0x8B) — BLE series.
+- Support CH32M030 (chip_id 0x8E) — motor-control MCU.
+
+### Changed
+
+- CH585 now uses its own 1222-byte flash_op blob (previously shared
+  CH583's 1326-byte blob by mistake; blobs diverge at offset 2).
+- CH32H41X now uses the 630-byte flash_op blob (was 618 B, missing
+  12 bytes at offset 38).
+- flash_op: deduplicated CH32V205/CH32L103 and CH645/CH32V317 byte
+  literals (both pairs were byte-identical).
 
 ## [0.1.2] - 2026-05-01
 
