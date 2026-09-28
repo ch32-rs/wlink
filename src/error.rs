@@ -47,6 +47,9 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Driver error")]
     Driver,
+    #[cfg(all(target_os = "windows"))]
+    #[error("Windows error: {0}")]
+    Windows(#[from] windows::core::Error),
 }
 
 #[derive(Debug, Clone, Copy)]
