@@ -94,6 +94,13 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x203_4050C => Some("CH32V203RBT6"),
             _ => None,
         },
+        // CH32V205/CH32V203 new generation (QingKe V3B, riscvchip 0xce),
+        // unrelated to the older CH32V203/CH32V208 families below.
+        // Known ID: 0x20510510 = CH32V205RCT6 (captured from MounRiver Studio traffic)
+        0x205_00000 => match chip_id & 0xFFFFFF0F {
+            0x205_10500 => Some("CH32V205RCT6"),
+            _ => None,
+        },
         0x208_00000 => match chip_id & 0xFFFFFF0F {
             0x208_0050C => Some("CH32V208WBU6"),
             0x208_1050C => Some("CH32V208RBT6"),
