@@ -125,15 +125,22 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x317_5B508 => Some("CH32V317TCU6"),
             _ => None,
         },
-        0x467_00000 => match chip_id & !0x0000_00F0 {
-            0x4670_0000 => Some("CH32V407VET"),
-            0x4671_0001 => Some("CH32V407WEU"),
-            0x4672_0002 => Some("CH32V407RET"),
-            0x4673_0000 => Some("CH32V467VET"),
-            0x4674_0001 => Some("CH32V467WEU"),
-            0x4675_0002 => Some("CH32V467RET"),
-            _ => None,
-        },
+        // Vendor DEVID table: 0x467000x0 .. 0x467500x2, i.e. the DEVID nibble is in
+        // bits [11:8] and the revision in bits [3:0]. Keeping the DEVID nibble in the
+        // outer pattern matches the CH32H41x arm below; a single `0x467_00000` arm
+        // would pin bits [11:8] to 0 and route every 0x4670_00xx id to the first arm.
+        // https://github.com/openwch/ch32v407_ch32v467/blob/main/EVT/EXAM/SRC/Peripheral/src/ch32v4x7_dbgmcu.c
+        0x4670_0000 | 0x4671_0000 | 0x4672_0000 | 0x4673_0000 | 0x4674_0000 | 0x4675_0000 => {
+            match chip_id & !0x0000_000F {
+                0x4670_0000 => Some("CH32V407VET"),
+                0x4671_0000 => Some("CH32V407WEU"),
+                0x4672_0000 => Some("CH32V407RET"),
+                0x4673_0000 => Some("CH32V467VET"),
+                0x4674_0000 => Some("CH32V467WEU"),
+                0x4675_0000 => Some("CH32V467RET"),
+                _ => None,
+            }
+        }
         // https://github.com/openwch/ch32h417/blob/main/EVT/EXAM/SRC/Peripheral/src/ch32h417_dbgmcu.c
         0x415_00000 | 0x416_00000 | 0x417_00000 => match chip_id & !0x0000_00F0 {
             0x415_0050D => Some("CH32H415REU"),
@@ -173,5 +180,20 @@ mod tests {
         assert_eq!(chip_id_to_chip_name(0x4172_050D), Some("CH32H417WEU"));
         assert_eq!(chip_id_to_chip_name(0x4150_050D), Some("CH32H415REU"));
         assert_eq!(chip_id_to_chip_name(0x4160_050D), Some("CH32H416RDU"));
+    }
+
+    #[test]
+    fn ch32v4x7_chip_ids_ignore_revision_nibble() {
+        // Vendor DBGMCU_GetCHIPID() list, revision nibble varied.
+        assert_eq!(chip_id_to_chip_name(0x4670_0000), Some("CH32V407VET"));
+        assert_eq!(chip_id_to_chip_name(0x4670_0002), Some("CH32V407VET"));
+        assert_eq!(chip_id_to_chip_name(0x4671_0001), Some("CH32V407WEU"));
+        assert_eq!(chip_id_to_chip_name(0x4671_0007), Some("CH32V407WEU"));
+        assert_eq!(chip_id_to_chip_name(0x4672_0002), Some("CH32V407RET"));
+        assert_eq!(chip_id_to_chip_name(0x4673_0000), Some("CH32V467VET"));
+        assert_eq!(chip_id_to_chip_name(0x4674_0001), Some("CH32V467WEU"));
+        assert_eq!(chip_id_to_chip_name(0x4675_0002), Some("CH32V467RET"));
+        // Undocumented DEVID nibble within the 0x467 family.
+        assert_eq!(chip_id_to_chip_name(0x4676_0000), None);
     }
 }
