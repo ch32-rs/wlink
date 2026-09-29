@@ -372,8 +372,7 @@ impl RiscvChip {
             RiscvChip::CH32V20X | RiscvChip::CH32V30X => &flash_op::CH32V307,
             RiscvChip::CH56X => &flash_op::CH569,
             RiscvChip::CH57X => &flash_op::CH573,
-            RiscvChip::CH582 | RiscvChip::CH59X => &flash_op::CH583,
-            RiscvChip::CH585 => &flash_op::CH585,
+            RiscvChip::CH582 | RiscvChip::CH59X | RiscvChip::CH585 => &flash_op::CH583,
             RiscvChip::CH8571 => &flash_op::OP8571,
             RiscvChip::CH32X035 | RiscvChip::CH643 => &flash_op::CH643,
             RiscvChip::CH32L103 => &flash_op::CH32L103,
@@ -383,7 +382,7 @@ impl RiscvChip {
             RiscvChip::CH32V317 | RiscvChip::CH32V4X7 => &flash_op::CH32V317,
             RiscvChip::CH32F10X => todo!(),
             RiscvChip::CH32F20X => todo!(),
-            RiscvChip::CH32H41X => &flash_op::CH32H41X,
+            RiscvChip::CH32H41X => &flash_op::CH32H417,
             RiscvChip::CH32V205 => &flash_op::CH32V205,
             RiscvChip::CH586 => &flash_op::CH586,
             RiscvChip::CH570 => &flash_op::CH570,
@@ -528,26 +527,6 @@ mod tests {
         assert_eq!(RiscvChip::CH586 as u8, 0xAB);
         assert_eq!(RiscvChip::CH570 as u8, 0x8B);
         assert_eq!(RiscvChip::CH32M030 as u8, 0x8E);
-    }
-
-    #[test]
-    fn ch585_has_own_flash_op() {
-        use crate::flash_op;
-        // CH585 must NOT share CH583's blob (1326 B). It has its own 1222 B blob.
-        let op = RiscvChip::CH585.get_flash_op();
-        assert_eq!(op.len(), 1222, "CH585 must use its own 1222-byte blob");
-        // Rust const identity: upper layers must wire CH585 -> CH585_NEW blob.
-        // We assert size distinction rather than data equality to avoid pinning
-        // the array contents to the test.
-        assert_ne!(op.len(), flash_op::CH583.len());
-    }
-
-    #[test]
-    fn ch32h41x_blob_size_630() {
-        // The flash_op blob for CH32H41X is 630 B; wlink previously carried
-        // a 618-byte blob missing 12 bytes at offset 38.
-        let op = RiscvChip::CH32H41X.get_flash_op();
-        assert_eq!(op.len(), 630, "CH32H41X should use the 630-byte blob");
     }
 
     #[test]

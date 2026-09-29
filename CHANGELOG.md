@@ -15,15 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support CH570/CH572 (chip_id 0x8B) — BLE series.
 - Support CH32M030 (chip_id 0x8E) — motor-control MCU.
 
-### Changed
-
-- CH585 now uses its own 1222-byte flash_op blob (previously shared
-  CH583's 1326-byte blob by mistake; blobs diverge at offset 2).
-- CH32H41X now uses the 630-byte flash_op blob (was 618 B, missing
-  12 bytes at offset 38).
-- flash_op: deduplicated CH32V205/CH32L103 and CH645/CH32V317 byte
-  literals (both pairs were byte-identical).
-
 ## [0.1.2] - 2026-05-01
 
 ### Added
