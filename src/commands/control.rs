@@ -21,10 +21,64 @@ pub struct ProbeInfo {
     pub variant: WchLinkVariant,
 }
 impl ProbeInfo {
+    /// The raw `major.minor` bytes as reported by the probe.
+    ///
+    /// Prefer [`ProbeInfo::version_code`] for comparisons and
+    /// [`ProbeInfo::display_version`] for showing the version to a human: the
+    /// raw bytes are not the human-readable version (see `version_code`).
     pub fn version(&self) -> (u8, u8) {
         (self.major_version, self.minor_version)
     }
+
+    /// The two version bytes packed into a single value: `16 * major + minor`.
+    pub fn packed_version(&self) -> u16 {
+        16 * self.major_version as u16 + self.minor_version as u16
+    }
+
+    /// The monotonic firmware version code, used for comparisons.
+    ///
+    /// The probe reports a packed version, not a decimal one. Below `0x30` the
+    /// code is the decimal reading, at or above it the packed value is shifted
+    /// by 12:
+    ///
+    /// ```text
+    /// V = if packed < 0x30 { 10 * major + minor } else { packed - 12 }
+    /// ```
+    ///
+    /// This makes the code increase by one per release across the `0x30`
+    /// boundary: `v2.15` is 35, `v3.0` (= raw `2.16`) is 36, `v3.6`
+    /// (= raw `2.22`) is 42.
+    pub fn version_code(&self) -> u16 {
+        Self::version_code_of(self.major_version, self.minor_version)
+    }
+
+    /// The version code for an arbitrary `major.minor` pair, see
+    /// [`ProbeInfo::version_code`].
+    pub const fn version_code_of(major: u8, minor: u8) -> u16 {
+        let packed = 16 * major as u16 + minor as u16;
+        if packed < 0x30 {
+            10 * major as u16 + minor as u16
+        } else {
+            packed - 12
+        }
+    }
+
+    /// The human-readable `(major, minor)`, decoded from the packed value.
+    ///
+    /// The two parts are the nibbles of the packed version, so excess minor
+    /// values carry into the major part: raw `2.22` is really `3.6`.
+    pub fn display_version(&self) -> (u16, u16) {
+        let packed = self.packed_version();
+        (packed >> 4, packed & 0xF)
+    }
 }
+
+/// First WCH-Link firmware known to report the CH32V205 family correctly,
+/// i.e. v3.6 (older builds spell it `2.22`); both map to version code 42.
+pub const MIN_FW_VERSION_CH32V205: u16 = ProbeInfo::version_code_of(3, 6);
+
+/// `GetChipInfo::V2` was introduced in firmware v2.9, version code 29.
+pub const MIN_FW_VERSION_CHIP_INFO_V2: u16 = ProbeInfo::version_code_of(2, 9);
 impl Response for ProbeInfo {
     fn from_payload(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < 3 {
@@ -44,12 +98,13 @@ impl Response for ProbeInfo {
 }
 impl fmt::Display for ProbeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (major, minor) = self.display_version();
         write!(
             f,
             "WCH-Link v{}.{}(v{}) ({})",
-            self.major_version,
-            self.minor_version,
-            self.major_version * 10 + self.minor_version,
+            major,
+            minor,
+            self.version_code(),
             self.variant
         )
     }
@@ -218,5 +273,86 @@ impl Command for SetRSTPin {
             SetRSTPin::Floating => 0x15,
         };
         vec![0x0e, subcmd]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn info(major: u8, minor: u8) -> ProbeInfo {
+        ProbeInfo {
+            major_version: major,
+            minor_version: minor,
+            variant: WchLinkVariant::ECh32v305,
+        }
+    }
+
+    #[test]
+    fn version_code_matches_wch_numbering() {
+        // Below 0x30 the code is the decimal reading.
+        assert_eq!(ProbeInfo::version_code_of(2, 8), 28);
+        assert_eq!(ProbeInfo::version_code_of(2, 9), 29);
+        assert_eq!(ProbeInfo::version_code_of(2, 10), 30);
+        assert_eq!(ProbeInfo::version_code_of(2, 11), 31);
+        assert_eq!(ProbeInfo::version_code_of(2, 15), 35);
+        // At/above 0x30 the packed value is shifted by 12.
+        assert_eq!(ProbeInfo::version_code_of(2, 16), 36);
+        assert_eq!(ProbeInfo::version_code_of(2, 22), 42);
+        assert_eq!(ProbeInfo::version_code_of(3, 6), 42);
+    }
+
+    #[test]
+    fn version_code_is_monotonic_across_the_0x30_boundary() {
+        // Within the 2.x/3.x range the code increases by exactly one per packed
+        // step, including across the 0x30 boundary (v2.15 -> v3.0).
+        let mut prev: Option<u16> = None;
+        for packed in 0x20..0x40u16 {
+            let code = ProbeInfo::version_code_of((packed / 16) as u8, (packed % 16) as u8);
+            if let Some(prev) = prev {
+                assert_eq!(
+                    code,
+                    prev + 1,
+                    "version code jumped at packed {packed:#04x}"
+                );
+            }
+            prev = Some(code);
+        }
+        // The boundary itself: v2.15 is 35, v3.0 (raw 2.16) is 36.
+        assert_eq!(ProbeInfo::version_code_of(2, 15), 35);
+        assert_eq!(ProbeInfo::version_code_of(2, 16), 36);
+    }
+
+    #[test]
+    fn display_version_unpacks_the_nibbles() {
+        // The two user-visible cases: the reported minor is not the real minor.
+        assert_eq!(info(2, 22).display_version(), (3, 6));
+        assert_eq!(info(2, 10).display_version(), (2, 10));
+        assert_eq!(info(2, 8).display_version(), (2, 8));
+        assert_eq!(info(2, 16).display_version(), (3, 0));
+    }
+
+    #[test]
+    fn display_formats_normalized_version_and_code() {
+        // Regression: 2.22(v42) was wrong, it is 3.6(v42).
+        assert_eq!(
+            info(2, 22).to_string(),
+            "WCH-Link v3.6(v42) (WCH-LinkE-CH32V305)"
+        );
+        assert_eq!(
+            info(2, 10).to_string(),
+            "WCH-Link v2.10(v30) (WCH-LinkE-CH32V305)"
+        );
+        assert_eq!(
+            info(2, 8).to_string(),
+            "WCH-Link v2.8(v28) (WCH-LinkE-CH32V305)"
+        );
+    }
+
+    #[test]
+    fn ch32v205_gate_accepts_3_6_and_rejects_older() {
+        assert!(info(2, 22).version_code() >= MIN_FW_VERSION_CH32V205);
+        assert!(info(3, 6).version_code() >= MIN_FW_VERSION_CH32V205);
+        assert!(info(2, 21).version_code() < MIN_FW_VERSION_CH32V205);
     }
 }
