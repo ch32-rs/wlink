@@ -69,6 +69,9 @@ Current firmware version: 2.15 (aka. v35).
 - [CH32X035]/CH32X033
 - [CH32L103]
 - [CH32H417]
+- [CH570]/CH572
+- [CH586]/CH587
+- [CH32M030]
 - [CH32V205]/CH32V203(QingKe V3B) - the new-generation CH32V205/CH32V203 family (USB2.0 HS), unrelated to the older [CH32V203]. Requires WCH-LinkE firmware v2.22+; older firmware misdetects it as CH32V20X with garbage ChipID/ESIG
 - [CH32V407]
 - [CH32V467]
@@ -87,6 +90,9 @@ Current firmware version: 2.15 (aka. v35).
 [CH573]: https://www.wch-ic.com/products/CH573.html
 [CH583]: https://www.wch-ic.com/products/CH583.html
 [CH585]: https://www.wch-ic.com/products/CH585.html
+[CH586]: https://www.wch-ic.com/products/CH586.html
+[CH570]: https://www.wch-ic.com/products/CH570.html
+[CH32M030]: https://www.wch.cn/products/CH32M030.html
 [CH592]: https://www.wch-ic.com/products/CH592.html
 [CH641]: https://www.wch-ic.com/products/CH641.html
 [CH643]: https://www.wch-ic.com/products/CH643.html
