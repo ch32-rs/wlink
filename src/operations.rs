@@ -30,6 +30,21 @@ impl ProbeSession {
             return Err(Error::UnsupportedChip(chip));
         }
 
+        // Older probe firmware misdetects the CH32V205 family as CH32V20X (riscvchip 0x05)
+        // and returns unstable ESIG/ChipID values. v3.6 is the first version known to
+        // report the correct 0xce family code.
+        if chip == RiscvChip::CH32V205
+            && probe.info.version_code() < commands::control::MIN_FW_VERSION_CH32V205
+        {
+            let (major, minor) = probe.info.display_version();
+            log::warn!(
+                "CH32V205 requires WCH-Link firmware v3.6 or later, current is v{}.{}. \
+                 The chip may be misdetected as CH32V20X. Please update the probe firmware.",
+                major,
+                minor
+            );
+        }
+
         let mut attempts = 0;
         let chip_info = loop {
             probe.send_command(commands::SetSpeed {
@@ -52,6 +67,18 @@ impl ProbeSession {
         };
 
         log::info!("Attached chip: {}", chip_info);
+
+        if chip_info.chip_family == RiscvChip::CH32V205
+            && probe.info.version_code() < commands::control::MIN_FW_VERSION_CH32V205
+        {
+            let (major, minor) = probe.info.display_version();
+            log::warn!(
+                "CH32V205 requires WCH-Link firmware v3.6 or later, current is v{}.{}. \
+                 Detection and flashing may misbehave. Please update the probe firmware.",
+                major,
+                minor
+            );
+        }
 
         if let Some(expected_chip) = expected_chip {
             if chip_info.chip_family != expected_chip {
@@ -102,7 +129,9 @@ impl ProbeSession {
     // NOTE: this halts the MCU
     pub fn dump_info(&mut self) -> Result<()> {
         if self.chip_family.support_query_info() {
-            let esig = if self.probe.info.version() >= (2, 9) {
+            let esig = if self.probe.info.version_code()
+                >= commands::control::MIN_FW_VERSION_CHIP_INFO_V2
+            {
                 self.probe.send_command(commands::GetChipInfo::V2)?
             } else {
                 self.probe.send_command(commands::GetChipInfo::V1)?
@@ -410,7 +439,8 @@ impl ProbeSession {
         let chip_family = self.chip.as_ref().unwrap().chip_family;
 
         if chip_family.support_query_info() {
-            let chip_id = if probe_info.version() >= (2, 9) {
+            let chip_id = if probe_info.version_code() >= commands::control::MIN_FW_VERSION_CHIP_INFO_V2
+            {
                 self.send_command(commands::GetChipInfo::V2)?
             } else {
                 self.send_command(commands::GetChipInfo::V1)?

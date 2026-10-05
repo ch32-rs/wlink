@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Enable SDI print support for the CH32H41x family (CH32H415/CH32H416/CH32H417).
+- Add support for the new-generation CH32V205/CH32V203 family (QingKe V3B, riscvchip 0xce), including flashing and CH32V205RCT6 chip ID reporting. Verified against MounRiver Studio traffic captures on a CH32V205RCT6.
+- Support CH586/CH587 (chip_id 0xAB) — BLE 5.4 series.
+- Support CH570/CH572 (chip_id 0x8B) — BLE series.
+- Support CH32M030 (chip_id 0x8E) — motor-control MCU.
+
+### Fixed
+
+- Decode the WCH-Link firmware version from its packed form, so the reported version is no longer wrong above `2.15`. The probe packs the version as `16 * major + minor`; the code is `10 * major + minor` below `0x30` and `packed - 12` at or above it. As a result `2.22` is now correctly shown as `v3.6(v42)`, and the CH32V205 minimum-firmware check compares version codes instead of raw tuples.
+
 ## [0.1.2] - 2026-05-01
 
 ### Added
