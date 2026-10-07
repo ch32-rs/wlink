@@ -195,9 +195,15 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // init simplelogger
+    // log timestamps in the local timezone instead of UTC,
+    // silently falling back to UTC if the local offset is unavailable
+    let log_config = simplelog::ConfigBuilder::new()
+        .set_time_offset_to_local()
+        .unwrap_or_else(|builder| builder)
+        .build();
     simplelog::TermLogger::init(
         cli.verbose.log_level_filter(),
-        simplelog::Config::default(),
+        log_config,
         simplelog::TerminalMode::Mixed,
         simplelog::ColorChoice::Auto,
     )

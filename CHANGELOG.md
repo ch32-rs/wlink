@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Decode the WCH-Link firmware version from its packed form, so the reported version is no longer wrong above `2.15`. The probe packs the version as `16 * major + minor`; the code is `10 * major + minor` below `0x30` and `packed - 12` at or above it. As a result `2.22` is now correctly shown as `v3.6(v42)`, and the CH32V205 minimum-firmware check compares version codes instead of raw tuples.
+- Log CLI timestamps in the local timezone instead of UTC.
+- Decode the WCH-Link firmware version from its packed form, so versions above `2.15` are reported correctly.
 
 ## [0.1.2] - 2026-05-01
 
