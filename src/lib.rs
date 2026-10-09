@@ -250,6 +250,18 @@ impl RiscvChip {
         )
     }
 
+    /// Support observed MCU Memory Split commands (0x0d/0x17, 0x0d/0x18)
+    /// based on verified CH32V30X captures.
+    pub(crate) fn support_mcu_mem_split_cmds(&self) -> bool {
+        matches!(self, RiscvChip::CH32V30X)
+    }
+
+    /// Support legacy RAM/ROM split commands (0x0d/0x04, 0x0d/0x05)
+    /// used for CH32V20X memory split configuration.
+    pub(crate) fn support_mcu_mem_split_legacy_cmds(&self) -> bool {
+        matches!(self, RiscvChip::CH32V20X)
+    }
+
     /// Support config registers, query info(UID, etc.)
     pub fn support_query_info(&self) -> bool {
         !matches!(

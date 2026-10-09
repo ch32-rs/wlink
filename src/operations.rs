@@ -16,6 +16,56 @@ pub struct ProbeSession {
     pub speed: Speed,
 }
 
+fn decode_sram_code_mode_v2_v3(mode: u8) -> &'static str {
+    match mode & 0x07 {
+        0b000 | 0b001 => "CODE-192KB + RAM-128KB",
+        0b010 | 0b011 => "CODE-224KB + RAM-96KB",
+        0b100 | 0b101 => "CODE-256KB + RAM-64KB",
+        0b110 => "CODE-128KB + RAM-192KB",
+        0b111 => "CODE-288KB + RAM-32KB",
+        _ => "UNKNOWN",
+    }
+}
+
+fn decode_sram_code_mode_v20x(mode: u8) -> &'static str {
+    // Legacy command 0x0d/0x04 often returns compact index 0..2 on CH32V20X.
+    if mode <= 2 {
+        return match mode {
+            0 => "CODE-128KB + RAM-64KB",
+            1 => "CODE-144KB + RAM-48KB",
+            2 => "CODE-160KB + RAM-32KB",
+            _ => "UNKNOWN",
+        };
+    }
+
+    match mode & 0x07 {
+        0b000 | 0b001 => "CODE-128KB + RAM-64KB",
+        0b010 | 0b011 => "CODE-144KB + RAM-48KB",
+        0b100..=0b111 => "CODE-160KB + RAM-32KB",
+        _ => "UNKNOWN",
+    }
+}
+
+fn decode_sram_code_mode(chip: RiscvChip, mode: u8) -> &'static str {
+    match chip {
+        RiscvChip::CH32V20X => decode_sram_code_mode_v20x(mode),
+        _ => decode_sram_code_mode_v2_v3(mode),
+    }
+}
+
+fn v20x_legacy_split_index_from_mode(mode: u8) -> Option<u8> {
+    if mode <= 2 {
+        return Some(mode);
+    }
+
+    Some(match mode & 0x07 {
+        0b000 | 0b001 => 0,
+        0b010 | 0b011 => 1,
+        0b100..=0b111 => 2,
+        _ => return None,
+    })
+}
+
 impl ProbeSession {
     /// Attach probe to target chip, start a probe session
     pub fn attach(probe: WchLink, expected_chip: Option<RiscvChip>, speed: Speed) -> Result<Self> {
@@ -148,10 +198,13 @@ impl ProbeSession {
             }
         }
         if self.chip_family.support_ram_rom_mode() {
-            let sram_code_mode = self
-                .probe
-                .send_command(commands::control::GetChipRomRamSplit)?;
-            log::debug!("SRAM CODE split mode: {}", sram_code_mode);
+            let sram_code_mode = self.get_mcu_mem_split()?;
+            log::debug!(
+                "SRAM CODE split mode: {} (0x{:02x}, {})",
+                sram_code_mode,
+                sram_code_mode,
+                decode_sram_code_mode(self.chip_family, sram_code_mode)
+            );
         }
         /*
         if detailed {
@@ -159,6 +212,68 @@ impl ProbeSession {
         }
         */
         Ok(())
+    }
+
+    /// Read MCU memory split mode.
+    ///
+    /// For CH32V30X, this uses observed official-tool command `0x0d/0x17`.
+    /// For other chips that support RAM/ROM mode, it falls back to legacy `0x0d/0x04`.
+    pub fn get_mcu_mem_split(&mut self) -> Result<u8> {
+        if self.chip_family.support_mcu_mem_split_cmds() {
+            match self.probe.send_command(commands::control::GetMcuMemorySplit) {
+                Ok(mode) => return Ok(mode),
+                Err(err) => {
+                    log::debug!(
+                        "GetMcuMemorySplit (0x0d/0x17) failed: {err:?}; trying legacy 0x0d/0x04"
+                    );
+                }
+            }
+        } else if !self.chip_family.support_ram_rom_mode() {
+            return Err(Error::Custom(format!(
+                "MCU Memory Split is not supported for {:?}",
+                self.chip_family
+            )));
+        }
+
+        self.probe
+            .send_command(commands::control::GetChipRomRamSplit)
+    }
+
+    /// Set MCU memory split mode via observed command `0x0d/0x18`.
+    ///
+    /// Uses chip-specific protocol:
+    /// - CH32V30X: `0x0d/0x18`
+    /// - CH32V20X: legacy `0x0d/0x05`
+    pub fn set_mcu_mem_split(&mut self, mode: u8) -> Result<()> {
+        if self.chip_family.support_mcu_mem_split_cmds() {
+            let ack = self
+                .probe
+                .send_command(commands::control::SetMcuMemorySplit(mode))?;
+
+            if ack != 0x18 {
+                return Err(Error::Custom(format!(
+                    "Unexpected MCU Memory Split ACK: 0x{ack:02x}"
+                )));
+            }
+
+            return Ok(());
+        }
+
+        if self.chip_family.support_mcu_mem_split_legacy_cmds() {
+            let split_idx = v20x_legacy_split_index_from_mode(mode).ok_or_else(|| {
+                Error::Custom(format!(
+                    "Invalid CH32V20X memory split mode: 0x{mode:02x} (expected profile index 0..2 or raw 0x00..0x07)"
+                ))
+            })?;
+            self.probe
+                .send_command(commands::control::SetChipRomRamSplit(split_idx))?;
+            return Ok(());
+        }
+
+        Err(Error::Custom(format!(
+            "MCU Memory Split set is enabled for CH32V30X and CH32V20X only, attached: {:?}",
+            self.chip_family
+        )))
     }
 
     pub fn unprotect_flash(&mut self) -> Result<()> {
