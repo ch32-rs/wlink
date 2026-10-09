@@ -271,17 +271,7 @@ impl WchLink {
 
 /// Helper for SDI print
 pub fn watch_serial() -> Result<()> {
-    use serialport::SerialPortType;
-
-    let port_info = serialport::available_ports()?
-        .into_iter()
-        .find(|port| {
-            if let SerialPortType::UsbPort(info) = &port.port_type {
-                info.vid == VENDOR_ID && info.pid == PRODUCT_ID
-            } else {
-                false
-            }
-        })
+    let port_info = find_wch_link_serial_port(serialport::available_ports()?)
         .ok_or_else(|| Error::Custom("No serial port found".to_string()))?;
     log::debug!("Opening serial port: {:?}", port_info.port_name);
 
@@ -291,35 +281,191 @@ pub fn watch_serial() -> Result<()> {
 
     log::trace!("Serial port opened: {:?}", port);
 
-    let mut endl = true;
+    let mut printer = TimestampedSerialPrinter::default();
+    let mut sink = StdoutSerialWatchSink;
+    watch_serial_port(&mut *port, &mut printer, &mut sink)
+}
+
+fn find_wch_link_serial_port(
+    ports: impl IntoIterator<Item = serialport::SerialPortInfo>,
+) -> Option<serialport::SerialPortInfo> {
+    ports.into_iter().find(is_wch_link_serial_port)
+}
+
+fn is_wch_link_serial_port(port: &serialport::SerialPortInfo) -> bool {
+    if let serialport::SerialPortType::UsbPort(info) = &port.port_type {
+        info.vid == VENDOR_ID && info.pid == PRODUCT_ID
+    } else {
+        false
+    }
+}
+
+trait SerialWatchSink {
+    fn write_str(&mut self, s: &str) -> Result<()>;
+}
+
+struct StdoutSerialWatchSink;
+
+impl SerialWatchSink for StdoutSerialWatchSink {
+    fn write_str(&mut self, s: &str) -> Result<()> {
+        use std::io::Write;
+
+        std::io::stdout().write_all(s.as_bytes())?;
+        std::io::stdout().flush()?;
+        Ok(())
+    }
+}
+
+struct TimestampedSerialPrinter {
+    line_start: bool,
+}
+
+impl Default for TimestampedSerialPrinter {
+    fn default() -> Self {
+        Self { line_start: true }
+    }
+}
+
+impl TimestampedSerialPrinter {
+    fn write_bytes(&mut self, bytes: &[u8], sink: &mut dyn SerialWatchSink) -> Result<()> {
+        self.write_str(&String::from_utf8_lossy(bytes), sink)
+    }
+
+    fn write_str(&mut self, s: &str, sink: &mut dyn SerialWatchSink) -> Result<()> {
+        self.write_str_with_timestamp(s, sink, || {
+            chrono::Local::now()
+                .format("%Y-%m-%d %H:%M:%S%.3f")
+                .to_string()
+        })
+    }
+
+    fn write_str_with_timestamp(
+        &mut self,
+        s: &str,
+        sink: &mut dyn SerialWatchSink,
+        timestamp: impl Fn() -> String,
+    ) -> Result<()> {
+        for c in s.chars() {
+            if c == '\r' || c == '\n' {
+                if self.line_start {
+                    // continuous line break
+                    sink.write_str(&format!("{}:\n", chrono::Local::now()))?;
+                } else {
+                    self.line_start = true;
+                    sink.write_str("\n")?;
+                }
+            } else if self.line_start {
+                sink.write_str(&format!("{}: {}", timestamp(), c))?;
+                self.line_start = false;
+            } else {
+                sink.write_str(&c.to_string())?;
+            }
+        }
+        Ok(())
+    }
+}
+
+fn watch_serial_port(
+    port: &mut dyn serialport::SerialPort,
+    printer: &mut TimestampedSerialPrinter,
+    sink: &mut dyn SerialWatchSink,
+) -> Result<()> {
     loop {
         let mut buf = [0u8; 1024];
         match port.read(&mut buf) {
-            Ok(n) => {
-                let s = String::from_utf8_lossy(&buf[..n]);
-                for c in s.chars() {
-                    if c == '\r' || c == '\n' {
-                        if endl {
-                            // continous line break
-                            println!("{}:", chrono::Local::now());
-                        } else {
-                            endl = true;
-                            println!()
-                        }
-                    } else if endl {
-                        print!(
-                            "{}: {}",
-                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
-                            c
-                        );
-                        endl = false;
-                    } else {
-                        print!("{}", c);
-                    }
-                }
-            }
+            Ok(n) => printer.write_bytes(&buf[..n], sink)?,
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
             Err(e) => return Err(e.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct StringSink(String);
+
+    impl SerialWatchSink for StringSink {
+        fn write_str(&mut self, s: &str) -> Result<()> {
+            self.0.push_str(s);
+            Ok(())
+        }
+    }
+
+    fn usb_port(name: &str, vid: u16, pid: u16) -> serialport::SerialPortInfo {
+        serialport::SerialPortInfo {
+            port_name: name.to_string(),
+            port_type: serialport::SerialPortType::UsbPort(serialport::UsbPortInfo {
+                vid,
+                pid,
+                serial_number: None,
+                manufacturer: None,
+                product: None,
+            }),
+        }
+    }
+
+    #[test]
+    fn matches_wch_link_serial_port_by_vid_pid() {
+        let port = usb_port("/dev/ttyACM0", VENDOR_ID, PRODUCT_ID);
+        assert!(is_wch_link_serial_port(&port));
+    }
+
+    #[test]
+    fn rejects_non_wch_link_serial_port() {
+        let port = usb_port("/dev/ttyACM0", VENDOR_ID, PRODUCT_ID_DAP);
+        assert!(!is_wch_link_serial_port(&port));
+    }
+
+    #[test]
+    fn finds_first_wch_link_serial_port() {
+        let ports = vec![
+            usb_port("/dev/ttyACM0", 0x1234, 0x5678),
+            usb_port("/dev/ttyACM1", VENDOR_ID, PRODUCT_ID),
+        ];
+
+        let port = find_wch_link_serial_port(ports).unwrap();
+        assert_eq!(port.port_name, "/dev/ttyACM1");
+    }
+
+    #[test]
+    fn timestamped_printer_defaults_to_line_start() {
+        let mut printer = TimestampedSerialPrinter::default();
+        let mut sink = StringSink::default();
+
+        printer
+            .write_str_with_timestamp("a", &mut sink, || "TS".to_string())
+            .unwrap();
+
+        assert_eq!(sink.0, "TS: a");
+    }
+
+    #[test]
+    fn timestamped_printer_keeps_existing_line_format() {
+        let mut printer = TimestampedSerialPrinter { line_start: true };
+        let mut sink = StringSink::default();
+
+        printer
+            .write_str_with_timestamp("abc\ndef", &mut sink, || "TS".to_string())
+            .unwrap();
+
+        assert_eq!(sink.0, "TS: abc\nTS: def");
+    }
+
+    #[test]
+    fn timestamped_printer_preserves_partial_line_across_chunks() {
+        let mut printer = TimestampedSerialPrinter { line_start: true };
+        let mut sink = StringSink::default();
+
+        printer
+            .write_str_with_timestamp("ab", &mut sink, || "TS".to_string())
+            .unwrap();
+        printer
+            .write_str_with_timestamp("c\n", &mut sink, || "TS".to_string())
+            .unwrap();
+
+        assert_eq!(sink.0, "TS: abc\n");
     }
 }
