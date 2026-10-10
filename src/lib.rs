@@ -457,6 +457,19 @@ impl RiscvChip {
         }
     }
 
+    /// Code flash size in KiB shared by every part of the family, for families whose
+    /// ESIG flash size field is left unprogrammed.
+    ///
+    /// CH32X3x5: ESIG_FLACAP (0x1FFFF7E0) reads as erased flash (0xE339), every
+    /// CH32X315/CH32X305 part has 480KiB, and WCH-LinkUtility hardcodes the same
+    /// 0x78000 for riscvchip 0xE6.
+    pub fn fixed_flash_size_kb(&self) -> Option<u16> {
+        match self {
+            RiscvChip::CH32X3X5 => Some(480),
+            _ => None,
+        }
+    }
+
     pub fn code_flash_start(&self) -> u32 {
         match self {
             RiscvChip::CH56X
@@ -584,6 +597,11 @@ mod tests {
         // 192K zero-wait + 288K non-zero-wait is fixed, no configurable RAM/ROM split
         assert!(!RiscvChip::CH32X3X5.support_ram_rom_mode());
         assert_eq!(RiscvChip::CH32X3X5.code_flash_start(), 0x0800_0000);
+        // Only CH32X3x5 overrides an unprogrammed ESIG flash size.
+        for chip in <RiscvChip as clap::ValueEnum>::value_variants() {
+            let expected = (*chip == RiscvChip::CH32X3X5).then_some(480);
+            assert_eq!(chip.fixed_flash_size_kb(), expected, "{chip:?}");
+        }
     }
 
     #[test]
