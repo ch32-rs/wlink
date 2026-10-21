@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-21
+
 ### Added
 
+- Add support for the CH32V407/CH32V467 family (CH32V4X7, riscvchip 0xa6), including chip aliases and DEVID-based package ID reporting.
 - Enable SDI print support for the CH32H41x family (CH32H415/CH32H416/CH32H417).
+- Enable SDI print support for the `reset` command.
 - Add support for the new-generation CH32V205/CH32V203 family (QingKe V3B, riscvchip 0xce), including flashing and CH32V205RCT6 chip ID reporting. Verified against MounRiver Studio traffic captures on a CH32V205RCT6.
 - Support CH586/CH587 (chip_id 0xAB) — BLE 5.4 series.
 - Support CH570/CH572 (chip_id 0x8B) — BLE series.
@@ -17,10 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for the CH32X315/CH32X305 family (QingKe V3F, riscvchip 0xe6), including flashing, SDI print and CH32X315MCU6/CCU6/WCU6, CH32X305RCT6 chip ID reporting. Verified on a CH32X315MCU6 with WCH-LinkE firmware v3.6 (older builds spell it `2.22`).
 - Report the 480KB code flash size for CH32X3x5 when its ESIG flash size field is unprogrammed (reads as erased flash, `0xE339`), matching WCH-LinkUtility.
 
+### Changed
+
+- Document that CH59x series devices have a broken auto-detect mechanism and may need an explicit `--chip` selection.
+
 ### Fixed
 
 - Log CLI timestamps in the local timezone instead of UTC.
 - Decode the WCH-Link firmware version from its packed form, so versions above `2.15` are reported correctly.
+- Decode CH32V4x7 chip IDs from the DEVID nibble so CH32V407/CH32V467 packages are reported correctly instead of all matching as CH32V407VET.
+- Fix Cargo manifest warnings.
 
 ## [0.1.2] - 2026-05-01
 
