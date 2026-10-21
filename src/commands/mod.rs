@@ -238,6 +238,25 @@ pub struct ESignature {
     pub uid: [u32; 2],
 }
 
+impl ESignature {
+    /// Flash size field as read from erased (unprogrammed) flash.
+    ///
+    /// CH32X315 RM 23.5.4/23.6.3: erased flash reads 0xE339 per halfword
+    /// (0xE339E339 per word), not 0xFFFF.
+    pub const ERASED_FLASH_SIZE: u16 = 0xE339;
+
+    /// Replace an unprogrammed flash size with `fixed_kb`, returns whether it was replaced.
+    pub fn fill_unprogrammed_flash_size(&mut self, fixed_kb: Option<u16>) -> bool {
+        match fixed_kb {
+            Some(kb) if self.flash_size_kb == Self::ERASED_FLASH_SIZE => {
+                self.flash_size_kb = kb;
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
 impl Response for ESignature {
     fn from_payload(_bytes: &[u8]) -> Result<Self>
     where
@@ -429,3 +448,40 @@ impl Command for DisableDebug {
 // 81 11 01 0D unknown in query info, before GetChipRomRamSplit
 // 81 0D 02 EE 00/02/03 SetSDLineMode
 // 81 0F 01 01 SetIAPMode
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::RiscvChip;
+
+    #[test]
+    fn esig_unprogrammed_flash_size_uses_fixed_size() {
+        // Captured from a CH32X315MCU6: FLACAP and UID3 read as erased flash (0xE339),
+        // UID cd-ab-85-36-48-bc-9a-9e, ChipID 0x31500000.
+        let raw = [
+            0xe3, 0x39, 0xe3, 0x39, 0x36, 0x85, 0xab, 0xcd, 0x9e, 0x9a, 0xbc, 0x48, 0xe3, 0x39,
+            0xe3, 0x39, 0x31, 0x50, 0x00, 0x00,
+        ];
+        let mut esig = ESignature::from_raw(&raw).unwrap();
+        assert_eq!(esig.flash_size_kb, ESignature::ERASED_FLASH_SIZE);
+        assert!(esig.fill_unprogrammed_flash_size(RiscvChip::CH32X3X5.fixed_flash_size_kb()));
+        assert_eq!(
+            esig.to_string(),
+            "FlashSize(480KB) UID(cd-ab-85-36-48-bc-9a-9e)"
+        );
+    }
+
+    #[test]
+    fn esig_programmed_flash_size_is_kept() {
+        // Captured from a CH32V407VET: FLACAP = 0x0240 (576KB), ChipID 0x46700000.
+        let raw = [
+            0xff, 0xff, 0x02, 0x40, 0x50, 0xad, 0x06, 0x1a, 0xab, 0x33, 0x54, 0x6c, 0xe3, 0x39,
+            0xe3, 0x39, 0x46, 0x70, 0x00, 0x00,
+        ];
+        let mut esig = ESignature::from_raw(&raw).unwrap();
+        assert!(!esig.fill_unprogrammed_flash_size(RiscvChip::CH32V4X7.fixed_flash_size_kb()));
+        // A programmed field wins over the family table.
+        assert!(!esig.fill_unprogrammed_flash_size(Some(480)));
+        assert_eq!(esig.flash_size_kb, 576);
+    }
+}

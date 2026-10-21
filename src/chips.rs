@@ -150,6 +150,14 @@ pub fn chip_id_to_chip_name(chip_id: u32) -> Option<&'static str> {
             0x417_2050D => Some("CH32H417WEU"),
             _ => None,
         },
+        // CH32X3x5 EVT ch32x3x5_dbgmcu.c: 0x315000x0 .. 0x315300x3, CH32X305 shares the 0x315 prefix
+        0x315_00000 => match chip_id & !0x0000_00F0 {
+            0x315_00000 => Some("CH32X315MCU6"),
+            0x315_10001 => Some("CH32X315CCU6"),
+            0x315_20002 => Some("CH32X315WCU6"),
+            0x315_30003 => Some("CH32X305RCT6"),
+            _ => None,
+        },
         0x641 => match chip_id & 0xFFFFFF0F {
             0x641_00500 => Some("CH641F"),
             0x641_10500 => Some("CH641D"),
@@ -195,5 +203,19 @@ mod tests {
         assert_eq!(chip_id_to_chip_name(0x4675_0002), Some("CH32V467RET"));
         // Undocumented DEVID nibble within the 0x467 family.
         assert_eq!(chip_id_to_chip_name(0x4676_0000), None);
+    }
+
+    #[test]
+    fn ch32x3x5_chip_ids_ignore_wildcard_nibble() {
+        // Vendor DBGMCU_GetCHIPID() list (0x315000x0 .. 0x315300x3), bits [7:4] varied.
+        assert_eq!(chip_id_to_chip_name(0x3150_0000), Some("CH32X315MCU6"));
+        assert_eq!(chip_id_to_chip_name(0x3150_0050), Some("CH32X315MCU6"));
+        assert_eq!(chip_id_to_chip_name(0x3151_0001), Some("CH32X315CCU6"));
+        assert_eq!(chip_id_to_chip_name(0x3151_00A1), Some("CH32X315CCU6"));
+        assert_eq!(chip_id_to_chip_name(0x3152_0002), Some("CH32X315WCU6"));
+        assert_eq!(chip_id_to_chip_name(0x3153_0003), Some("CH32X305RCT6"));
+        assert_eq!(chip_id_to_chip_name(0x3153_00F3), Some("CH32X305RCT6"));
+        // Undocumented DEVID nibble within the 0x315 family.
+        assert_eq!(chip_id_to_chip_name(0x3154_0004), None);
     }
 }

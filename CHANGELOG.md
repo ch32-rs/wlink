@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support CH586/CH587 (chip_id 0xAB) — BLE 5.4 series.
 - Support CH570/CH572 (chip_id 0x8B) — BLE series.
 - Support CH32M030 (chip_id 0x8E) — motor-control MCU.
+- Add support for the CH32X315/CH32X305 family (QingKe V3F, riscvchip 0xe6), including flashing, SDI print and CH32X315MCU6/CCU6/WCU6, CH32X305RCT6 chip ID reporting. Verified on a CH32X315MCU6 with WCH-LinkE firmware v3.6 (older builds spell it `2.22`).
+- Report the 480KB code flash size for CH32X3x5 when its ESIG flash size field is unprogrammed (reads as erased flash, `0xE339`), matching WCH-LinkUtility.
 
 ### Fixed
 

@@ -129,13 +129,19 @@ impl ProbeSession {
     // NOTE: this halts the MCU
     pub fn dump_info(&mut self) -> Result<()> {
         if self.chip_family.support_query_info() {
-            let esig = if self.probe.info.version_code()
+            let mut esig = if self.probe.info.version_code()
                 >= commands::control::MIN_FW_VERSION_CHIP_INFO_V2
             {
                 self.probe.send_command(commands::GetChipInfo::V2)?
             } else {
                 self.probe.send_command(commands::GetChipInfo::V1)?
             };
+            if esig.fill_unprogrammed_flash_size(self.chip_family.fixed_flash_size_kb()) {
+                log::debug!(
+                    "ESIG flash size is unprogrammed, using the {:?} family flash size",
+                    self.chip_family
+                );
+            }
             log::info!("Chip ESIG: {esig}");
 
             let flash_protected = self
