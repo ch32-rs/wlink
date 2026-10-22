@@ -67,7 +67,7 @@ Current firmware version: 2.15 (aka. v35).
 - [ ] [CH32V317] - I don't have this chip, help wanted
 - [CH641]
 - [CH32X035]/CH32X033
-- [CH32L103]
+- [CH32L103]/[CH32M103]
 - [CH32H417]
 - [CH570]/CH572
 - [CH586]/CH587
@@ -87,6 +87,7 @@ Current firmware version: 2.15 (aka. v35).
 [CH32V317]: https://www.wch.cn/products/CH32V317.html
 [CH32X035]: https://www.wch-ic.com/products/CH32X035.html
 [CH32L103]: https://www.wch-ic.com/products/CH32L103.html
+[CH32M103]: https://www.wch.cn/products/CH32M103.html
 [CH569]: https://www.wch-ic.com/products/CH569.html
 [CH573]: https://www.wch-ic.com/products/CH573.html
 [CH583]: https://www.wch-ic.com/products/CH583.html
