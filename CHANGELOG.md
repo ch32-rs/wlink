@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Report CH32M103G8R6 (chip ID `0x10330700`) in `status` output. It shares the CH32L103 chip ID prefix and flashes as a CH32L103.
+
 ## [0.1.3] - 2026-10-21
 
 ### Added
