@@ -110,7 +110,30 @@ oOp_u8 = 0x02 when failed
 - 0x02 Connect chip
 - 0x03 ? stage after connect chip and read riscvchip, for riscvchip 1
 - 0x04 get rom ram split, for riscvchip 3, 5, 6, 9
+- 0x17 Get MCU Memory Split (SRAM_CODE_MODE)
+  - Request: `81 0d 01 17`
+  - Response payload: one byte mode value
+- 0x18 Set MCU Memory Split (SRAM_CODE_MODE)
+  - Request: `81 0d 02 18 <mode>`
+  - Response payload: `18` (ACK)
 - 0xff End process
+
+#### SRAM_CODE_MODE mapping (CH32V2x/V3x USER[7:5])
+
+Based on CH32FV2x_V3xRM and USB captures from WCH official tool.
+
+- `00x` (`0x00` or `0x01`) -> CODE-192KB + RAM-128KB
+- `01x` (`0x02` or `0x03`) -> CODE-224KB + RAM-96KB
+- `10x` (`0x04` or `0x05`) -> CODE-256KB + RAM-64KB
+- `110` (`0x06`) -> CODE-128KB + RAM-192KB
+- `111` (`0x07`) -> CODE-288KB + RAM-32KB
+
+Observed set/read pairs in captures (verified on CH32V30X):
+
+- set `0x18 0x01` -> read `0x17` returns `0x01` (192/128)
+- set `0x18 0x03` -> read `0x17` returns `0x03` (224/96)
+- set `0x18 0x05` -> read `0x17` returns `0x05` (256/64)
+- set `0x18 0x07` -> read `0x17` returns `0x07` (288/32)
 
 ### 0x0e
 
