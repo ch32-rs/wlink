@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Report CH32M103G8R6 (chip ID `0x10330700`) in `status` output. It shares the CH32L103 chip ID prefix and flashes as a CH32L103.
+- Log the ELF target RISC-V architecture (e.g. `rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0`) when flashing an ELF file.
 
 ## [0.1.3] - 2026-10-21
 

@@ -4,8 +4,9 @@ use std::str;
 
 use anyhow::Result;
 use object::{
-    Endianness, Object, ObjectSection, elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader,
-    read::elf::ProgramHeader,
+    Endianness, Object, ObjectSection, elf::FileHeader32, elf::PT_LOAD,
+    read::elf::AttributesSection, read::elf::FileHeader, read::elf::ProgramHeader,
+    read::elf::SectionHeader,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -91,7 +92,14 @@ pub fn read_firmware_from_file<P: AsRef<Path>>(path: P) -> Result<Firmware> {
         FirmwareFormat::IntelHex => {
             read_ihex(str::from_utf8(&raw)?).and_then(|f| f.merge_sections())
         }
-        FirmwareFormat::ELF => read_elf(&raw).and_then(|f| f.merge_sections()),
+        FirmwareFormat::ELF => {
+            match read_elf_riscv_arch(&raw) {
+                Ok(Some(arch)) => log::info!("ELF target architecture: {arch}"),
+                Ok(None) => log::debug!("ELF file carries no RISC-V arch attribute"),
+                Err(e) => log::debug!("Failed to read ELF attributes: {e:#}"),
+            }
+            read_elf(&raw).and_then(|f| f.merge_sections())
+        }
     }
 }
 
@@ -170,6 +178,60 @@ pub fn read_ihex(data: &str) -> Result<Firmware> {
     }
 
     Ok(Firmware::Sections(segs))
+}
+
+/// `Tag_RISCV_arch` in a `.riscv.attributes` section.
+const TAG_RISCV_ARCH: u64 = 5;
+
+/// Read the `Tag_RISCV_arch` string from a RISC-V ELF file, if present.
+///
+/// This is the same string `readelf -A` reports as `Tag_RISCV_arch`, e.g.
+/// `rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0`.
+pub fn read_elf_riscv_arch(elf_data: &[u8]) -> Result<Option<String>> {
+    let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
+    let endian = elf_header.endian()?;
+    if elf_header.e_machine(endian) != object::elf::EM_RISCV {
+        return Ok(None);
+    }
+
+    let sections = elf_header.sections(endian, elf_data)?;
+    for section in sections.iter() {
+        if section.sh_type(endian) != object::elf::SHT_RISCV_ATTRIBUTES {
+            continue;
+        }
+        let data = section.data(endian, elf_data)?;
+        if let Some(arch) = read_riscv_arch_from_attributes(endian, data)? {
+            return Ok(Some(arch));
+        }
+    }
+    Ok(None)
+}
+
+/// Extract `Tag_RISCV_arch` from the contents of a `.riscv.attributes` section.
+fn read_riscv_arch_from_attributes(endian: Endianness, data: &[u8]) -> Result<Option<String>> {
+    let attributes = AttributesSection::<FileHeader32<Endianness>>::new(endian, data)?;
+    for subsection in attributes.subsections()? {
+        let subsection = subsection?;
+        if subsection.vendor() != b"riscv" {
+            continue;
+        }
+        for subsubsection in subsection.subsubsections() {
+            let subsubsection = subsubsection?;
+            if subsubsection.tag() != object::elf::Tag_File {
+                continue;
+            }
+            let mut reader = subsubsection.attributes();
+            while let Some(tag) = reader.read_tag()? {
+                if tag == TAG_RISCV_ARCH {
+                    let arch = reader.read_string()?;
+                    return Ok(Some(String::from_utf8_lossy(arch).into_owned()));
+                }
+                // Only Tag_RISCV_arch is a string, every other tag is a ULEB128 integer.
+                reader.read_integer()?;
+            }
+        }
+    }
+    Ok(None)
 }
 
 /// Simulates `objcopy -O binary`, returns loadable sections
@@ -253,4 +315,92 @@ pub fn read_elf(elf_data: &[u8]) -> Result<Firmware> {
     log::debug!("found {} sections", sections.len());
     // merge_sections(sections)
     Ok(Firmware::Sections(sections))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A `.riscv.attributes` section body for vendor `riscv`, tag `Tag_File`,
+    /// carrying a single `Tag_RISCV_arch` attribute (tag 5, string value).
+    fn riscv_attributes_section(arch: &str) -> Vec<u8> {
+        let mut attrs = vec![TAG_RISCV_ARCH as u8];
+        attrs.extend_from_slice(arch.as_bytes());
+        attrs.push(0);
+
+        let mut subsubsection = vec![object::elf::Tag_File];
+        subsubsection.extend_from_slice(&((attrs.len() + 5) as u32).to_le_bytes());
+        subsubsection.extend_from_slice(&attrs);
+
+        let mut subsection = 0u32.to_le_bytes().to_vec(); // length, patched below
+        subsection.extend_from_slice(b"riscv\0");
+        subsection.extend_from_slice(&subsubsection);
+        let len = subsection.len() as u32;
+        subsection[..4].copy_from_slice(&len.to_le_bytes());
+
+        let mut section = vec![b'A'];
+        section.extend_from_slice(&subsection);
+        section
+    }
+
+    /// A minimal RISC-V ELF32 file whose single section is a `.riscv.attributes`
+    /// section built by [`riscv_attributes_section`].
+    fn minimal_riscv_elf(arch: &str) -> Vec<u8> {
+        let attributes = riscv_attributes_section(arch);
+
+        // ELF header (52 bytes) + section data + null shdr + shstrtab + attributes shdr.
+        let ehsize = 52u32;
+        let attributes_off = ehsize;
+        let shstrtab_off = attributes_off + attributes.len() as u32;
+        let shstrtab: &[u8] = b"\0.riscv.attributes\0";
+        // The section header table must be 4-byte aligned.
+        let shoff = (shstrtab_off + shstrtab.len() as u32 + 3) & !3;
+
+        let mut buf = vec![0; shoff as usize + 2 * 40];
+
+        buf[shstrtab_off as usize..shoff as usize][..shstrtab.len()].copy_from_slice(shstrtab);
+
+        // e_ident
+        buf[..4].copy_from_slice(b"\x7fELF");
+        buf[4] = 1; // ELFCLASS32
+        buf[5] = 1; // ELFDATA2LSB
+        buf[6] = 1; // EV_CURRENT
+        // e_type = ET_REL, e_machine = EM_RISCV, e_version = EV_CURRENT
+        buf[16..18].copy_from_slice(&1u16.to_le_bytes());
+        buf[18..20].copy_from_slice(&object::elf::EM_RISCV.to_le_bytes());
+        buf[20..24].copy_from_slice(&1u32.to_le_bytes());
+        // e_shoff, e_shentsize, e_shnum, e_shstrndx
+        buf[32..36].copy_from_slice(&shoff.to_le_bytes());
+        buf[46..48].copy_from_slice(&40u16.to_le_bytes());
+        buf[48..50].copy_from_slice(&2u16.to_le_bytes());
+        buf[50..52].copy_from_slice(&1u16.to_le_bytes());
+
+        buf[attributes_off as usize..shstrtab_off as usize].copy_from_slice(&attributes);
+
+        // section 0: null, left zeroed
+        // section 1: .riscv.attributes
+        let shdr = &mut buf[shoff as usize + 40..][..40];
+        shdr[0..4].copy_from_slice(&1u32.to_le_bytes()); // sh_name -> ".riscv.attributes"
+        shdr[4..8].copy_from_slice(&object::elf::SHT_RISCV_ATTRIBUTES.to_le_bytes());
+        shdr[16..20].copy_from_slice(&attributes_off.to_le_bytes()); // sh_offset
+        shdr[20..24].copy_from_slice(&(attributes.len() as u32).to_le_bytes()); // sh_size
+
+        buf
+    }
+
+    #[test]
+    fn reads_tag_riscv_arch_from_elf() {
+        let elf = minimal_riscv_elf("rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0");
+        assert_eq!(
+            read_elf_riscv_arch(&elf).unwrap().as_deref(),
+            Some("rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0")
+        );
+    }
+
+    #[test]
+    fn non_riscv_elf_returns_none() {
+        let mut elf = minimal_riscv_elf("rv32i2p1");
+        elf[18..20].copy_from_slice(&object::elf::EM_ARM.to_le_bytes());
+        assert_eq!(read_elf_riscv_arch(&elf).unwrap(), None);
+    }
 }
