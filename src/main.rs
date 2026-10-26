@@ -435,6 +435,7 @@ fn main() -> Result<()> {
                     sess.dump_info()?;
                     sess.dump_core_csrs()?;
                     sess.dump_dmi()?;
+                    sess.ensure_mcu_resume()?;
                 }
                 Commands::SdiPrint(v) => match v {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,
@@ -477,3 +478,4 @@ pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
         Ok(s.parse().expect("must be a number"))
     }
 }
+
