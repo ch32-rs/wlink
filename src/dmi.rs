@@ -135,6 +135,40 @@ impl ProbeSession {
         }
     }
 
+    /// Reset the core while HOLDING the halt request (ndmreset + haltreq):
+    /// the chip comes back with clean peripheral/clock state but never
+    /// executes a user instruction — the rescue lane's flash-safe state.
+    pub fn reset_mcu_and_halt(&mut self) -> Result<()> {
+        self.ensure_mcu_halt()?;
+
+        // core reset request with haltreq held (haltreq|ndmreset|dmactive)
+        self.probe.dmi_write(0x10, 0x80000003)?;
+        let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
+        if !(dmstatus.allhavereset() && dmstatus.anyhavereset()) {
+            log::warn!("reset-and-halt: havereset not acknowledged");
+        }
+
+        // clear the reset status, still holding haltreq (ackhavereset|haltreq|dmactive)
+        for _ in 0..10 {
+            self.probe.dmi_write(0x10, 0x90000001)?;
+            let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
+            if !dmstatus.allhavereset() && !dmstatus.anyhavereset() {
+                break;
+            }
+        }
+
+        // release haltreq — the core stays halted at the reset vector
+        self.probe.dmi_write(0x10, 0x00000001)?;
+
+        let dmstatus = self.probe.read_dmi_reg::<Dmstatus>()?;
+        if dmstatus.allhalted() && dmstatus.anyhalted() {
+            log::info!("core reset + halted at the reset vector (clean state)");
+        } else {
+            log::warn!("reset-and-halt: core not halted after reset");
+        }
+        Ok(())
+    }
+
     pub fn reset_debug_module(&mut self) -> Result<()> {
         self.probe.dmi_write(0x10, 0x00000000)?;
         self.probe.dmi_write(0x10, 0x00000001)?;
@@ -392,6 +426,108 @@ impl ProbeSession {
         log::info!("{abstractcs:#x?}");
         let haltsum0 = self.probe.dmi_read(0x40)?;
         log::info!("haltsum0: {:#x?}", haltsum0);
+
+        Ok(())
+    }
+
+    // ---- direct FLASH-register access over DMI (no probe stub) ----
+    // Activated 2026-07-16 from the reference block below for the rescue
+    // lane: erase works on a HALTED core with no detach/reset, which the
+    // probe's own flash stub cannot do. Register map verified against the
+    // CH32H417 RM ch46 (KEYR 0x04, STATR 0x0C, CTLR 0x10, ADDR 0x14,
+    // MODEKEYR 0x24; FTER bit17, BER32 bit18, STRT bit6).
+
+    fn lock_flash(&mut self) -> Result<()> {
+        const FLASH_CTLR: u32 = 0x40022010;
+
+        self.modify_mem32(FLASH_CTLR, |r| r | 0x00008080)?;
+        Ok(())
+    }
+
+    /// unlock FLASH LOCK and FLOCK
+    fn unlock_flash(&mut self) -> Result<()> {
+        const FLASH_CTLR: u32 = 0x40022010;
+        const FLASH_KEYR: u32 = 0x40022004;
+        const FLASH_MODEKEYR: u32 = 0x40022024;
+        const KEY1: u32 = 0x45670123;
+        const KEY2: u32 = 0xCDEF89AB;
+
+        let flash_ctlr = self.read_mem32(FLASH_CTLR)?;
+        log::debug!("flash_ctlr: 0x{:08x}", flash_ctlr);
+        // Test LOCK, FLOCK bits
+        if flash_ctlr & 0x00008080 == 0 {
+            // already unlocked
+            return Ok(());
+        }
+        // unlock LOCK
+        self.write_mem32(FLASH_KEYR, KEY1)?;
+        self.write_mem32(FLASH_KEYR, KEY2)?;
+
+        // unlock FLOCK
+        self.write_mem32(FLASH_MODEKEYR, KEY1)?;
+        self.write_mem32(FLASH_MODEKEYR, KEY2)?;
+
+        let flash_ctlr = self.read_mem32(FLASH_CTLR)?;
+        log::debug!("flash_ctlr: 0x{:08x}", flash_ctlr);
+
+        Ok(())
+    }
+
+    /// Erase one 32K block via the FLASH controller registers (BER32)
+    pub fn fast_erase_32k(&mut self, address: u32) -> Result<()> {
+        // require unlock
+        self.unlock_flash()?;
+
+        const FLASH_STATR: u32 = 0x4002200C;
+        const BUSY_MASK: u32 = 0x00000001;
+        const START_MASK: u32 = 1 << 6;
+        const WPROTECT_ERR_MASK: u32 = 1 << 4;
+
+        const FLASH_ADDR: u32 = 0x40022014;
+        const FLASH_CTLR: u32 = 0x40022010;
+
+        const BLOCK_ERASE_32K_MASK: u32 = 1 << 18;
+
+        if address & 0x7fff != 0 {
+            return Err(Error::Custom(
+                "address must be 32k bytes aligned".to_string(),
+            ));
+        }
+
+        let statr = self.read_mem32(FLASH_STATR)?;
+        // check if busy
+        if statr & BUSY_MASK != 0 {
+            return Err(Error::Custom("flash busy".to_string()));
+        }
+
+        self.modify_mem32(FLASH_CTLR, |r| r | BLOCK_ERASE_32K_MASK)?;
+
+        self.write_mem32(FLASH_ADDR, address)?;
+
+        self.modify_mem32(FLASH_CTLR, |r| r | START_MASK)?;
+
+        loop {
+            let statr = self.read_mem32(FLASH_STATR)?;
+            // check if busy
+            if statr & BUSY_MASK != 0 {
+                thread::sleep(Duration::from_millis(1));
+            } else {
+                if statr & WPROTECT_ERR_MASK != 0 {
+                    return Err(Error::Custom("flash write protect error".to_string()));
+                }
+                self.write_mem32(FLASH_STATR, statr)?; // write 1 to clear EOP
+
+                break;
+            }
+        }
+        // read 1 word to verify
+        let word = self.read_mem32(address)?;
+        log::info!("erased block @0x{:08x} reads 0x{:08x}", address, word);
+
+        // end erase, disable block erase
+        self.modify_mem32(FLASH_CTLR, |r| r & (!BLOCK_ERASE_32K_MASK))?;
+
+        self.lock_flash()?;
 
         Ok(())
     }
