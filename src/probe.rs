@@ -2,7 +2,10 @@
 
 use crate::commands::{self, RawCommand, Response};
 use crate::{Error, Result, RiscvChip, usb_device};
-use crate::{commands::control::ProbeInfo, usb_device::USBDeviceBackend};
+use crate::{
+    commands::control::ProbeInfo,
+    usb_device::{DeviceSelector, USBDeviceBackend},
+};
 use std::fmt;
 
 pub const VENDOR_ID: u16 = 0x1a86;
@@ -95,12 +98,15 @@ pub struct WchLink {
 }
 
 impl WchLink {
-    pub fn open_nth(nth: usize) -> Result<Self> {
-        let device = match crate::usb_device::open_nth(VENDOR_ID, PRODUCT_ID, nth) {
+    /// Opens a probe. `selector` takes either a `usize` index, which is the
+    /// original behaviour, or a [`DeviceSelector`] naming a USB serial number.
+    pub fn open_nth(selector: impl Into<DeviceSelector>) -> Result<Self> {
+        let selector = &selector.into();
+        let device = match crate::usb_device::open(VENDOR_ID, PRODUCT_ID, selector) {
             Ok(dev) => dev,
             Err(e) => {
                 // Detect if it is in DAP mode
-                if crate::usb_device::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth).is_ok() {
+                if crate::usb_device::open(VENDOR_ID_DAP, PRODUCT_ID_DAP, selector).is_ok() {
                     return Err(Error::ProbeModeNotSupported);
                 } else {
                     return Err(e);
@@ -128,20 +134,27 @@ impl WchLink {
 
     pub fn list_probes() -> Result<()> {
         let devs = usb_device::list_devices(VENDOR_ID, PRODUCT_ID)?;
+        let rv_count = devs.len();
         for dev in devs {
             println!("{} (RV mode)", dev)
         }
         let devs = usb_device::list_devices(VENDOR_ID_DAP, PRODUCT_ID_DAP)?;
+        let dap_count = devs.len();
         for dev in devs {
             println!("{} (DAP mode)", dev)
+        }
+        if rv_count + dap_count > 1 {
+            // The indices follow enumeration order and change when a probe is
+            // replugged or switches mode; a serial always names the same one.
+            println!("hint: use `-d 1a86:8010:<SERIAL>` to select a probe by serial number");
         }
         Ok(())
     }
 
     /// Switch from DAP mode to RV mode
     // ref: https://github.com/cjacker/wchlinke-mode-switch/blob/main/main.c
-    pub fn switch_from_rv_to_dap(nth: usize) -> Result<()> {
-        let mut probe = Self::open_nth(nth)?;
+    pub fn switch_from_rv_to_dap(selector: impl Into<DeviceSelector>) -> Result<()> {
+        let mut probe = Self::open_nth(selector)?;
 
         if probe.info.variant.support_switch_mode() {
             log::info!("Switch mode for WCH-LinkRV");
@@ -157,13 +170,14 @@ impl WchLink {
         }
     }
 
-    pub fn switch_from_dap_to_rv(nth: usize) -> Result<()> {
-        let mut dev = crate::usb_device::open_nth(VENDOR_ID_DAP, PRODUCT_ID_DAP, nth)?;
+    pub fn switch_from_dap_to_rv(selector: impl Into<DeviceSelector>) -> Result<()> {
+        let selector = &selector.into();
+        let mut dev = crate::usb_device::open(VENDOR_ID_DAP, PRODUCT_ID_DAP, selector)?;
         log::info!(
-            "Switch mode WCH-LinkDAP {:04x}:{:04x} #{}",
+            "Switch mode WCH-LinkDAP {:04x}:{:04x} {}",
             VENDOR_ID_DAP,
             PRODUCT_ID_DAP,
-            nth
+            selector
         );
 
         let buf = [0x81, 0xff, 0x01, 0x52];
@@ -173,8 +187,11 @@ impl WchLink {
         Ok(())
     }
 
-    pub fn set_power_output_enabled(nth: usize, cmd: commands::control::SetPower) -> Result<()> {
-        let mut probe = Self::open_nth(nth)?;
+    pub fn set_power_output_enabled(
+        selector: impl Into<DeviceSelector>,
+        cmd: commands::control::SetPower,
+    ) -> Result<()> {
+        let mut probe = Self::open_nth(selector)?;
 
         if !probe.info.variant.support_power_funcs() {
             return Err(Error::Custom(

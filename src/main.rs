@@ -8,6 +8,7 @@ use wlink::{
     operations::ProbeSession,
     probe::WchLink,
     regs,
+    usb_device::DeviceSelector,
 };
 
 use clap::{Parser, Subcommand};
@@ -16,9 +17,10 @@ use clap_verbosity_flag::{InfoLevel, Verbosity};
 #[derive(clap::Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// Optional device index to operate on
-    #[arg(long, short = 'd', value_name = "INDEX")]
-    device: Option<usize>,
+    /// Which probe to operate on: an index from `wlink list`, or a stable
+    /// `VID:PID:SERIAL` (same form as probe-rs' PROBE_RS_PROBE)
+    #[arg(long, short = 'd', value_name = "INDEX|VID:PID:SERIAL")]
+    device: Option<DeviceSelector>,
 
     #[command(flatten)]
     verbose: Verbosity<InfoLevel>,
@@ -197,7 +199,8 @@ fn main() -> Result<()> {
     )
     .expect("initialize simple logger");
 
-    let device_index = cli.device.unwrap_or(0);
+    // No `-d` keeps the historical "first probe" behaviour.
+    let device = cli.device.unwrap_or(DeviceSelector::Index(0));
     let mut will_detach = !cli.no_detach;
 
     match cli.command {
@@ -213,16 +216,16 @@ fn main() -> Result<()> {
             if !(rv ^ dap) {
                 println!("Please choose one mode to switch, either --rv or --dap");
             } else if dap {
-                WchLink::switch_from_rv_to_dap(device_index)?;
+                WchLink::switch_from_rv_to_dap(device)?;
             } else {
-                WchLink::switch_from_dap_to_rv(device_index)?;
+                WchLink::switch_from_dap_to_rv(device)?;
             }
         }
         Some(Commands::List {}) => {
             WchLink::list_probes()?;
         }
         Some(Commands::SetPower { cmd }) => {
-            WchLink::set_power_output_enabled(device_index, cmd)?;
+            WchLink::set_power_output_enabled(device, cmd)?;
         }
 
         Some(Commands::Erase { method }) if method != EraseMode::Default => {
@@ -232,7 +235,7 @@ fn main() -> Result<()> {
                 "--chip required to do a special erase".into(),
             ))?;
 
-            let mut probe = WchLink::open_nth(device_index)?;
+            let mut probe = WchLink::open_nth(device)?;
             log::info!("Erase chip by {:?}", method);
             match method {
                 EraseMode::PowerOff => {
@@ -246,7 +249,7 @@ fn main() -> Result<()> {
             }
         }
         Some(command) => {
-            let probe = WchLink::open_nth(device_index)?;
+            let probe = WchLink::open_nth(device)?;
             let mut sess = ProbeSession::attach(probe, cli.chip, cli.speed)?;
 
             match command {
@@ -475,5 +478,66 @@ pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
         Ok(u32::from_str_radix(bin_str, 2).unwrap_or_else(|_| panic!("error while parsing {s:?}")))
     } else {
         Ok(s.parse().expect("must be a number"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn erase_by_power_off_accepts_a_probe_rs_selector() {
+        // Regression: `-d` used to be an Option<usize>, so this exact command
+        // line was rejected by clap with "invalid digit found in string".
+        let cli = Cli::try_parse_from([
+            "wlink",
+            "-d",
+            "1a86:8010:D7708F065C7F",
+            "erase",
+            "--method",
+            "power-off",
+            "--chip",
+            "CH32H41X",
+        ])
+        .expect("the reported command line should parse");
+
+        assert_eq!(
+            cli.device,
+            Some(DeviceSelector::Serial("D7708F065C7F".into()))
+        );
+        assert_eq!(cli.chip, Some(RiscvChip::CH32H41X));
+        assert!(matches!(
+            cli.command,
+            Some(Commands::Erase {
+                method: EraseMode::PowerOff
+            })
+        ));
+    }
+
+    #[test]
+    fn device_still_accepts_an_index_and_a_bare_serial() {
+        let cli = Cli::try_parse_from(["wlink", "-d", "2", "status"]).unwrap();
+        assert_eq!(cli.device, Some(DeviceSelector::Index(2)));
+
+        let cli = Cli::try_parse_from(["wlink", "-d", "D7708F065C7F", "status"]).unwrap();
+        assert_eq!(
+            cli.device,
+            Some(DeviceSelector::Serial("D7708F065C7F".into()))
+        );
+
+        let cli = Cli::try_parse_from(["wlink", "status"]).unwrap();
+        assert_eq!(cli.device, None);
+    }
+
+    #[test]
+    fn malformed_device_selector_has_a_useful_error() {
+        let err = Cli::try_parse_from(["wlink", "-d", "1a86:8010", "status"])
+            .err()
+            .expect("an incomplete selector should be rejected");
+        assert!(
+            err.to_string().contains("expected INDEX or VID:PID:SERIAL"),
+            "unexpected error: {err}"
+        );
     }
 }

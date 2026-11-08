@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Report CH32M103G8R6 (chip ID `0x10330700`) in `status` output. It shares the CH32L103 chip ID prefix and flashes as a CH32L103.
 - Log the ELF target RISC-V architecture (e.g. `rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0`) when flashing an ELF file.
+- Select a specific WCH-Link by USB serial with `-d VID:PID:SERIAL` (the form `probe-rs` uses in `PROBE_RS_PROBE`) or `-d <SERIAL>`. A plain number still selects by index. This stays stable when probes are replugged or a probe is in DAP mode.
 
 ## [0.1.3] - 2026-10-21
 
