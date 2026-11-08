@@ -3,21 +3,121 @@
 use crate::Result;
 use std::{
     fmt::{Debug, Display},
+    str::FromStr,
     time::Duration,
 };
+
+/// Which WCH-Link to operate on when more than one is attached.
+///
+/// The index form (`-d 1`) is the original one and follows enumeration order,
+/// which changes when probes are replugged or when one switches between RV and
+/// DAP mode. The serial form (`-d 1a86:8010:D7708F065C7F`) names one probe
+/// regardless of enumeration order; it accepts the same `VID:PID:SERIAL`
+/// string that `probe-rs` takes in `PROBE_RS_PROBE`, so a serial copied from
+/// there works here unchanged.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DeviceSelector {
+    /// The Nth matching probe, in enumeration order.
+    Index(usize),
+    /// The probe whose USB serial number is this, in RV or DAP mode.
+    Serial(String),
+}
+
+impl From<usize> for DeviceSelector {
+    fn from(index: usize) -> Self {
+        Self::Index(index)
+    }
+}
+
+impl From<&DeviceSelector> for DeviceSelector {
+    fn from(selector: &DeviceSelector) -> Self {
+        selector.clone()
+    }
+}
+
+impl Display for DeviceSelector {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Index(index) => write!(f, "#{index}"),
+            Self::Serial(serial) => write!(f, "serial {serial}"),
+        }
+    }
+}
+
+/// USB serials are hexadecimal, so their case is not significant. Comparing
+/// case-insensitively lets a serial copied from `probe-rs list` (upper case)
+/// work even when typed in lower case.
+fn serial_matches(actual: Option<&str>, wanted: &str) -> bool {
+    actual.is_some_and(|serial| serial.eq_ignore_ascii_case(wanted))
+}
+
+impl FromStr for DeviceSelector {
+    type Err = String;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let s = s.trim();
+        if s.is_empty() {
+            return Err("empty probe selector".into());
+        }
+        if let Ok(index) = s.parse::<usize>() {
+            return Ok(Self::Index(index));
+        }
+        // `VID:PID:SERIAL`, as `probe-rs` prints and accepts it. The IDs are
+        // not used for matching: wlink knows the two WCH-Link VID/PID pairs
+        // (RV 8010, DAP 8012) and searches both, so one serial selects the same
+        // physical probe in either mode. Accepting the whole string keeps it
+        // copy-pasteable from `probe-rs list`.
+        let serial = match s.split(':').collect::<Vec<_>>().as_slice() {
+            [vid, pid, serial] => {
+                u16::from_str_radix(vid, 16)
+                    .map_err(|_| format!("invalid USB vendor id {vid:?}"))?;
+                u16::from_str_radix(pid, 16)
+                    .map_err(|_| format!("invalid USB product id {pid:?}"))?;
+                *serial
+            }
+            [serial] => serial,
+            _ => return Err(format!("expected INDEX or VID:PID:SERIAL, got {s:?}")),
+        };
+        if serial.is_empty() {
+            return Err("empty serial number".into());
+        }
+        Ok(Self::Serial(serial.to_string()))
+    }
+}
 
 pub trait USBDeviceBackend: Debug {
     fn set_timeout(&mut self, _timeout: Duration) {}
 
     fn read_endpoint(&mut self, ep: u8, buf: &mut [u8]) -> Result<usize>;
 
+    /// Opens the Nth matching probe. Backends that can read USB serial numbers
+    /// should also override [`Self::open_selector`] so a probe can be named
+    /// independently of enumeration order.
     fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>>
     where
         Self: Sized;
 
+    /// Opens the probe `selector` names. The default understands indices only.
+    fn open_selector(
+        vid: u16,
+        pid: u16,
+        selector: &DeviceSelector,
+    ) -> Result<Box<dyn USBDeviceBackend>>
+    where
+        Self: Sized,
+    {
+        match selector {
+            DeviceSelector::Index(nth) => Self::open_nth(vid, pid, *nth),
+            DeviceSelector::Serial(_) => Err(crate::Error::Custom(
+                "this USB backend cannot select a probe by serial number".into(),
+            )),
+        }
+    }
+
     fn write_endpoint(&mut self, ep: u8, buf: &[u8]) -> Result<()>;
 }
 
+/// Opens the Nth matching probe, in enumeration order.
 pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
     #[cfg(all(target_os = "windows", target_arch = "x86"))]
     {
@@ -27,6 +127,24 @@ pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBacke
     #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
     {
         libusb::NusbDevice::open_nth(vid, pid, nth)
+    }
+}
+
+/// Opens the probe `selector` names. A plain index behaves like [`open_nth`].
+pub fn open(
+    vid: u16,
+    pid: u16,
+    selector: impl Into<DeviceSelector>,
+) -> Result<Box<dyn USBDeviceBackend>> {
+    let selector = &selector.into();
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    {
+        ch375_driver::CH375USBDevice::open_selector(vid, pid, selector)
+            .or_else(|_| libusb::NusbDevice::open_selector(vid, pid, selector))
+    }
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    {
+        libusb::NusbDevice::open_selector(vid, pid, selector)
     }
 }
 
@@ -104,45 +222,27 @@ pub mod libusb {
         }
 
         fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
-            let devices: Vec<_> = nusb::list_devices()
-                .wait()
-                .map_err(crate::Error::Usb)?
-                .filter(|d| d.vendor_id() == vid && d.product_id() == pid)
-                .collect();
+            let devices = matching_devices(vid, pid)?;
+            let device_info = devices.get(nth).ok_or(crate::Error::ProbeNotFound)?;
+            open_info(device_info)
+        }
 
-            if nth >= devices.len() {
-                return Err(crate::Error::ProbeNotFound);
+        fn open_selector(
+            vid: u16,
+            pid: u16,
+            selector: &DeviceSelector,
+        ) -> Result<Box<dyn USBDeviceBackend>> {
+            match selector {
+                DeviceSelector::Index(nth) => Self::open_nth(vid, pid, *nth),
+                DeviceSelector::Serial(serial) => {
+                    let devices = matching_devices(vid, pid)?;
+                    let device_info = devices
+                        .iter()
+                        .find(|d| serial_matches(d.serial_number(), serial))
+                        .ok_or(crate::Error::ProbeNotFound)?;
+                    open_info(device_info)
+                }
             }
-
-            let device_info = &devices[nth];
-            log::trace!(
-                "Device: {:04x}:{:04x}",
-                device_info.vendor_id(),
-                device_info.product_id()
-            );
-
-            if let Some(serial) = device_info.serial_number() {
-                log::debug!("Serial number: {:?}", serial);
-            }
-
-            let device = device_info.open().wait().map_err(|e| {
-                log::error!("Failed to open USB device: {}", e);
-                #[cfg(target_os = "windows")]
-                log::warn!("It's likely no WinUSB driver installed. Please install it from Zadig. See also: https://zadig.akeo.ie");
-                #[cfg(target_os = "linux")]
-                log::warn!("It's likely the udev rules are not installed properly. Please refer to README.md for more details.");
-                crate::Error::Usb(e)
-            })?;
-
-            let interface = device
-                .claim_interface(0)
-                .wait()
-                .map_err(crate::Error::Usb)?;
-
-            Ok(Box::new(NusbDevice {
-                interface,
-                timeout: Duration::from_millis(5000),
-            }))
         }
 
         fn read_endpoint(&mut self, ep: u8, buf: &mut [u8]) -> Result<usize> {
@@ -165,6 +265,46 @@ pub mod libusb {
             writer.flush()?;
             Ok(())
         }
+    }
+
+    fn matching_devices(vid: u16, pid: u16) -> Result<Vec<nusb::DeviceInfo>> {
+        let devices = nusb::list_devices()
+            .wait()
+            .map_err(crate::Error::Usb)?
+            .filter(|d| d.vendor_id() == vid && d.product_id() == pid)
+            .collect();
+        Ok(devices)
+    }
+
+    fn open_info(device_info: &nusb::DeviceInfo) -> Result<Box<dyn USBDeviceBackend>> {
+        log::trace!(
+            "Device: {:04x}:{:04x}",
+            device_info.vendor_id(),
+            device_info.product_id()
+        );
+
+        if let Some(serial) = device_info.serial_number() {
+            log::debug!("Serial number: {:?}", serial);
+        }
+
+        let device = device_info.open().wait().map_err(|e| {
+            log::error!("Failed to open USB device: {}", e);
+            #[cfg(target_os = "windows")]
+            log::warn!("It's likely no WinUSB driver installed. Please install it from Zadig. See also: https://zadig.akeo.ie");
+            #[cfg(target_os = "linux")]
+            log::warn!("It's likely the udev rules are not installed properly. Please refer to README.md for more details.");
+            crate::Error::Usb(e)
+        })?;
+
+        let interface = device
+            .claim_interface(0)
+            .wait()
+            .map_err(crate::Error::Usb)?;
+
+        Ok(Box::new(NusbDevice {
+            interface,
+            timeout: Duration::from_millis(5000),
+        }))
     }
 
     fn get_speed(speed: Option<nusb::Speed>) -> &'static str {
@@ -287,6 +427,10 @@ pub mod ch375_driver {
     }
 
     impl USBDeviceBackend for CH375USBDevice {
+        // The CH375 driver opens devices by handle index and never exposes
+        // their serial numbers. `open_selector` is left at its default, which
+        // rejects serial selectors so `usb_device::open` falls through to the
+        // nusb backend.
         fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
             let lib = ensure_library_load()?;
             /*HANDLE WINAPI CH375OpenDevice( // Open CH375 device, return the handle, invalid if error
@@ -395,5 +539,74 @@ pub mod ch375_driver {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn index_selector_keeps_the_original_behaviour() {
+        assert_eq!("0".parse(), Ok(DeviceSelector::Index(0)));
+        assert_eq!("2".parse(), Ok(DeviceSelector::Index(2)));
+        assert_eq!(" 1 ".parse(), Ok(DeviceSelector::Index(1)));
+    }
+
+    #[test]
+    fn probe_rs_style_selector_uses_the_serial() {
+        // Regression: this used to be parsed as a usize and failed with
+        // "invalid digit found in string".
+        assert_eq!(
+            "1a86:8010:D7708F065C7F".parse(),
+            Ok(DeviceSelector::Serial("D7708F065C7F".into()))
+        );
+        // Upper case IDs and the DAP-mode PID are accepted as well; the IDs
+        // are validated but not used for matching.
+        assert_eq!(
+            "1A86:8012:d7708f065c7f".parse(),
+            Ok(DeviceSelector::Serial("d7708f065c7f".into()))
+        );
+    }
+
+    #[test]
+    fn bare_serial_is_a_selector() {
+        assert_eq!(
+            "D7708F065C7F".parse(),
+            Ok(DeviceSelector::Serial("D7708F065C7F".into()))
+        );
+    }
+
+    #[test]
+    fn malformed_selectors_are_rejected() {
+        for s in [
+            "",
+            "  ",
+            "zzzz:8010:SERIAL",
+            "1a86:8010",
+            "1a86:8010:",
+            "1:2:3:4",
+        ] {
+            assert!(
+                s.parse::<DeviceSelector>().is_err(),
+                "{s:?} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn serial_matching_ignores_case_but_not_content() {
+        assert!(serial_matches(Some("D7708F065C7F"), "d7708f065c7f"));
+        assert!(!serial_matches(Some("D7708F065C7F"), "D7708F065C7E"));
+        assert!(!serial_matches(None, "D7708F065C7F"));
+    }
+
+    #[test]
+    fn display_describes_the_selector() {
+        assert_eq!(DeviceSelector::Index(1).to_string(), "#1");
+        assert_eq!(
+            DeviceSelector::Serial("ABC".into()).to_string(),
+            "serial ABC"
+        );
     }
 }

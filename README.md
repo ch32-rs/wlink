@@ -126,6 +126,28 @@ yay -Syu wlink
 > **Note**
 > For help of wire connection for specific chips, please refer to `docs` subdirectory.
 
+### Selecting a probe
+
+`-d` picks which WCH-Link to use. Without it wlink takes the first one it
+enumerates, which is not deterministic when several probes are attached, or
+when one of them is in DAP mode. Pass a USB serial number instead of an index
+to name one probe reliably:
+
+```console
+> wlink list
+<WCH-Link#0 nusb device> ID 1a86:8010 Serial F93D8F067E10 (USB-FS 12 Mbps) (RV mode)
+<WCH-Link#1 nusb device> ID 1a86:8010 Serial D7708F065C7F (USB-FS 12 Mbps) (RV mode)
+
+> wlink -d 1a86:8010:D7708F065C7F status
+> wlink -d D7708F065C7F status          # serial alone works too
+```
+
+The `VID:PID:SERIAL` form is the same string `probe-rs` accepts in
+`PROBE_RS_PROBE`, so a serial copied from `probe-rs list` works unchanged. The
+IDs are accepted for compatibility; wlink still searches its own known VID/PID
+pairs, which lets one serial select the probe in either RV or DAP mode. A plain
+number keeps the original index behaviour.
+
 ```console
 > # Flash firmware.bin to Code FLASH at address 0x08000000
 > wlink flash --address 0x08000000 ./firmware.bin
