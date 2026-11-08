@@ -130,8 +130,23 @@ yay -Syu wlink
 
 `-d` picks which WCH-Link to use. Without it wlink takes the first one it
 enumerates, which is not deterministic when several probes are attached, or
-when one of them is in DAP mode. Pass a USB serial number instead of an index
-to name one probe reliably:
+when one of them is in DAP mode. Because that could flash the wrong board,
+`flash` refuses to run when more than one probe is attached and no `-d` was
+given (probes in both RV and DAP mode are counted). The error lists every
+attached probe with a `-d` selector that can be copied into the command:
+
+```console
+> wlink flash firmware.bin
+Error: 3 WCH-Link probes attached; refusing to flash without an explicit probe.
+Select one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):
+  -d 1a86:8010:7E238F0602BE     # WCH-Link#0 (RV mode)
+  -d 1a86:8010:F93D8F067E10     # WCH-Link#1 (RV mode)
+  -d 1a86:8010:D7708F065C7F     # WCH-Link#2 (RV mode)
+
+> wlink -d 1a86:8010:D7708F065C7F flash firmware.bin
+```
+
+Pass a USB serial number instead of an index to name one probe reliably:
 
 ```console
 > wlink list

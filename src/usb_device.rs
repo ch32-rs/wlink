@@ -168,6 +168,48 @@ pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
     Ok(ret)
 }
 
+/// Minimal description of a matching USB device, used to offer the user an
+/// explicit `-d` selector when several probes are attached.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachedDevice {
+    /// Position among devices with the same VID/PID, in enumeration order.
+    pub index: usize,
+    /// USB serial number, when the backend can read it.
+    pub serial: Option<String>,
+}
+
+/// Lists matching probes using the same enumeration that [`open`] selects
+/// from, so the offered selectors agree with what a selector-less open would
+/// actually pick.
+///
+/// This is separate from [`list_devices`]: on 32-bit Windows the CH375 driver
+/// and nusb both see the same physical probes, so merging their printed lists
+/// would double count them. nusb is preferred because it exposes serials.
+pub fn list_attached_devices(vid: u16, pid: u16) -> Result<Vec<AttachedDevice>> {
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    {
+        let nusb_devices = libusb::list_attached_devices(vid, pid)?;
+        if !nusb_devices.is_empty() {
+            return Ok(nusb_devices);
+        }
+        // No WinUSB-compatible devices: fall back to the CH375 driver, which
+        // cannot report serial numbers. The DLL is optional.
+        let count = ch375_driver::list_devices(vid, pid)
+            .map(|devs| devs.len())
+            .unwrap_or(0);
+        Ok((0..count)
+            .map(|index| AttachedDevice {
+                index,
+                serial: None,
+            })
+            .collect())
+    }
+    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
+    {
+        libusb::list_attached_devices(vid, pid)
+    }
+}
+
 pub mod libusb {
     use std::fmt;
     use std::io::{Read, Write};
@@ -267,7 +309,18 @@ pub mod libusb {
         }
     }
 
-    fn matching_devices(vid: u16, pid: u16) -> Result<Vec<nusb::DeviceInfo>> {
+    pub(super) fn list_attached_devices(vid: u16, pid: u16) -> Result<Vec<AttachedDevice>> {
+        Ok(matching_devices(vid, pid)?
+            .iter()
+            .enumerate()
+            .map(|(index, device)| AttachedDevice {
+                index,
+                serial: device.serial_number().map(|s| s.to_string()),
+            })
+            .collect())
+    }
+
+    pub(super) fn matching_devices(vid: u16, pid: u16) -> Result<Vec<nusb::DeviceInfo>> {
         let devices = nusb::list_devices()
             .wait()
             .map_err(crate::Error::Usb)?

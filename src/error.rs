@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::RiscvChip;
+use crate::{RiscvChip, probe::ProbeChoice};
 
 /// Alias for a `Result` with the error type `wlink::Error`.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -13,6 +13,9 @@ pub enum Error {
     Usb(nusb::Error),
     #[error("WCH-Link not found, please check your connection")]
     ProbeNotFound,
+    /// Several probes are attached, but the operation did not name one.
+    #[error("{}", ambiguous_probe_message(.0))]
+    AmbiguousProbe(Vec<ProbeChoice>),
     #[error("WCH-Link is connected, but is not in RV mode")]
     ProbeModeNotSupported,
     #[error("WCH-Link doesn't support current chip: {0:?}")]
@@ -47,6 +50,27 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Driver error")]
     Driver,
+}
+
+/// Builds the "pick one of these probes" error message. Each attached probe
+/// gets a `-d` value that can be copied straight into the failed command.
+fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
+    use std::fmt::Write as _;
+
+    let mut msg = format!(
+        "{} WCH-Link probes attached; refusing to flash without an explicit probe.\n\
+         Select one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):",
+        choices.len()
+    );
+    for choice in choices {
+        // Formatting into a String is infallible.
+        let _ = write!(
+            msg,
+            "\n  -d {:<26} # {}",
+            choice.selector, choice.description
+        );
+    }
+    msg
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -6,7 +6,7 @@ use wlink::{
     dmi::DebugModuleInterface,
     firmware::{Firmware, read_firmware_from_file},
     operations::ProbeSession,
-    probe::WchLink,
+    probe::{ProbeChoice, WchLink},
     regs,
     usb_device::DeviceSelector,
 };
@@ -198,6 +198,19 @@ fn main() -> Result<()> {
         simplelog::ColorChoice::Auto,
     )
     .expect("initialize simple logger");
+
+    // Without `-d` a flash uses whichever probe enumerates first. Refuse that
+    // when several probes are attached, so a firmware image is never written
+    // to the wrong board. Other commands keep the historical behaviour.
+    if flashing_without_explicit_probe(&cli.device, &cli.command) {
+        let choices = WchLink::probe_choices().map_err(|e| {
+            anyhow::anyhow!(
+                "cannot enumerate WCH-Link probes ({e}); refusing to flash without an explicit probe. \
+                 Pass `-d <INDEX>` or `-d VID:PID:<SERIAL>` to select one"
+            )
+        })?;
+        ensure_unambiguous_flash_probe(&choices)?;
+    }
 
     // No `-d` keeps the historical "first probe" behaviour.
     let device = cli.device.unwrap_or(DeviceSelector::Index(0));
@@ -467,6 +480,26 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Whether this invocation would flash to a probe chosen by enumeration order
+/// alone, i.e. `flash` without `-d`.
+fn flashing_without_explicit_probe(
+    device: &Option<DeviceSelector>,
+    command: &Option<Commands>,
+) -> bool {
+    device.is_none() && matches!(command, Some(Commands::Flash { .. }))
+}
+
+/// "The first enumerated probe" is ambiguous when more than one probe is
+/// attached. Zero or one probe is fine: zero still fails later with a proper
+/// "probe not found" error.
+fn ensure_unambiguous_flash_probe(choices: &[ProbeChoice]) -> Result<()> {
+    if choices.len() > 1 {
+        Err(wlink::Error::AmbiguousProbe(choices.to_vec()).into())
+    } else {
+        Ok(())
+    }
+}
+
 pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
     let s = s.replace('_', "").to_lowercase();
     if let Some(hex_str) = s.strip_prefix("0x") {
@@ -539,5 +572,67 @@ mod tests {
             err.to_string().contains("expected INDEX or VID:PID:SERIAL"),
             "unexpected error: {err}"
         );
+    }
+
+    #[test]
+    fn only_a_selector_less_flash_needs_the_probe_check() {
+        let cli = Cli::try_parse_from(["wlink", "flash", "firmware.bin"]).unwrap();
+        assert!(flashing_without_explicit_probe(&cli.device, &cli.command));
+
+        // An explicit index or serial names the probe, so no check is needed.
+        for selector in ["0", "1a86:8010:D7708F065C7F"] {
+            let cli =
+                Cli::try_parse_from(["wlink", "-d", selector, "flash", "firmware.bin"]).unwrap();
+            assert!(
+                !flashing_without_explicit_probe(&cli.device, &cli.command),
+                "{selector} should count as an explicit selection"
+            );
+        }
+
+        // Only flashing is guarded; other commands keep the old behaviour.
+        for args in [
+            vec!["wlink", "status"],
+            vec!["wlink", "list"],
+            vec!["wlink", "erase"],
+            vec!["wlink", "mode-switch", "--rv"],
+        ] {
+            let cli = Cli::try_parse_from(args.clone()).unwrap();
+            assert!(
+                !flashing_without_explicit_probe(&cli.device, &cli.command),
+                "{args:?} should not be guarded"
+            );
+        }
+    }
+
+    #[test]
+    fn flashing_error_lists_every_probe_with_a_selector() {
+        let choice = |serial: &str, index: usize| ProbeChoice {
+            selector: format!("1a86:8010:{serial}"),
+            description: format!("WCH-Link#{index} (RV mode)"),
+        };
+
+        assert!(ensure_unambiguous_flash_probe(&[]).is_ok());
+        assert!(ensure_unambiguous_flash_probe(&[choice("AAA", 0)]).is_ok());
+
+        let choices = vec![
+            choice("7E238F0602BE", 0),
+            choice("F93D8F067E10", 1),
+            choice("D7708F065C7F", 2),
+        ];
+        let err = ensure_unambiguous_flash_probe(&choices)
+            .expect_err("three attached probes must be ambiguous");
+        let msg = err.to_string();
+        assert!(msg.contains("3 WCH-Link probes attached"), "{msg}");
+        assert!(msg.contains("Select one of the following"), "{msg}");
+        assert_eq!(msg.lines().count(), 5, "{msg}");
+        for c in &choices {
+            assert!(msg.contains(&c.selector), "missing {}: {msg}", c.selector);
+            assert!(
+                msg.contains(&c.description),
+                "missing {}: {msg}",
+                c.description
+            );
+        }
+        assert!(msg.contains("-d 1a86:8010:7E238F0602BE"), "{msg}");
     }
 }

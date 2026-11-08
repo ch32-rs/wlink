@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Select a specific WCH-Link by USB serial with `-d VID:PID:SERIAL` (the form `probe-rs` uses in `PROBE_RS_PROBE`) or `-d <SERIAL>`. A plain number still selects by index. This stays stable when probes are replugged or a probe is in DAP mode.
 - Rewrite the WCH-LinkRV protocol reference as a multi-page mdBook site under `docs/protocol/` (USB transport, frame format, full command and `0x0d` subcommand tables, probe info, ESIG, operation flows, DMI, constants and unverified captures), derived from the implementation instead of the outdated 2023 `protocol.md`. Add a workflow that publishes `docs/` to the `gh-pages` branch for <https://ch32-rs.github.io/wlink/>.
 
+### Fixed
+
+- Refuse to `flash` when more than one WCH-Link is attached (RV or DAP mode) and no `-d` selector was given. Previously the first enumerated probe was used silently, which could flash the wrong board. The error now lists every attached probe with a ready-to-copy `-d VID:PID:<SERIAL>` selector instead of just showing a count.
+
 ## [0.1.3] - 2026-10-21
 
 ### Added

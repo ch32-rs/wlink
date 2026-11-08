@@ -97,6 +97,15 @@ pub struct WchLink {
     pub info: ProbeInfo,
 }
 
+/// A ready-to-copy `-d` selector for one attached probe.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProbeChoice {
+    /// Value to pass to `-d`.
+    pub selector: String,
+    /// Short description shown next to it in an error message.
+    pub description: String,
+}
+
 impl WchLink {
     /// Opens a probe. `selector` takes either a `usize` index, which is the
     /// original behaviour, or a [`DeviceSelector`] naming a USB serial number.
@@ -130,6 +139,40 @@ impl WchLink {
         log::info!("{}", info);
         self.info = info;
         Ok(info)
+    }
+
+    /// Attached probes and a `-d` selector for each, in both RV and DAP mode.
+    ///
+    /// A probe in DAP mode still counts: an unqualified selector could pick it.
+    /// Serials are preferred because an index shifts when probes are replugged
+    /// or switch mode; DAP-mode probes cannot be selected by index at all.
+    pub fn probe_choices() -> Result<Vec<ProbeChoice>> {
+        let mut choices = Vec::new();
+        for (vid, pid, mode) in [
+            (VENDOR_ID, PRODUCT_ID, "RV mode"),
+            (VENDOR_ID_DAP, PRODUCT_ID_DAP, "DAP mode"),
+        ] {
+            for device in usb_device::list_attached_devices(vid, pid)? {
+                let (selector, description) = match &device.serial {
+                    Some(serial) => (
+                        format!("{vid:04x}:{pid:04x}:{serial}"),
+                        format!("WCH-Link#{} ({mode})", device.index),
+                    ),
+                    None => (
+                        device.index.to_string(),
+                        format!(
+                            "WCH-Link#{} ({mode}, no USB serial; index may change on replug)",
+                            device.index
+                        ),
+                    ),
+                };
+                choices.push(ProbeChoice {
+                    selector,
+                    description,
+                });
+            }
+        }
+        Ok(choices)
     }
 
     pub fn list_probes() -> Result<()> {
