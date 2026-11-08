@@ -133,7 +133,7 @@ enumerates, which is not deterministic when several probes are attached, or
 when one of them is in DAP mode. Because that could flash the wrong board,
 `flash` refuses to run when more than one probe is attached and no `-d` was
 given (probes in both RV and DAP mode are counted). The error lists every
-attached probe with a `-d` selector that can be copied into the command:
+RV-mode probe with a `-d` selector that can be copied into the command:
 
 ```console
 > wlink flash firmware.bin
@@ -145,6 +145,10 @@ Select one of the following with `-d` (a serial stays stable across replugs; `wl
 
 > wlink -d 1a86:8010:D7708F065C7F flash firmware.bin
 ```
+
+A probe in DAP mode still counts toward the check, but cannot be flashed: it
+is listed separately with the command to switch it back to RV mode first,
+`wlink -d <SERIAL> mode-switch --rv`.
 
 Pass a USB serial number instead of an index to name one probe reliably:
 

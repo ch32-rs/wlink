@@ -518,6 +518,7 @@ pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
 mod tests {
     use super::*;
     use clap::Parser;
+    use wlink::probe::ProbeMode;
 
     #[test]
     fn erase_by_power_off_accepts_a_probe_rs_selector() {
@@ -609,6 +610,7 @@ mod tests {
         let choice = |serial: &str, index: usize| ProbeChoice {
             selector: format!("1a86:8010:{serial}"),
             description: format!("WCH-Link#{index} (RV mode)"),
+            mode: ProbeMode::Rv,
         };
 
         assert!(ensure_unambiguous_flash_probe(&[]).is_ok());
@@ -634,5 +636,57 @@ mod tests {
             );
         }
         assert!(msg.contains("-d 1a86:8010:7E238F0602BE"), "{msg}");
+    }
+
+    #[test]
+    fn dap_probes_are_not_offered_as_flash_targets() {
+        let choices = vec![
+            ProbeChoice {
+                selector: "1a86:8010:AAA".into(),
+                description: "WCH-Link#0 (RV mode)".into(),
+                mode: ProbeMode::Rv,
+            },
+            ProbeChoice {
+                selector: "BBB".into(),
+                description: "WCH-Link#0 (DAP mode)".into(),
+                mode: ProbeMode::Dap,
+            },
+        ];
+        let err = ensure_unambiguous_flash_probe(&choices)
+            .expect_err("two probes, one in DAP mode, must be ambiguous");
+        let msg = err.to_string();
+        assert!(msg.contains("2 WCH-Link probes attached"), "{msg}");
+        assert!(msg.contains("-d 1a86:8010:AAA"), "{msg}");
+        // A DAP-mode selector only appears in the mode-switch hint, never as
+        // a `-d` line that could be copied into the failed flash command.
+        assert!(
+            !msg.lines()
+                .any(|line| line.trim_start().starts_with("-d BBB")),
+            "{msg}"
+        );
+        assert!(msg.contains("wlink -d BBB mode-switch --rv"), "{msg}");
+        assert!(msg.contains("cannot be flashed"), "{msg}");
+    }
+
+    #[test]
+    fn all_dap_probes_report_no_flashable_probe() {
+        let choices = vec![
+            ProbeChoice {
+                selector: "AAA".into(),
+                description: "WCH-Link#0 (DAP mode)".into(),
+                mode: ProbeMode::Dap,
+            },
+            ProbeChoice {
+                selector: "BBB".into(),
+                description: "WCH-Link#1 (DAP mode)".into(),
+                mode: ProbeMode::Dap,
+            },
+        ];
+        let msg = ensure_unambiguous_flash_probe(&choices)
+            .expect_err("two DAP-mode probes must be ambiguous")
+            .to_string();
+        assert!(msg.contains("None of them is in RV mode"), "{msg}");
+        assert!(!msg.contains("Select one of the following"), "{msg}");
+        assert!(msg.contains("wlink -d AAA mode-switch --rv"), "{msg}");
     }
 }

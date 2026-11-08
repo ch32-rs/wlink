@@ -97,13 +97,25 @@ pub struct WchLink {
     pub info: ProbeInfo,
 }
 
-/// A ready-to-copy `-d` selector for one attached probe.
+/// Whether an attached probe can be flashed right now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProbeMode {
+    /// RV mode (`1a86:8010`): usable for flashing.
+    Rv,
+    /// DAP mode (`1a86:8012`): must be switched back to RV mode first.
+    Dap,
+}
+
+/// A `-d` selector for one attached probe, plus how it can be used.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProbeChoice {
-    /// Value to pass to `-d`.
+    /// Value to pass to `-d`. For DAP-mode probes this selects the probe for
+    /// `mode-switch --rv`, not for flashing.
     pub selector: String,
     /// Short description shown next to it in an error message.
     pub description: String,
+    /// Whether the probe is in RV mode and can be flashed.
+    pub mode: ProbeMode,
 }
 
 impl WchLink {
@@ -143,25 +155,36 @@ impl WchLink {
 
     /// Attached probes and a `-d` selector for each, in both RV and DAP mode.
     ///
-    /// A probe in DAP mode still counts: an unqualified selector could pick it.
-    /// Serials are preferred because an index shifts when probes are replugged
-    /// or switch mode; DAP-mode probes cannot be selected by index at all.
+    /// A probe in DAP mode still counts: several attached probes make a
+    /// selector-less flash ambiguous. It is not offered as a flash target,
+    /// though, because `WchLink::open_nth` rejects DAP-mode probes.
+    /// Serials are preferred because an index shifts on replug or mode switch.
     pub fn probe_choices() -> Result<Vec<ProbeChoice>> {
         let mut choices = Vec::new();
         for (vid, pid, mode) in [
-            (VENDOR_ID, PRODUCT_ID, "RV mode"),
-            (VENDOR_ID_DAP, PRODUCT_ID_DAP, "DAP mode"),
+            (VENDOR_ID, PRODUCT_ID, ProbeMode::Rv),
+            (VENDOR_ID_DAP, PRODUCT_ID_DAP, ProbeMode::Dap),
         ] {
+            let mode_label = match mode {
+                ProbeMode::Rv => "RV mode",
+                ProbeMode::Dap => "DAP mode",
+            };
             for device in usb_device::list_attached_devices(vid, pid)? {
-                let (selector, description) = match &device.serial {
-                    Some(serial) => (
+                let (selector, description) = match (&device.serial, mode) {
+                    (Some(serial), ProbeMode::Rv) => (
                         format!("{vid:04x}:{pid:04x}:{serial}"),
-                        format!("WCH-Link#{} ({mode})", device.index),
+                        format!("WCH-Link#{} ({mode_label})", device.index),
                     ),
-                    None => (
+                    // A DAP-mode probe cannot be flashed: offer a plain
+                    // selector for `wlink -d <selector> mode-switch --rv`.
+                    (Some(serial), ProbeMode::Dap) => (
+                        serial.clone(),
+                        format!("WCH-Link#{} ({mode_label})", device.index),
+                    ),
+                    (None, _) => (
                         device.index.to_string(),
                         format!(
-                            "WCH-Link#{} ({mode}, no USB serial; index may change on replug)",
+                            "WCH-Link#{} ({mode_label}, no USB serial; index may change on replug)",
                             device.index
                         ),
                     ),
@@ -169,6 +192,7 @@ impl WchLink {
                 choices.push(ProbeChoice {
                     selector,
                     description,
+                    mode,
                 });
             }
         }

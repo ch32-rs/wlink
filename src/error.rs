@@ -1,6 +1,9 @@
 use thiserror::Error;
 
-use crate::{RiscvChip, probe::ProbeChoice};
+use crate::{
+    RiscvChip,
+    probe::{ProbeChoice, ProbeMode},
+};
 
 /// Alias for a `Result` with the error type `wlink::Error`.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -52,23 +55,53 @@ pub enum Error {
     Driver,
 }
 
-/// Builds the "pick one of these probes" error message. Each attached probe
-/// gets a `-d` value that can be copied straight into the failed command.
+/// Builds the "pick one of these probes" error message. Only RV-mode probes
+/// are offered as flash targets; `WchLink::open_nth` rejects DAP-mode probes,
+/// so those come with a `mode-switch --rv` hint instead.
 fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
     use std::fmt::Write as _;
 
+    let rv: Vec<_> = choices.iter().filter(|c| c.mode == ProbeMode::Rv).collect();
+    let dap: Vec<_> = choices
+        .iter()
+        .filter(|c| c.mode == ProbeMode::Dap)
+        .collect();
+
     let mut msg = format!(
-        "{} WCH-Link probes attached; refusing to flash without an explicit probe.\n\
-         Select one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):",
+        "{} WCH-Link probes attached; refusing to flash without an explicit probe.",
         choices.len()
     );
-    for choice in choices {
-        // Formatting into a String is infallible.
+    if rv.is_empty() {
         let _ = write!(
             msg,
-            "\n  -d {:<26} # {}",
-            choice.selector, choice.description
+            "\nNone of them is in RV mode, so no probe can be flashed yet."
         );
+    } else {
+        let _ = write!(
+            msg,
+            "\nSelect one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):"
+        );
+        for choice in rv {
+            // Formatting into a String is infallible.
+            let _ = write!(
+                msg,
+                "\n  -d {:<26} # {}",
+                choice.selector, choice.description
+            );
+        }
+    }
+    if !dap.is_empty() {
+        let _ = write!(
+            msg,
+            "\nAlso attached in DAP mode (cannot be flashed; switch back to RV mode first):"
+        );
+        for choice in dap {
+            let _ = write!(
+                msg,
+                "\n  wlink -d {} mode-switch --rv   # {}",
+                choice.selector, choice.description
+            );
+        }
     }
     msg
 }

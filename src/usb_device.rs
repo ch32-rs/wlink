@@ -184,30 +184,39 @@ pub struct AttachedDevice {
 ///
 /// This is separate from [`list_devices`]: on 32-bit Windows the CH375 driver
 /// and nusb both see the same physical probes, so merging their printed lists
-/// would double count them. nusb is preferred because it exposes serials.
+/// would double count them. nusb is preferred because it exposes serials, but
+/// CH375 can also see probes nusb cannot, so the larger count wins.
 pub fn list_attached_devices(vid: u16, pid: u16) -> Result<Vec<AttachedDevice>> {
+    let devices = libusb::list_attached_devices(vid, pid)?;
+
+    // On 32-bit Windows `open` tries CH375 before nusb, so probes visible only
+    // there still take part in a selector-less open. The DLL is optional.
     #[cfg(all(target_os = "windows", target_arch = "x86"))]
-    {
-        let nusb_devices = libusb::list_attached_devices(vid, pid)?;
-        if !nusb_devices.is_empty() {
-            return Ok(nusb_devices);
-        }
-        // No WinUSB-compatible devices: fall back to the CH375 driver, which
-        // cannot report serial numbers. The DLL is optional.
-        let count = ch375_driver::list_devices(vid, pid)
-            .map(|devs| devs.len())
-            .unwrap_or(0);
-        Ok((0..count)
-            .map(|index| AttachedDevice {
-                index,
-                serial: None,
-            })
-            .collect())
-    }
+    let min_count = ch375_driver::list_devices(vid, pid)
+        .map(|devs| devs.len())
+        .unwrap_or(0);
     #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
-    {
-        libusb::list_attached_devices(vid, pid)
+    let min_count = 0;
+
+    Ok(pad_index_only_devices(devices, min_count))
+}
+
+/// Pads a device list with index-only placeholders when another backend sees
+/// more probes than nusb. Without this, an ambiguous setup would look like a
+/// single probe and the flash would go ahead. Index selectors are opened by
+/// the CH375 backend first on 32-bit Windows, so these remain selectable.
+fn pad_index_only_devices(
+    mut devices: Vec<AttachedDevice>,
+    min_count: usize,
+) -> Vec<AttachedDevice> {
+    while devices.len() < min_count {
+        let index = devices.len();
+        devices.push(AttachedDevice {
+            index,
+            serial: None,
+        });
     }
+    devices
 }
 
 pub mod libusb {
@@ -661,5 +670,38 @@ mod tests {
             DeviceSelector::Serial("ABC".into()).to_string(),
             "serial ABC"
         );
+    }
+
+    #[test]
+    fn a_backend_that_sees_more_probes_does_not_undercount() {
+        // Regression (32-bit Windows): CH375 can see probes nusb cannot, and
+        // `open` prefers CH375, so returning only the nusb list made two
+        // probes look like one and let an ambiguous flash through.
+        let devices = vec![AttachedDevice {
+            index: 0,
+            serial: Some("AAA".into()),
+        }];
+
+        let padded = pad_index_only_devices(devices.clone(), 3);
+        assert_eq!(padded.len(), 3);
+        assert_eq!(padded[0].serial.as_deref(), Some("AAA"));
+        assert_eq!(
+            padded[1],
+            AttachedDevice {
+                index: 1,
+                serial: None
+            }
+        );
+        assert_eq!(
+            padded[2],
+            AttachedDevice {
+                index: 2,
+                serial: None
+            }
+        );
+
+        // nusb seeing more (or the same) keeps its richer, serial-bearing list.
+        assert_eq!(pad_index_only_devices(devices.clone(), 1), devices);
+        assert!(pad_index_only_devices(vec![], 0).is_empty());
     }
 }
