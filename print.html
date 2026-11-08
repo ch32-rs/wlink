@@ -1,0 +1,1816 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>wlink — WCH-LinkRV Protocol Reference</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Reverse-engineered WCH-LinkRV USB protocol reference and wlink documentation">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-4d38065e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-ecefeea2.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">wlink — WCH-LinkRV Protocol Reference</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/ch32-rs/wlink" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="wlink-documentation"><a class="header" href="#wlink-documentation">wlink Documentation</a></h1>
+<p>This site is the documentation for <a href="https://github.com/ch32-rs/wlink">wlink</a>, the
+command-line flash and debug tool for WCH-Link probes and WCH RISC-V MCUs.</p>
+<p>Its main part is a <strong>protocol reference for the WCH-LinkRV USB protocol</strong> — the
+private protocol spoken between the host and the WCH-Link probe. The old
+<code>protocol.md</code> at the repository root was written in 2023 and had stopped
+tracking the implementation; this reference is rebuilt from the source code so
+that the byte-level description and <code>src/commands/</code> cannot silently diverge.</p>
+<blockquote>
+<p><strong>This is a reverse-engineered description, not an official WCH specification.</strong>
+WCH does not publish a protocol specification for the WCH-Link. Everything
+here comes from reading wlink’s implementation, from USB captures, and from
+other open-source implementations listed in <a href="#references">External References</a>.
+Entries marked <code>unverified</code> are observations only.</p>
+</blockquote>
+<h2 id="where-to-start"><a class="header" href="#where-to-start">Where to start</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>If you want to…</th><th>Read</th></tr>
+</thead>
+<tbody>
+<tr><td>Understand the wire format</td><td><a href="#usb-transport">USB Transport</a>, then <a href="#frame-format">Frame Format</a></td></tr>
+<tr><td>Implement a command</td><td><a href="#command-reference">Command Reference</a> and <a href="#control-subcommands-0x0d">Control Subcommands</a></td></tr>
+<tr><td>Understand how a flash operation is sequenced</td><td><a href="#operation-flows">Operation Flows</a></td></tr>
+<tr><td>Work with the RISC-V debug module</td><td><a href="#dmi-and-the-debug-module">DMI and the Debug Module</a></td></tr>
+<tr><td>Look up an ID, flag or constant</td><td><a href="#constants-and-chip-families">Constants and Chip Families</a></td></tr>
+<tr><td>Find unimplemented or uncertain commands</td><td><a href="#unverified-commands-and-captures">Unverified Commands and Captures</a></td></tr>
+<tr><td>Wire up a specific MCU</td><td>The <em>Chip Notes</em> section in the sidebar</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="source-of-truth"><a class="header" href="#source-of-truth">Source of truth</a></h2>
+<p>Protocol knowledge is derived from these files in the repository. When the
+documentation and the code disagree, <strong>the code wins</strong> — please open a PR that
+corrects the documentation.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>What it defines</th></tr>
+</thead>
+<tbody>
+<tr><td><code>src/commands/mod.rs</code></td><td>Frame construction and parsing, command IDs, payload layouts</td></tr>
+<tr><td><code>src/commands/control.rs</code></td><td>The complete <code>0x0d</code> control subcommand set, firmware version encoding</td></tr>
+<tr><td><code>src/probe.rs</code></td><td>USB IDs, endpoints, raw send/receive, mode switching</td></tr>
+<tr><td><code>src/operations.rs</code></td><td>Command sequences for attach, erase, program, read, reset</td></tr>
+<tr><td><code>src/chips.rs</code></td><td>Chip family IDs and the ChipID-to-part-name database</td></tr>
+<tr><td><code>src/flash_op.rs</code></td><td>Per-family flash algorithm blobs sent over the data endpoint</td></tr>
+<tr><td><code>src/dmi.rs</code>, <code>src/regs.rs</code></td><td>DMI operations and RISC-V debug register addresses</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="building-this-site-locally"><a class="header" href="#building-this-site-locally">Building this site locally</a></h2>
+<p>The site is built with <a href="https://rust-lang.github.io/mdBook/">mdBook</a>:</p>
+<pre><code class="language-bash">cargo install mdbook --locked
+mdbook build          # output in book/
+mdbook serve          # live preview at http://localhost:3000
+</code></pre>
+<p>The rendered site is published from the <code>gh-pages</code> branch; see
+<code>.github/workflows/docs.yml</code>. The intended public URL is
+<a href="https://ch32-rs.github.io/wlink/">https://ch32-rs.github.io/wlink/</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="overview-and-status"><a class="header" href="#overview-and-status">Overview and Status</a></h1>
+<p>The WCH-Link probe exposes a vendor-specific USB bulk protocol. There is no
+public specification from WCH; this reference documents the protocol as
+implemented by wlink, which was reconstructed from USB captures, WCH’s
+toolchain, and other open-source implementations.</p>
+<h2 id="status-of-this-document"><a class="header" href="#status-of-this-document">Status of this document</a></h2>
+<p>This reference replaces the repository-root <code>protocol.md</code>. That file was last
+updated in November 2023 and had fallen behind the implementation — it had an
+empty <code>0x01</code> section, two empty DMI tables, a dozen <code>???</code> markers, listed
+<code>0x0c</code> as unknown (it is <code>SetSpeed</code>), omitted <code>0x11</code> entirely, listed only 7
+chip families (there are now 28), and stopped at firmware v2.8.</p>
+<p>The tables in this reference are derived from the current source on <code>main</code>.
+Every command page names the Rust symbol that implements it. Anything that
+could not be confirmed from the implementation is collected in
+<a href="#unverified-commands-and-captures">Unverified Commands and Captures</a> and marked <code>unverified</code>
+rather than guessed.</p>
+<blockquote>
+<p>If you find a mismatch between this document and the code, the code is
+correct and the document needs a PR.</p>
+</blockquote>
+<h2 id="notation"><a class="header" href="#notation">Notation</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Convention</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x81 0d 01 01</code></td><td>Hex bytes in transmission order</td></tr>
+<tr><td><code>u32_be</code></td><td>32-bit unsigned integer, most significant byte first</td></tr>
+<tr><td><code>LEN</code></td><td>Payload byte count, one byte</td></tr>
+<tr><td><code>()</code></td><td>Command succeeds with no payload of interest</td></tr>
+<tr><td><code>unverified</code></td><td>Seen in a USB capture or an older note, not implemented/confirmed in wlink</td></tr>
+<tr><td><code>riscvchip</code></td><td>The one-byte chip family code, see <a href="#constants-and-chip-families">Constants</a></td></tr>
+</tbody>
+</table>
+</div>
+<p>All multi-byte integers in command payloads are <strong>big-endian</strong>. Memory read
+data from the data endpoint is an exception: wlink reverses every 4-byte word
+after reading it (see <a href="#operation-flows">Operation Flows</a>).</p>
+<h2 id="layer-model"><a class="header" href="#layer-model">Layer model</a></h2>
+<pre><code class="language-text">Host (wlink CLI)
+  │
+  ├─ Command endpoint (0x01 OUT / 0x81 IN)
+  │    81 CMD LEN PAYLOAD   →   82 CMD LEN PAYLOAD
+  │    all control, configuration and DMI operations
+  │
+  ├─ Data endpoint (0x02 OUT / 0x82 IN)
+  │    unframed bulk stream: flash algorithm blobs, firmware bytes, memory dumps
+  │
+  └─ DMI operations (command 0x08)
+        └─ RISC-V Debug Module registers (0x04 … 0x40)
+</code></pre>
+<ul>
+<li><a href="#usb-transport">USB Transport</a> describes the device, interfaces and endpoints.</li>
+<li><a href="#frame-format">Frame Format</a> describes the command frames.</li>
+<li><a href="#command-reference">Command Reference</a> lists every command ID and payload.</li>
+<li><a href="#control-subcommands-0x0d">Control Subcommands</a> expands the multi-purpose <code>0x0d</code> command.</li>
+<li><a href="#dmi-and-the-debug-module">DMI and the Debug Module</a> covers the debug layer above command <code>0x08</code>.</li>
+</ul>
+<h2 id="known-limitations-of-the-protocol-itself"><a class="header" href="#known-limitations-of-the-protocol-itself">Known limitations of the protocol itself</a></h2>
+<ul>
+<li><code>LEN</code> is a single byte. wlink reads responses into a 64-byte buffer, so a
+response payload is limited to 61 bytes in practice; large transfers always
+go through the data endpoint.</li>
+<li>The response parser does not check that the response <code>CMD</code> byte matches the
+request; it only distinguishes the <code>0x82</code> success marker from the <code>0x81</code>
+error marker.</li>
+<li>Error frames carry an opaque one-byte <code>REASON</code>. Only <code>0x55</code> (failed to
+connect to the target) has a known meaning.</li>
+<li>Some subcommands were observed only in captures from WCH’s Windows utility;
+they are listed separately as <code>unverified</code>.</li>
+</ul>
+<h2 id="further-reading"><a class="header" href="#further-reading">Further reading</a></h2>
+<ul>
+<li><a href="#references">External References</a> — WCH manuals, schematics, firmware archives and other FOSS implementations.</li>
+<li><code>CHANGELOG.md</code> in the repository records protocol-level fixes over time, for
+example the correction that <code>0x0c</code> is a speed command rather than a verify command.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="usb-transport"><a class="header" href="#usb-transport">USB Transport</a></h1>
+<p>WCH-Link uses USB <strong>bulk transfers</strong>. There is no kernel driver in the loop on
+Linux/macOS: wlink opens the device with <code>nusb</code>, claims interface 0, and reads
+and writes bulk endpoints directly. On 32-bit Windows an optional native
+<code>WCHLinkDLL.dll</code> (CH375) backend is available, falling back to <code>nusb</code>.</p>
+<p>Source: <a href="https://github.com/ch32-rs/wlink/blob/main/src/probe.rs"><code>src/probe.rs</code></a>
+(constants), <a href="https://github.com/ch32-rs/wlink/blob/main/src/usb_device.rs"><code>src/usb_device.rs</code></a>
+(backend implementations).</p>
+<h2 id="usb-identifiers"><a class="header" href="#usb-identifiers">USB identifiers</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mode</th><th>VID</th><th>PID</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>RV (RISC-V debug/flash)</td><td><code>0x1a86</code></td><td><code>0x8010</code></td><td>The mode wlink operates in</td></tr>
+<tr><td>DAP (ARM SWD)</td><td><code>0x1a86</code></td><td><code>0x8012</code></td><td>wlink refuses to flash in this mode</td></tr>
+</tbody>
+</table>
+</div>
+<p>The same physical probe appears under one PID or the other depending on its
+mode. <code>wlink mode-switch</code> flips between them.</p>
+<h2 id="endpoints"><a class="header" href="#endpoints">Endpoints</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Endpoint</th><th>Direction</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td>OUT</td><td>Command frames (<code>81 CMD LEN PAYLOAD</code>)</td></tr>
+<tr><td><code>0x81</code></td><td>IN</td><td>Command responses (<code>82 …</code> / <code>81 …</code>)</td></tr>
+<tr><td><code>0x02</code></td><td>OUT</td><td>Data endpoint: flash algorithm blob, firmware chunks</td></tr>
+<tr><td><code>0x82</code></td><td>IN</td><td>Data endpoint: memory dump, per-chunk write acknowledgement</td></tr>
+<tr><td><code>0x02</code></td><td>OUT (DAP mode only)</td><td>Raw mode-switch frame</td></tr>
+</tbody>
+</table>
+</div>
+<p>Command reads use a 64-byte buffer; a single bulk read is treated as one
+response frame. Data-endpoint transfers are streams, not frames: wlink loops
+over 64-byte bulk reads until the requested byte count is reached, and pads the
+final written chunk with <code>0xff</code> to the family’s data packet size.</p>
+<p>The <code>nusb</code> backend stores a 5-second default in <code>NusbDevice::timeout</code>; the
+current bulk read/write calls do not apply it and rely on nusb’s own blocking
+behaviour.</p>
+<h2 id="selecting-a-probe"><a class="header" href="#selecting-a-probe">Selecting a probe</a></h2>
+<p>With several probes attached, enumeration order is not stable. wlink accepts
+either an index or a USB serial number:</p>
+<pre><code class="language-bash">wlink list
+# &lt;WCH-Link#0 nusb device&gt; ID 1a86:8010 Serial F93D8F067E10 (USB-FS 12 Mbps) (RV mode)
+# &lt;WCH-Link#1 nusb device&gt; ID 1a86:8010 Serial D7708F065C7F (USB-FS 12 Mbps) (RV mode)
+
+wlink -d 1a86:8010:D7708F065C7F status   # probe-rs style VID:PID:SERIAL
+wlink -d D7708F065C7F status             # serial alone
+wlink -d 1 status                        # legacy index
+</code></pre>
+<p>Serial matching is case-insensitive and works in either RV or DAP mode; the
+VID/PID in the selector are validated but not used for matching.</p>
+<h2 id="mode-switching"><a class="header" href="#mode-switching">Mode switching</a></h2>
+<p>Switching from RV to DAP mode sends a command frame on the normal command
+endpoint:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Direction</th><th>Raw bytes</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>RV → DAP</td><td><code>81 ff 01 41</code></td><td><code>RawCommand&lt;0xff&gt;</code> with payload <code>0x41</code></td></tr>
+<tr><td>DAP → RV</td><td><code>81 ff 01 52</code></td><td>written raw to endpoint <code>0x02</code> while in DAP mode</td></tr>
+</tbody>
+</table>
+</div>
+<p>Both operations are experimental; the CH549-based first-generation probe can
+only switch modes by reflashing its firmware. Support is reported by
+<code>WchLinkVariant::support_switch_mode</code> in <code>src/probe.rs</code>.</p>
+<h2 id="variants"><a class="header" href="#variants">Variants</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Code</th><th>Variant</th><th>Hardware</th><th>Capabilities</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>WchLinkVariant::Ch549</code></td><td>WCH-Link (CH549)</td><td>No CH32V00X, no mode switch, no power/SDI functions</td></tr>
+<tr><td><code>0x02</code> / <code>0x12</code></td><td><code>WchLinkVariant::ECh32v305</code></td><td>WCH-LinkE (CH32V305)</td><td>Full support, including SDI print</td></tr>
+<tr><td><code>0x03</code></td><td><code>WchLinkVariant::SCh32v203</code></td><td>WCH-LinkS (CH32V203)</td><td>Full chip support</td></tr>
+<tr><td><code>0x05</code> / <code>0x85</code></td><td><code>WchLinkVariant::WCh32v208</code></td><td>WCH-LinkW (CH32V208)</td><td>Wireless variant; no CH56X/CH57X/CH582/CH59X</td></tr>
+<tr><td>other</td><td>—</td><td>—</td><td><code>Error::UnknownLinkVariant</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>See <a href="#probe-info-and-firmware-version">Probe Info and Firmware Version</a> for how the variant byte
+is returned and how firmware versions are decoded.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="frame-format"><a class="header" href="#frame-format">Frame Format</a></h1>
+<p>Every command exchange uses the command endpoints (<code>0x01</code> OUT / <code>0x81</code> IN).
+The data endpoints are a separate, unframed stream.</p>
+<p>Source: <code>Command::to_raw</code> and <code>Response::from_raw</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/mod.rs"><code>src/commands/mod.rs</code></a>,
+and <code>WchLink::send_command</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/probe.rs"><code>src/probe.rs</code></a>.</p>
+<h2 id="request"><a class="header" href="#request">Request</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Byte 0</th><th>Byte 1</th><th>Byte 2</th><th>Bytes 3 … n</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x81</code></td><td><code>CMD</code></td><td><code>LEN</code></td><td><code>PAYLOAD</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut bytes = vec![0x81, Self::COMMAND_ID, 0x00];
+bytes.extend(self.payload());
+bytes[2] = bytes.len() as u8 - 3;   // LEN = PAYLOAD.len()
+<span class="boring">}</span></code></pre>
+<p><code>LEN</code> is a single byte holding the payload length, so the format allows up to
+255 payload bytes. In practice wlink reads responses into a 64-byte buffer,
+which caps a <strong>response</strong> payload at 61 bytes; all implemented commands use far
+smaller payloads.</p>
+<p>Example — <code>GetProbeInfo</code> (<code>0x0d</code>, subcommand <code>0x01</code>):</p>
+<pre><code class="language-text">81 0d 01 01
+^^ ^^ ^^ ^^
+|  |  |  └─ PAYLOAD[0] = 0x01 (GetProbeInfo)
+|  |  └──── LEN = 1
+|  └─────── CMD = 0x0d (Control)
+└────────── request marker
+</code></pre>
+<h2 id="success-response"><a class="header" href="#success-response">Success response</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Byte 0</th><th>Byte 1</th><th>Byte 2</th><th>Bytes 3 … n</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x82</code></td><td><code>CMD</code></td><td><code>LEN</code></td><td><code>PAYLOAD</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The parser checks <code>resp[0] == 0x82</code>, verifies <code>LEN == resp[3..].len()</code>, then
+hands <code>resp[3..]</code> to the response type. It does <strong>not</strong> verify that <code>CMD</code>
+matches the request.</p>
+<p>Example — <code>GetProbeInfo</code> responding with firmware <code>2.15</code> on a WCH-LinkE:</p>
+<pre><code class="language-text">82 0d 03 02 0f 02
+         ^^^^^^^^^^ PAYLOAD = [0x02, 0x0f, 0x02]
+</code></pre>
+<h2 id="error-response"><a class="header" href="#error-response">Error response</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Byte 0</th><th>Byte 1</th><th>Byte 2</th><th>Bytes 3 … n</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x81</code></td><td><code>REASON</code></td><td><code>LEN</code></td><td><code>PAYLOAD</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>An <code>0x81</code> first byte means failure regardless of <code>CMD</code>. wlink validates the
+length and surfaces <code>Error::Protocol(reason, response_bytes)</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>REASON</code></th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x55</code></td><td>Failed to connect to the target RISC-V chip</td></tr>
+<tr><td>other</td><td>Opaque; the full frame is preserved in the error</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="response-decoding-by-type"><a class="header" href="#response-decoding-by-type">Response decoding by type</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Rust type</th><th>Rule</th></tr>
+</thead>
+<tbody>
+<tr><td><code>()</code></td><td>Payload ignored, success is enough</td></tr>
+<tr><td><code>u8</code></td><td>Payload must be exactly 1 byte</td></tr>
+<tr><td><code>bool</code></td><td>Payload must be 1 byte; <code>0x01</code> means success (<code>SetSpeed</code>)</td></tr>
+<tr><td><code>Vec&lt;u8&gt;</code></td><td>Raw payload returned</td></tr>
+<tr><td><code>AttachChipResponse</code></td><td>Exactly 5 bytes: family <code>u8</code> + ChipID <code>u32_be</code></td></tr>
+<tr><td><code>DmiOpResponse</code></td><td>Exactly 6 bytes: addr <code>u8</code> + data <code>u32_be</code> + op <code>u8</code></td></tr>
+<tr><td><code>ProbeInfo</code></td><td>At least 3 bytes: major, minor, optional variant</td></tr>
+<tr><td><code>ESignature</code></td><td><strong>Non-standard</strong> 20-byte raw response, see <a href="#chip-info-and-esig">Chip Info</a></td></tr>
+<tr><td>invalid marker</td><td><code>Error::InvalidPayload</code></td></tr>
+<tr><td>length mismatch</td><td><code>Error::InvalidPayloadLength</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="data-endpoint-stream"><a class="header" href="#data-endpoint-stream">Data endpoint stream</a></h2>
+<p>The data endpoints carry no <code>81/82</code> header. Two shapes occur:</p>
+<ul>
+<li><strong>Bulk output</strong>: the flash algorithm blob for the chip family, then firmware
+data split into <code>write_pack_size</code> chunks, each padded with <code>0xff</code> to
+<code>data_packet_size</code> (see <code>WchLink::write_data_with_progress</code>).</li>
+<li><strong>Bulk input</strong>: <code>read_data(n)</code> accumulates 64-byte bulk reads until <code>n</code>
+bytes are collected. During a fast-program cycle, each written chunk is
+followed by a 4-byte acknowledgement on <code>0x82</code>; wlink checks that the last
+byte is <code>0x04</code> (observed <code>41 01 01 04</code>).</li>
+</ul>
+<p><code>ProbeSession::read_memory</code> reverses each 4-byte word of the returned memory
+buffer to compensate for the probe’s word order.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="command-reference"><a class="header" href="#command-reference">Command Reference</a></h1>
+<p><code>CMD</code> is byte 1 of a request frame (see <a href="#frame-format">Frame Format</a>). All
+payload integers are big-endian. <code>Source</code> links point at
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/mod.rs"><code>src/commands/mod.rs</code></a>
+unless noted otherwise; <code>0x0d</code> subcommands live in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/control.rs"><code>src/commands/control.rs</code></a>
+and are expanded in <a href="#control-subcommands-0x0d">Control Subcommands</a>.</p>
+<h2 id="command-id-summary"><a class="header" href="#command-id-summary">Command ID summary</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>CMD</code></th><th>Name</th><th>Payload</th><th>Response</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>SetWriteMemoryRegion</code></td><td>8 bytes: address, length</td><td><code>()</code></td><td>implemented</td></tr>
+<tr><td><code>0x02</code></td><td><code>Program</code></td><td>1 byte: subcommand</td><td><code>u8</code></td><td>implemented</td></tr>
+<tr><td><code>0x03</code></td><td><code>SetReadMemoryRegion</code></td><td>8 bytes: address, length</td><td><code>()</code></td><td>implemented</td></tr>
+<tr><td><code>0x06</code></td><td><code>ConfigChip</code></td><td>1–8 bytes: protection/config</td><td><code>u8</code></td><td>partially implemented</td></tr>
+<tr><td><code>0x08</code></td><td><code>DmiOp</code></td><td>6 bytes</td><td>6 bytes</td><td>implemented</td></tr>
+<tr><td><code>0x0b</code></td><td><code>Reset</code></td><td>1 byte</td><td><code>()</code></td><td>implemented</td></tr>
+<tr><td><code>0x0c</code></td><td><code>SetSpeed</code></td><td>2 bytes: <code>riscvchip</code>, speed</td><td><code>bool</code></td><td>implemented</td></tr>
+<tr><td><code>0x0d</code></td><td>Control</td><td>subcommand + args</td><td>varies</td><td>implemented — see <a href="#control-subcommands-0x0d">Control Subcommands</a></td></tr>
+<tr><td><code>0x0e</code></td><td><code>DisableDebug</code></td><td>1 byte <code>0x01</code></td><td><code>()</code></td><td>implemented</td></tr>
+<tr><td><code>0x0f</code></td><td>Get device mode</td><td>1 byte</td><td>unknown</td><td><code>unverified</code></td></tr>
+<tr><td><code>0x11</code></td><td><code>GetChipInfo</code> (ESIG)</td><td>1 byte: <code>0x09</code> / <code>0x06</code></td><td>20 raw bytes</td><td>implemented</td></tr>
+<tr><td><code>0xfe</code></td><td>Disable encryption</td><td>1 byte</td><td>unknown</td><td><code>unverified</code></td></tr>
+<tr><td><code>0xff</code></td><td>Mode switch</td><td>1 byte <code>0x41</code></td><td>—</td><td>implemented (RV → DAP)</td></tr>
+</tbody>
+</table>
+</div>
+<p>The old <code>protocol.md</code> listed <code>0x0c</code> as <code>???</code> and <code>0x0f</code> as “begin verify”.
+Both are wrong: <code>0x0c</code> is <code>SetSpeed</code> (corrected in CHANGELOG for v0.0.6), and
+<code>0x0f</code> only appears in a <code>GetDeviceMode</code> capture.</p>
+<hr>
+<h2 id="0x01--setwritememoryregion"><a class="header" href="#0x01--setwritememoryregion"><code>0x01</code> — SetWriteMemoryRegion</a></h2>
+<p>Sets the target address and byte count for the following write operation.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Type</th><th>Field</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td><code>u32_be</code></td><td><code>start_addr</code> (typically <code>0x08000000</code> code flash or <code>0x00000000</code> SRAM)</td></tr>
+<tr><td>4</td><td><code>u32_be</code></td><td><code>len</code> (firmware length in bytes)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Request: <code>81 01 08 &lt;addr:4&gt; &lt;len:4&gt;</code>. Response: <code>()</code>.</p>
+<p>Source: <code>SetWriteMemoryRegion</code>. Used at the start of <code>ProbeSession::write_flash</code>.</p>
+<h2 id="0x02--program"><a class="header" href="#0x02--program"><code>0x02</code> — Program</a></h2>
+<p>One-byte subcommand selector. Response is a single status byte; wlink checks
+the returned value for the <code>0x07</code> step during flashing.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Sub</th><th>Rust variant</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>EraseFlash</code></td><td>Erase code flash</td></tr>
+<tr><td><code>0x02</code></td><td><code>WriteFlash</code></td><td>Begin fast-program (bulk data follows on the data endpoint)</td></tr>
+<tr><td><code>0x04</code></td><td><code>WriteFlashAndVerify</code></td><td>Write flash with verification</td></tr>
+<tr><td><code>0x05</code></td><td><code>WriteFlashOP</code></td><td>Begin writing the per-family flash algorithm blob</td></tr>
+<tr><td><code>0x06</code></td><td><code>Prepare</code></td><td>Prepare before setting the RAM address (not used by current flows)</td></tr>
+<tr><td><code>0x07</code></td><td><code>Unknown07AfterFlashOPWritten</code></td><td>Commit step after the flash blob was written; response must be <code>0x07</code></td></tr>
+<tr><td><code>0x08</code></td><td><code>End</code></td><td>End program</td></tr>
+<tr><td><code>0x0b</code></td><td><code>Unknown0BAfterFlashOPWritten</code></td><td>Alternative commit step for <code>riscvchip == 1</code></td></tr>
+<tr><td><code>0x0c</code></td><td><code>ReadMemory</code></td><td>Start a memory read on the data endpoint</td></tr>
+</tbody>
+</table>
+</div>
+<p>Older notes listed <code>0x03</code> “execute ram”, <code>0x05</code> “begin bulk transfer”, <code>0x07</code>
+“verify”, <code>0x09</code> “bulk transfer ends”, <code>0x0a</code> “verify” and <code>0x0b</code> “= verify for
+riscvchip 1”. Those labels are <strong>unverified</strong>; see
+<a href="#unverified-commands-and-captures">Unverified Commands</a>.</p>
+<h2 id="0x03--setreadmemoryregion"><a class="header" href="#0x03--setreadmemoryregion"><code>0x03</code> — SetReadMemoryRegion</a></h2>
+<p>Identical layout to <code>0x01</code>: <code>start_addr</code> and <code>len</code>, both <code>u32_be</code>. Response <code>()</code>.
+Followed by <code>0x02 / 0x0c</code> (<code>ReadMemory</code>) and a bulk read on endpoint <code>0x82</code>.</p>
+<p>Source: <code>SetReadMemoryRegion</code>, <code>ProbeSession::read_memory</code>.</p>
+<h2 id="0x06--configchip"><a class="header" href="#0x06--configchip"><code>0x06</code> — ConfigChip</a></h2>
+<p>Flash read/write protection and option-byte configuration. Response is a status
+<code>u8</code> for the query variants.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>PAYLOAD[0]</th><th>Rust variant</th><th>Payload</th><th>Meaning / response</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>CheckReadProtect</code></td><td>1 byte</td><td><code>0x01</code> protected, <code>0x02</code> unprotected</td></tr>
+<tr><td><code>0x02</code></td><td><code>Unprotect</code></td><td>1 byte</td><td>Remove read protection (mass-erases option bytes)</td></tr>
+<tr><td><code>0x03</code></td><td><code>Protect</code></td><td>1 byte</td><td>Set read protection</td></tr>
+<tr><td><code>0x04</code></td><td><code>CheckReadProtectEx</code></td><td>1 byte</td><td><code>0x11</code> write-protected, <code>0x00</code> unprotected</td></tr>
+<tr><td><code>0x02</code> + arg</td><td><code>UnprotectEx(b)</code></td><td>8 bytes: <code>02 b ff ff ff ff ff ff</code></td><td>Extended unprotect; <code>b</code> is <code>0xff</code> or <code>0xbf</code></td></tr>
+<tr><td><code>0x03</code> + arg</td><td><code>ProtectEx(b)</code></td><td>8 bytes: <code>03 b ff ff ff ff ff ff</code></td><td>Extended protect</td></tr>
+<tr><td>—</td><td><code>Config { data, wrp }</code></td><td>8 bytes</td><td><strong>Unimplemented</strong> in wlink (<code>todo!()</code>); capture: <code>81 06 08 02 3f 00 00 ff ff ff ff</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Flags (<code>ConfigChip</code> associated constants): <code>FLAG_READ_PROTECTED = 0x01</code>,
+<code>FLAG_READ_UNPROTECTED = 0x02</code>, <code>FLAG_WRITE_PROTECTED = 0x11</code>,
+<code>FLAG_WRITE_UNPROTECTED = 0x00</code>.</p>
+<blockquote>
+<p>Changing protection requires a fresh <code>0x0d / 0x02</code> attach afterwards. wlink
+skips <code>Unprotect</code> when flash is already unprotected, because the probe
+firmware mass-erases the option-byte page (USER/Data/WRPR).</p>
+</blockquote>
+<h2 id="0x08--dmiop"><a class="header" href="#0x08--dmiop"><code>0x08</code> — DmiOp</a></h2>
+<p>Six-byte payload, six-byte response. See <a href="#dmi-and-the-debug-module">DMI and the Debug Module</a> for
+register addresses and status handling.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Size</th><th>Request field</th><th>Response field</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>1</td><td><code>addr</code> (DMI register)</td><td><code>addr</code></td></tr>
+<tr><td>1–4</td><td>4</td><td><code>data</code> (<code>u32_be</code>)</td><td><code>data</code> (<code>u32_be</code>)</td></tr>
+<tr><td>5</td><td>1</td><td><code>op</code>: <code>0</code> NOP, <code>1</code> READ, <code>2</code> WRITE</td><td><code>op</code>: <code>0x00</code> success, <code>0x02</code> failed, <code>0x03</code> busy</td></tr>
+</tbody>
+</table>
+</div>
+<p>Example — read <code>DMSTATUS</code> (<code>0x11</code>): <code>81 08 06 11 00 00 00 00 01</code>.</p>
+<h2 id="0x0b--reset"><a class="header" href="#0x0b--reset"><code>0x0b</code> — Reset</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>PAYLOAD[0]</th><th>Rust variant</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>Reset::Soft</code></td><td>Quit reset / reset and run (most common); wlink waits ~300 ms afterwards</td></tr>
+<tr><td><code>0x02</code></td><td><code>Reset::Chip</code></td><td>Chip reset (memory is not reset)</td></tr>
+<tr><td><code>0x03</code></td><td><code>Reset::Normal</code></td><td>Normal reset</td></tr>
+</tbody>
+</table>
+</div>
+<p>Response: <code>()</code>. Source: <code>Reset</code>, <code>ProbeSession::soft_reset</code>.</p>
+<h2 id="0x0c--setspeed"><a class="header" href="#0x0c--setspeed"><code>0x0c</code> — SetSpeed</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Field</th><th>Values</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td><code>riscvchip</code></td><td>Chip family code, see <a href="#constants-and-chip-families">Constants</a></td></tr>
+<tr><td>1</td><td><code>speed</code></td><td><code>0x01</code> High (6000 kHz, default), <code>0x02</code> Medium (4000 kHz), <code>0x03</code> Low (400 kHz)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Response payload <code>0x01</code> means success (<code>Response for bool</code>). wlink sends this
+before attaching and again after auto-detection. Source: <code>SetSpeed</code>, <code>Speed</code>.</p>
+<h2 id="0x0d--control"><a class="header" href="#0x0d--control"><code>0x0d</code> — Control</a></h2>
+<p>The multi-purpose control command. Its first payload byte selects a
+subcommand; the remainder depends on it. See
+<a href="#control-subcommands-0x0d">Control Subcommands</a> for the complete table.</p>
+<p>Quick reference: <code>0x01</code> probe info, <code>0x02</code> attach chip, <code>0x04</code>/<code>0x05</code> ROM/RAM
+split, <code>0x08</code> erase by RST pin, <code>0x09</code>–<code>0x0c</code> power output, <code>0x0e</code> RST pin,
+<code>0x0f</code> erase by power-off, <code>0xee</code> SDI print, <code>0xff</code> detach.</p>
+<h2 id="0x0e--disabledebug"><a class="header" href="#0x0e--disabledebug"><code>0x0e</code> — DisableDebug</a></h2>
+<p>Payload <code>0x01</code>, response <code>()</code>. Only used for specific <code>riscvchip</code> families
+(older notes mention families 2 and 3). Frame: <code>81 0e 01 01</code>.</p>
+<p>Source: <code>DisableDebug</code>.</p>
+<h2 id="0x11--getchipinfo--esignature"><a class="header" href="#0x11--getchipinfo--esignature"><code>0x11</code> — GetChipInfo / ESignature</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>PAYLOAD[0]</th><th>Rust variant</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x09</code></td><td><code>GetChipInfo::V1</code></td><td>Used with firmware older than v2.9</td></tr>
+<tr><td><code>0x06</code></td><td><code>GetChipInfo::V2</code></td><td>Introduced in firmware v2.9</td></tr>
+</tbody>
+</table>
+</div>
+<p>This command <strong>does not use the standard response frame</strong> — see
+<a href="#chip-info-and-esig">Chip Info and ESIG</a> for the raw 20-byte layout. Source:
+<code>GetChipInfo</code>, <code>ESignature</code>.</p>
+<h2 id="0xff--mode-switch"><a class="header" href="#0xff--mode-switch"><code>0xff</code> — Mode switch</a></h2>
+<p><code>RawCommand&lt;0xff&gt;</code> with payload <code>0x41</code> (<code>81 ff 01 41</code>) switches an RV-mode
+probe into DAP mode. The reverse direction writes <code>81 ff 01 52</code> raw to endpoint
+<code>0x02</code> while the probe is in DAP mode. See <a href="#usb-transport">USB Transport</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="control-subcommands-0x0d"><a class="header" href="#control-subcommands-0x0d">Control Subcommands (<code>0x0d</code>)</a></h1>
+<p><code>0x0d</code> is a multiplexed command: <code>PAYLOAD[0]</code> selects an operation and the
+remaining bytes are its arguments. Its Rust implementation is
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/control.rs"><code>src/commands/control.rs</code></a>.</p>
+<p>Frame shape: <code>81 0d LEN SUB [ARGS…]</code>.</p>
+<h2 id="complete-subcommand-table"><a class="header" href="#complete-subcommand-table">Complete subcommand table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>SUB</code></th><th>Rust symbol</th><th>Request payload</th><th>Response</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>GetProbeInfo</code></td><td><code>01</code></td><td>≥3 bytes</td><td>Firmware version and variant; see <a href="#probe-info-and-firmware-version">Probe Info</a></td></tr>
+<tr><td><code>0x02</code></td><td><code>AttachChip</code></td><td><code>02</code></td><td>5 bytes</td><td>Auto-detect chip family + ChipID; see <a href="#chip-info-and-esig">Chip Info</a></td></tr>
+<tr><td><code>0x03</code></td><td>—</td><td>—</td><td>—</td><td><code>unverified</code>, seen in older notes as a post-attach stage for <code>riscvchip 1</code></td></tr>
+<tr><td><code>0x04</code></td><td><code>GetChipRomRamSplit</code></td><td><code>04</code></td><td><code>u8</code></td><td>SRAM/CODE split mode <code>0..3</code>; CH32V2/V3, CH56X</td></tr>
+<tr><td><code>0x05</code></td><td><code>SetChipRomRamSplit(mode)</code></td><td><code>05 mode</code></td><td><code>()</code></td><td>Set split mode <code>0..3</code></td></tr>
+<tr><td><code>0x06</code></td><td>—</td><td><code>06</code></td><td>—</td><td><code>unverified</code>, capture labels it <code>CheckQE</code></td></tr>
+<tr><td><code>0x07</code></td><td>—</td><td><code>07</code></td><td>—</td><td><code>unverified</code>, capture labels it <code>EnableQE</code></td></tr>
+<tr><td><code>0x08</code></td><td><code>EraseCodeFlash::ByPinRST</code></td><td><code>08 riscvchip</code></td><td><code>()</code></td><td>Erase via the nRST line; requires an RST pin connection</td></tr>
+<tr><td><code>0x09</code></td><td><code>SetPower::Enable3v3</code></td><td><code>09</code></td><td><code>()</code></td><td>Enable 3.3 V output</td></tr>
+<tr><td><code>0x0a</code></td><td><code>SetPower::Disable3v3</code></td><td><code>0a</code></td><td><code>()</code></td><td>Disable 3.3 V output</td></tr>
+<tr><td><code>0x0b</code></td><td><code>SetPower::Enable5v</code></td><td><code>0b</code></td><td><code>()</code></td><td>Enable 5 V output</td></tr>
+<tr><td><code>0x0c</code></td><td><code>SetPower::Disable5v</code></td><td><code>0c</code></td><td><code>()</code></td><td>Disable 5 V output</td></tr>
+<tr><td><code>0x0e</code></td><td><code>SetRSTPin</code></td><td><code>0e 13</code> / <code>0e 14</code> / <code>0e 15</code></td><td><code>()</code></td><td>Drive RST low / high / floating</td></tr>
+<tr><td><code>0x0f</code></td><td><code>EraseCodeFlash::ByPowerOff</code></td><td><code>0f riscvchip</code></td><td><code>()</code></td><td>Power-cycle erase; see the length caveat below</td></tr>
+<tr><td><code>0x11</code></td><td>—</td><td><code>11 …</code></td><td>—</td><td><code>unverified</code>, capture labels it <code>SetAccessAddress</code></td></tr>
+<tr><td><code>0xee</code></td><td><code>SetSdiPrintEnabled</code></td><td><code>ee 00</code> (on) / <code>ee 01</code> (off)</td><td><code>u8</code></td><td><code>0x00</code> success, <code>0xff</code> unsupported</td></tr>
+<tr><td><code>0xff</code></td><td><code>OptEnd</code></td><td><code>ff</code></td><td><code>()</code></td><td>Detach / end the session</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>0x09</code>–<code>0x0c</code> require a probe with power functions (<code>WchLinkVariant::ECh32v305</code>
+or <code>WCh32v208</code>). <code>0xee</code> requires WCH-LinkE with firmware ≥ 2.10.</p>
+<h2 id="length-caveat-for-0x0f"><a class="header" href="#length-caveat-for-0x0f">Length caveat for <code>0x0f</code></a></h2>
+<p>The captured frame from WCH’s utility is:</p>
+<pre><code class="language-text">81 0d 01 0f 09
+   ^^ ^^ ^^ ^^
+   │  │  │  └─ chip family (0x09 = CH32V003)
+   │  │  └──── SUB = 0x0f
+   │  └─────── LEN = 1   ← inconsistent: two payload bytes follow
+   └────────── CMD = 0x0d
+</code></pre>
+<p><code>LEN</code> is wrong in the capture. wlink assembles the frame from its own
+<code>to_raw</code>, producing <code>81 0d 02 0f 09</code> with the correct length. Treat the
+captured length byte as a firmware quirk, not as the protocol rule.</p>
+<h2 id="special-erase-operations"><a class="header" href="#special-erase-operations">Special-erase operations</a></h2>
+<p><code>0x08</code> and <code>0x0f</code> bypass chip attach entirely: the probe performs the erase
+without a debug connection, which is useful when read protection or a broken
+auto-detect prevents attaching. Because no detection happens, the caller must
+supply the chip family:</p>
+<pre><code class="language-bash">wlink erase --method power-off --chip CH32H41X
+wlink erase --method pin-rst   --chip CH32V003
+</code></pre>
+<p>The <code>riscvchip</code> argument is the one-byte family code from
+<a href="#constants-and-chip-families">Constants</a>.</p>
+<h2 id="sdi-print"><a class="header" href="#sdi-print">SDI print</a></h2>
+<p><code>0xee</code> enables the probe’s virtual serial port used by WCH’s SDI print
+feature. Captures also show <code>81 0d 02 ee 00</code> / <code>02</code> / <code>03</code> labelled
+<code>SetSDLineMode</code>; this three-value form is <code>unverified</code> and not implemented by
+wlink. wlink only uses <code>ee 00</code> (enable) and <code>ee 01</code> (disable).</p>
+<h2 id="session-lifecycle"><a class="header" href="#session-lifecycle">Session lifecycle</a></h2>
+<p>A typical session opens with <code>0x01</code> (probe info), then <code>0x02</code> (attach), runs
+operations, and ends with <code>0xff</code> (<code>OptEnd</code>). wlink sends <code>OptEnd</code> on detach
+unless <code>--no-detach</code> is given; commands that leave the MCU halted deliberately
+skip detach so the halt is preserved.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="probe-info-and-firmware-version"><a class="header" href="#probe-info-and-firmware-version">Probe Info and Firmware Version</a></h1>
+<p>Source: <code>GetProbeInfo</code>, <code>ProbeInfo</code> and the version helpers in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/control.rs"><code>src/commands/control.rs</code></a>;
+<code>WchLinkVariant</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/probe.rs"><code>src/probe.rs</code></a>.</p>
+<h2 id="0x0d--0x01--getprobeinfo"><a class="header" href="#0x0d--0x01--getprobeinfo"><code>0x0d / 0x01</code> — GetProbeInfo</a></h2>
+<p>Request: <code>81 0d 01 01</code>.</p>
+<p>Response payload (<code>ProbeInfo::from_payload</code> requires at least 3 bytes):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Field</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td><code>major_version</code></td><td>Raw major byte as reported by the probe</td></tr>
+<tr><td>1</td><td><code>minor_version</code></td><td>Raw minor byte (may exceed 15 — see below)</td></tr>
+<tr><td>2</td><td><code>variant</code></td><td>Only interpreted when the payload is <strong>4</strong> bytes long; otherwise wlink assumes <code>Ch549</code></td></tr>
+<tr><td>3</td><td>—</td><td>Present in the 4-byte form; meaning <code>unverified</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Example: <code>82 0d 04 02 0f 02 00</code> → major <code>0x02</code>, minor <code>0x0f</code>, variant
+<code>0x02</code> (WCH-LinkE-CH32V305), with a fourth payload byte of unknown meaning.
+A 3-byte payload carries no variant and makes wlink assume <code>Ch549</code>.</p>
+<h2 id="firmware-version-encoding"><a class="header" href="#firmware-version-encoding">Firmware version encoding</a></h2>
+<p>The probe does <strong>not</strong> report a decimal version. Its two bytes are a packed
+value, and WCH’s tooling displays versions as <code>major * 10 + minor</code>. This is why
+README says “firmware version 2.15 is actually v35”.</p>
+<p>For raw bytes <code>(major, minor)</code>:</p>
+<pre><code class="language-text">packed        = 16 * major + minor
+version_code  = if packed &lt; 0x30 { 10 * major + minor } else { packed - 12 }
+display       = (packed &gt;&gt; 4, packed &amp; 0x0f)
+</code></pre>
+<p><code>version_code</code> is monotonic and is what wlink uses for all comparisons.
+<code>display_version</code> reconstructs the human-readable version by treating the
+packed value as two nibbles, so an “impossible” minor carries into the major.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Raw bytes</th><th><code>packed</code></th><th><code>version_code</code></th><th>Displayed as</th><th>Note</th></tr>
+</thead>
+<tbody>
+<tr><td><code>02 08</code></td><td><code>0x28</code></td><td>28</td><td>2.8</td><td>Older firmware</td></tr>
+<tr><td><code>02 0f</code></td><td><code>0x2f</code></td><td>35</td><td>2.15 (v35)</td><td>Current baseline in README</td></tr>
+<tr><td><code>02 16</code></td><td><code>0x36</code></td><td>42</td><td>3.6</td><td>wlink source spells newer builds as <code>2.22</code></td></tr>
+<tr><td><code>02 0a</code></td><td><code>0x2a</code></td><td>30</td><td>2.10 (v30)</td><td>First firmware with SDI print</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="minimum-firmware-versions-used-by-wlink"><a class="header" href="#minimum-firmware-versions-used-by-wlink">Minimum firmware versions used by wlink</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Constant</th><th>Value</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>MIN_FW_VERSION_CHIP_INFO_V2</code></td><td>29 (<code>v2.9</code>)</td><td>Use <code>GetChipInfo::V2</code> (<code>0x11 / 0x06</code>) instead of V1</td></tr>
+<tr><td><code>MIN_FW_VERSION_CH32V205</code></td><td>42 (<code>v3.6</code>, sometimes written <code>2.22</code>)</td><td>First firmware that reports the new-generation CH32V205 family (<code>0xce</code>) correctly</td></tr>
+</tbody>
+</table>
+</div>
+<p>Older firmware misdetects CH32V205 as CH32V20X with garbage ChipID/ESIG;
+wlink emits a warning but continues.</p>
+<h2 id="variant-codes-and-capabilities"><a class="header" href="#variant-codes-and-capabilities">Variant codes and capabilities</a></h2>
+<p><code>WchLinkVariant::try_from_u8</code> accepts:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Byte</th><th>Variant</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>Ch549</code></td></tr>
+<tr><td><code>0x02</code>, <code>0x12</code></td><td><code>ECh32v305</code></td></tr>
+<tr><td><code>0x03</code></td><td><code>SCh32v203</code></td></tr>
+<tr><td><code>0x05</code>, <code>0x85</code></td><td><code>WCh32v208</code></td></tr>
+<tr><td>other</td><td><code>Error::UnknownLinkVariant</code></td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Variant</th><th>Mode switch</th><th>Power output</th><th>SDI print</th><th>Chip restrictions</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Ch549</code></td><td>no</td><td>no</td><td>no</td><td>No CH32V003 / CH32X035 / CH643</td></tr>
+<tr><td><code>ECh32v305</code></td><td>yes</td><td>yes</td><td>yes</td><td>none</td></tr>
+<tr><td><code>SCh32v203</code></td><td>yes</td><td>no</td><td>no</td><td>none</td></tr>
+<tr><td><code>WCh32v208</code></td><td>yes</td><td>yes</td><td>no</td><td>No CH56X / CH57X / CH582 / CH59X</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="hardware-variants-historical-table"><a class="header" href="#hardware-variants-historical-table">Hardware variants (historical table)</a></h2>
+<p>The old <code>protocol.md</code> listed these; they are retained here for orientation but
+have not been re-verified against current hardware.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Probe MCU</th><th>Variant</th><th>Note</th></tr>
+</thead>
+<tbody>
+<tr><td>CH549</td><td>WCH-Link-R1-1v1</td><td>Switch mode by reflashing firmware</td></tr>
+<tr><td>CH32V305F</td><td>WCH-LinkE-R0-1v3</td><td>Switch mode by button or EEPROM setting</td></tr>
+<tr><td>CH32V203</td><td>WCH-LinkS-CH32V203</td><td>—</td></tr>
+<tr><td><code>unverified</code></td><td>WCH-LinkB</td><td>Hardware MCU unknown</td></tr>
+</tbody>
+</table>
+</div>
+<p>See <a href="#usb-transport">USB Transport</a> for VID/PID and mode-switch frames.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="chip-info-and-esig"><a class="header" href="#chip-info-and-esig">Chip Info and ESIG</a></h1>
+<p>Two commands identify the attached MCU: <code>0x0d / 0x02</code> (attach) returns the
+chip family and ChipID, while <code>0x11</code> returns the “ESIG” block with flash size,
+UID and a second ChipID field.</p>
+<p>Sources: <code>AttachChipResponse</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/control.rs"><code>src/commands/control.rs</code></a>,
+<code>GetChipInfo</code> / <code>ESignature</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/mod.rs"><code>src/commands/mod.rs</code></a>,
+and <a href="https://github.com/ch32-rs/wlink/blob/main/src/chips.rs"><code>src/chips.rs</code></a>
+for the ChipID database.</p>
+<h2 id="0x0d--0x02--attachchip"><a class="header" href="#0x0d--0x02--attachchip"><code>0x0d / 0x02</code> — AttachChip</a></h2>
+<p>Request: <code>81 0d 01 02</code>.</p>
+<p>Response payload must be exactly 5 bytes:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Size</th><th>Field</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>1</td><td><code>riscvchip</code> — chip family code, decoded via <code>RiscvChip::try_from_u8</code></td></tr>
+<tr><td>1–4</td><td>4</td><td><code>chip_id</code> (<code>u32_be</code>), <code>0</code> when not reported</td></tr>
+</tbody>
+</table>
+</div>
+<p>Example: <code>82 0d 05 05 20 36 05 10</code> → family <code>0x05</code> (CH32V20X), ChipID
+<code>0x20360510</code>.</p>
+<p><code>ProbeSession::attach</code> retries this command up to 3 times with a 100 ms delay
+because a freshly powered target can fail the first attach. When <code>--chip</code> is
+given, the returned family must match or wlink raises <code>ChipMismatch</code>.</p>
+<p>The ChipID-to-part-name table lives in <code>src/chips.rs</code>
+(<code>chip_id_to_chip_name</code>); the per-family tables in the <em>Chip Notes</em> section of
+this site list the known part numbers.</p>
+<h2 id="0x11--getchipinfo--esignature-1"><a class="header" href="#0x11--getchipinfo--esignature-1"><code>0x11</code> — GetChipInfo / ESignature</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>PAYLOAD[0]</th><th>Variant</th><th>When used</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x09</code></td><td><code>GetChipInfo::V1</code></td><td>Firmware older than v2.9 (<code>version_code &lt; 29</code>)</td></tr>
+<tr><td><code>0x06</code></td><td><code>GetChipInfo::V2</code></td><td>Firmware v2.9 and newer</td></tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p><strong>This command does not follow the standard <code>82 CMD LEN PAYLOAD</code> response
+format.</strong> <code>ESignature</code> overrides <code>Response::from_raw</code> and reads a raw
+20-byte buffer directly, with no <code>0x82</code>/<code>0x81</code> marker validation. This is
+tracked in <a href="https://github.com/ch32-rs/wlink/issues/58">wlink#58</a>.</p>
+</blockquote>
+<p>Observed raw response (from a source comment in <code>src/commands/mod.rs</code>):</p>
+<pre><code class="language-text">ffff 0020 aeb4abcd 16c6bc45 e339e339 20360510
+^^^^ ^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^^^
+ │    │    │        │        │        └─ ChipID (0x20360510)
+ │    │    │        │        └────────── erased-flash pattern 0xe339e339
+ │    │    │        └─────────────────── UID words 1 and 2 (see byte order below)
+ │    │    └─────────────────────────── flash size in KB (0x0020 = 32 KB)
+ │    └──────────────────────────────── prefix / header, meaning unverified
+ └───────────────────────────────────── prefix / header, meaning unverified
+</code></pre>
+<p><code>ESignature::from_raw</code> only parses the first 12 bytes:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Size</th><th>Field</th></tr>
+</thead>
+<tbody>
+<tr><td>2–3</td><td>2</td><td><code>flash_size_kb</code> (<code>u16_be</code>)</td></tr>
+<tr><td>4–7</td><td>4</td><td>UID word 1 (<code>u32_be</code>)</td></tr>
+<tr><td>8–11</td><td>4</td><td>UID word 2 (<code>u32_be</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<p>The trailing 8 bytes (erased-flash marker and ChipID) are observed but <strong>not
+parsed</strong> by wlink; their semantics are <code>unverified</code>.</p>
+<h3 id="uid-byte-order"><a class="header" href="#uid-byte-order">UID byte order</a></h3>
+<p>wlink stores the two <code>u32_be</code> words and reinterprets them as native-endian
+bytes for display, producing the same order as <code>wchisp</code>:</p>
+<pre><code class="language-text">words:  aeb4abcd  16c6bc45
+bytes:  cd ab b4 ae 45 bc c6 16
+UID:    cd-ab-b4-ae-45-bc-c6-16
+</code></pre>
+<h3 id="erased-flash-size-field"><a class="header" href="#erased-flash-size-field">Erased flash-size field</a></h3>
+<p><code>0xE339</code> (per halfword) is what erased flash reads back on these MCUs, not
+<code>0xFFFF</code>. When the flash-size field equals <code>ESignature::ERASED_FLASH_SIZE</code>
+(<code>0xE339</code>), wlink substitutes the family’s fixed flash size
+(<code>RiscvChip::fixed_flash_size_kb</code>). A programmed value always wins.</p>
+<p>Example from a test in <code>src/commands/mod.rs</code> (CH32V407VET):
+<code>ffff 0240 50ad061a ab33546c e339e339 46700000</code> → 576 KB, ChipID
+<code>0x46700000</code>.</p>
+<h2 id="chip-family-codes"><a class="header" href="#chip-family-codes">Chip family codes</a></h2>
+<p>The one-byte <code>riscvchip</code> code is required by <code>SetSpeed</code> (<code>0x0c</code>), by the
+special erase subcommands (<code>0x0d / 0x08</code>, <code>0x0d / 0x0f</code>) and by several
+per-family behaviours. The complete 28-entry table is in
+<a href="#constants-and-chip-families">Constants and Chip Families</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="operation-flows"><a class="header" href="#operation-flows">Operation Flows</a></h1>
+<p>This page describes the order in which wlink issues commands. Implementations
+live in <a href="https://github.com/ch32-rs/wlink/blob/main/src/operations.rs"><code>src/operations.rs</code></a>
+and <a href="https://github.com/ch32-rs/wlink/blob/main/src/probe.rs"><code>src/probe.rs</code></a>.
+Command byte layouts are in <a href="#command-reference">Command Reference</a>.</p>
+<h2 id="attach-start-of-a-session"><a class="header" href="#attach-start-of-a-session">Attach (start of a session)</a></h2>
+<p><code>ProbeSession::attach</code>:</p>
+<ol>
+<li>Check that the probe variant supports the requested chip. Without <code>--chip</code>,
+<code>CH32V103</code> (<code>0x01</code>) is used as the provisional family.</li>
+<li><strong>Loop</strong> (up to 3 retries, 100 ms apart):
+<ul>
+<li><code>0x0c SetSpeed</code> with the provisional <code>riscvchip</code> and the selected speed;</li>
+<li><code>0x0d / 0x02 AttachChip</code> — break on success.</li>
+</ul>
+</li>
+<li>If <code>--chip</code> was given, verify the detected family matches; otherwise issue
+<code>0x0c SetSpeed</code> again using the detected family.</li>
+<li>Run the family-specific post-init hook (<code>RiscvChip::do_post_init</code>).</li>
+</ol>
+<pre><code class="language-text">81 0c 02 01 01      SetSpeed(riscvchip=0x01, High)
+81 0d 01 02          AttachChip
+82 0d 05 05 20 36 05 10   → CH32V20X, ChipID 0x20360510
+81 0c 02 05 01      SetSpeed again with the detected family
+</code></pre>
+<p>The CH32V205 family requires firmware v3.6 (<code>version_code &gt;= 42</code>); older
+firmware misdetects it as CH32V20X and wlink warns.</p>
+<h2 id="status--chip-info"><a class="header" href="#status--chip-info">Status / chip info</a></h2>
+<p><code>ProbeSession::dump_info</code>:</p>
+<ol>
+<li><code>0x11 / 0x06 GetChipInfo::V2</code> when <code>version_code &gt;= 29</code>, else
+<code>0x11 / 0x09 GetChipInfo::V1</code> — see <a href="#chip-info-and-esig">Chip Info</a>.</li>
+<li><code>0x06 / 0x01 CheckReadProtect</code> → report whether flash is read-protected.</li>
+<li>If the family supports it, <code>0x0d / 0x04 GetChipRomRamSplit</code> → SRAM/CODE split mode.</li>
+</ol>
+<blockquote>
+<p>Querying info halts the MCU. wlink re-enables execution on detach.</p>
+</blockquote>
+<h2 id="erase-default-method"><a class="header" href="#erase-default-method">Erase (default method)</a></h2>
+<p><code>ProbeSession::erase_flash</code>:</p>
+<ol>
+<li>If the family supports flash protection:
+<ul>
+<li><code>0x06 / 0x01 CheckReadProtect</code>; protected → <code>unprotect_flash()</code>;</li>
+<li>if unprotected, <code>0x06 / 0x04 CheckReadProtectEx</code>; write-protected → <code>unprotect_flash()</code>.</li>
+</ul>
+</li>
+<li><code>0x02 / 0x01 Program::EraseFlash</code>.</li>
+<li><code>0x0d / 0x02 AttachChip</code> again to re-establish the session.</li>
+</ol>
+<h3 id="unprotect"><a class="header" href="#unprotect">Unprotect</a></h3>
+<p><code>ProbeSession::unprotect_flash</code> starts with a fresh attach
+(<code>0x0d / 0xff OptEnd</code> then <code>0x0d / 0x02</code>), then:</p>
+<ol>
+<li><code>0x06 / 0x01 CheckReadProtect</code>; if <code>0x01</code>, <code>0x06 / 0x02 Unprotect</code>, reattach, re-check.</li>
+<li><code>0x06 / 0x04 CheckReadProtectEx</code>; if <code>0x11</code>, <code>0x06 02 ff ff ff ff ff ff ff</code>
+(<code>UnprotectEx(0xff)</code>), reattach, re-check.</li>
+</ol>
+<p>wlink deliberately skips <code>Unprotect</code> when flash is already unprotected: the
+probe firmware mass-erases the option-byte page, destroying USER/Data/WRPR.</p>
+<h2 id="flash-programming"><a class="header" href="#flash-programming">Flash programming</a></h2>
+<p><code>ProbeSession::write_flash(data, address)</code>:</p>
+<pre><code class="language-text"> 1  (optional) unprotect_flash()
+ 2  0x01 SetWriteMemoryRegion(address, len)
+ 3  0x02 / 0x05 Program::WriteFlashOP
+ 4  data EP 0x02: write the family's flash algorithm blob
+                  (padded to data_packet_size, see src/flash_op.rs)
+ 5  0x02 / 0x07 Program::Unknown07AfterFlashOPWritten
+    → response must be 0x07
+ 6  0x02 / 0x02 Program::WriteFlash
+ 7  for each write_pack_size chunk:
+       data EP 0x02: write chunk (0xff-padded to data_packet_size)
+       data EP 0x82: read 4-byte ack, last byte must be 0x04
+                     (observed 41 01 01 04)
+ 8  0x02 / 0x08 Program::End
+</code></pre>
+<p><code>data_packet_size</code> and <code>write_pack_size</code> are per-family; see
+<code>RiscvChip::data_packet_size</code> / <code>write_pack_size</code> in <code>src/lib.rs</code>.</p>
+<h2 id="memory-read"><a class="header" href="#memory-read">Memory read</a></h2>
+<p><code>ProbeSession::read_memory(address, length)</code>:</p>
+<ol>
+<li>Round <code>length</code> up to a multiple of 4.</li>
+<li><code>0x03 SetReadMemoryRegion(address, len)</code>.</li>
+<li><code>0x02 / 0x0c Program::ReadMemory</code>.</li>
+<li><code>0x82</code> data endpoint: read <code>len</code> bytes in 64-byte bulk chunks.</li>
+<li>Reverse each 4-byte word to fix the probe’s word order.</li>
+</ol>
+<p>A leading <code>A9 BD F9 F3</code> sequence indicates a read from an invalid location or
+a chip that has just entered debug mode; wlink logs a warning.</p>
+<h2 id="special-erase-power-off--rst-pin"><a class="header" href="#special-erase-power-off--rst-pin">Special erase (power-off / RST pin)</a></h2>
+<p><code>erase --method power-off|pin-rst --chip &lt;FAMILY&gt;</code> bypasses attach entirely:</p>
+<pre><code class="language-text"> 0x0c SetSpeed(riscvchip=&lt;--chip&gt;, High)
+ 0x0d / 0x0f EraseCodeFlash::ByPowerOff    → 81 0d 02 0f &lt;riscvchip&gt;
+   or 0x0d / 0x08 EraseCodeFlash::ByPinRST  → 81 0d 02 08 &lt;riscvchip&gt;
+</code></pre>
+<p>Both require a probe with power functions and a chip family whose
+<code>support_special_erase()</code> is true. Because there is no auto-detection, <code>--chip</code>
+is mandatory. The RST-pin variant additionally needs the nRST line wired to
+the target.</p>
+<h2 id="reset-and-detach"><a class="header" href="#reset-and-detach">Reset and detach</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>CLI</th><th>Commands</th></tr>
+</thead>
+<tbody>
+<tr><td><code>wlink reset</code> (quit)</td><td><code>0x0b / 0x01 Reset::Soft</code>, then ~300 ms delay</td></tr>
+<tr><td><code>wlink reset run</code> / <code>halt</code></td><td>DMI halt/resume via <code>0x08</code> — see <a href="#dmi-and-the-debug-module">DMI</a></td></tr>
+<tr><td>end of most commands</td><td><code>0x0d / 0xff OptEnd</code> (skipped with <code>--no-detach</code>, or when the MCU must stay halted)</td></tr>
+<tr><td><code>wlink sdi-print enable</code></td><td><code>0x0d / 0xee 00</code></td></tr>
+<tr><td><code>wlink set-power</code></td><td><code>0x0d / 0x09</code>…<code>0x0c</code></td></tr>
+</tbody>
+</table>
+</div>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="dmi-and-the-debug-module"><a class="header" href="#dmi-and-the-debug-module">DMI and the Debug Module</a></h1>
+<p>The Debug Module Interface (DMI) is a separate layer above the WCH-Link command
+protocol: a single <code>0x08</code> command carries one DMI transaction. The register
+addresses and semantics come from the RISC-V Debug Specification 0.13.2 and
+WCH’s QingKe debug manuals.</p>
+<p>Sources: <code>DmiOp</code> / <code>DmiOpResponse</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/mod.rs"><code>src/commands/mod.rs</code></a>,
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/dmi.rs"><code>src/dmi.rs</code></a>,
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/regs.rs"><code>src/regs.rs</code></a>.</p>
+<h2 id="0x08-transaction-layout"><a class="header" href="#0x08-transaction-layout"><code>0x08</code> transaction layout</a></h2>
+<p>Request payload (6 bytes):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Size</th><th>Field</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>1</td><td><code>addr</code> — DMI register address</td></tr>
+<tr><td>1–4</td><td>4</td><td><code>data</code> (<code>u32_be</code>), ignored for NOP/READ</td></tr>
+<tr><td>5</td><td>1</td><td><code>op</code> — <code>0x00</code> NOP, <code>0x01</code> READ, <code>0x02</code> WRITE</td></tr>
+</tbody>
+</table>
+</div>
+<p>Response payload uses the same 6-byte shape; <code>op</code> is now a status:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>op</code></th><th>Meaning</th><th><code>DmiOpResponse</code> helper</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x00</code></td><td>Success</td><td><code>is_success()</code></td></tr>
+<tr><td><code>0x02</code></td><td>Failed</td><td><code>is_failed()</code></td></tr>
+<tr><td><code>0x03</code></td><td>Busy / failed</td><td><code>is_busy()</code>, also counted by <code>is_failed()</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Example — read <code>DMSTATUS</code> (<code>0x11</code>):</p>
+<pre><code class="language-text">→ 81 08 06 11 00 00 00 00 01
+← 82 08 06 11 00 00 00 00 00
+</code></pre>
+<p><code>dmi_read</code> polls on busy (up to 100 retries with 10 ms sleeps) and raises
+<code>Error::NotAttached</code> when it sees <code>op == 0x03 &amp;&amp; data == 0xffffffff &amp;&amp; addr == 0x7d</code>.</p>
+<h2 id="dmi-register-addresses"><a class="header" href="#dmi-register-addresses">DMI register addresses</a></h2>
+<p>From <code>src/regs.rs</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Address</th><th>Name</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x04</code></td><td><code>DMDATA0</code></td><td>Abstract command data</td></tr>
+<tr><td><code>0x05</code></td><td><code>DMDATA1</code></td><td></td></tr>
+<tr><td><code>0x10</code></td><td><code>DMCONTROL</code></td><td>Halt/resume, <code>dmactive</code></td></tr>
+<tr><td><code>0x11</code></td><td><code>DMSTATUS</code></td><td><code>allhalted</code>, <code>anyhalted</code>, <code>havereset</code></td></tr>
+<tr><td><code>0x12</code></td><td><code>DMHARTINFO</code></td><td></td></tr>
+<tr><td><code>0x16</code></td><td><code>DMABSTRACTCS</code></td><td><code>cmderr</code>, <code>busy</code></td></tr>
+<tr><td><code>0x17</code></td><td><code>DMCOMMAND</code></td><td>Abstract command register</td></tr>
+<tr><td><code>0x18</code></td><td><code>DMABSTRACTAUTO</code></td><td>Not available on QingKeV2 / QingKeV3</td></tr>
+<tr><td><code>0x20</code>–<code>0x27</code></td><td><code>DMPROGBUF0</code>–<code>7</code></td><td>Program buffer</td></tr>
+<tr><td><code>0x40</code></td><td><code>DMHALTSUM0</code></td><td></td></tr>
+</tbody>
+</table>
+</div>
+<p>CSR addresses used with abstract commands (16-bit <code>command.regno</code>):
+<code>0x300 MSTATUS</code>, <code>0x301 MISA</code>, <code>0x305 MTVEC</code>, <code>0x340 MSCRATCH</code>,
+<code>0x341 MEPC</code>, <code>0x342 MCAUSE</code>, <code>0x343 MTVAL</code>, <code>0x7b1 DPC</code>,
+<code>0xf12 MARCHID</code>, <code>0xf13 MIMPID</code>. General-purpose registers <code>x0</code>–<code>x31</code>
+occupy <code>0x1000</code>–<code>0x101f</code>.</p>
+<h2 id="abstract-command-errors"><a class="header" href="#abstract-command-errors">Abstract command errors</a></h2>
+<p><code>AbstractcsCmdErr::try_from_cmderr</code> maps the <code>cmderr</code> field of
+<code>DMABSTRACTCS</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Value</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>No error</td></tr>
+<tr><td>1</td><td>Busy (register access during an abstract command)</td></tr>
+<tr><td>2</td><td>Command not supported</td></tr>
+<tr><td>3</td><td>Exception during execution</td></tr>
+<tr><td>4</td><td>Hart in wrong state (not halted/running)</td></tr>
+<tr><td>5</td><td>Bus error (alignment, size, timeout)</td></tr>
+<tr><td>6</td><td>Parity error (WCH extension)</td></tr>
+<tr><td>7</td><td>Other</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>ProbeSession::clear_abstractcs_cmderr</code> writes <code>0b111</code> to the <code>cmderr</code> field
+to clear it (W1C), and <code>clear_dmstatus_havereset</code> acknowledges <code>havereset</code>.</p>
+<h2 id="flashoption-unlock-keys"><a class="header" href="#flashoption-unlock-keys">Flash/option unlock keys</a></h2>
+<p><code>src/dmi.rs</code> defines two keys used when unlocking flash/option-byte writes
+through the probe’s debug interface:</p>
+<pre><code class="language-text">KEY1 = 0x45670123
+KEY2 = 0xCDEF89AB
+</code></pre>
+<h2 id="higher-level-operations"><a class="header" href="#higher-level-operations">Higher-level operations</a></h2>
+<p><code>DebugModuleInterface</code> (implemented for <code>WchLink</code>) provides <code>dmi_nop</code>,
+<code>dmi_read</code>, <code>dmi_write</code> and typed register helpers. <code>ProbeSession</code> builds on
+them for:</p>
+<ul>
+<li><code>ensure_mcu_halt</code> / <code>ensure_mcu_resume</code> — write <code>0x80000001</code> to <code>DMCONTROL</code>
+(<code>0x10</code>) and poll <code>DMSTATUS</code>;</li>
+<li>register and memory inspection via abstract commands and the program buffer;</li>
+<li><code>dump_regs</code>, <code>dump_core_csrs</code>, <code>dump_pmp_csrs</code>, <code>dump_dmi</code>.</li>
+</ul>
+<blockquote>
+<p>The RISC-V Debug Specification details are out of scope for this project
+documentation. See <a href="#references">External References</a> for the QingKeV2
+debug manual and other implementations.</p>
+</blockquote>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="constants-and-chip-families"><a class="header" href="#constants-and-chip-families">Constants and Chip Families</a></h1>
+<h2 id="riscvchip--chip-family-codes"><a class="header" href="#riscvchip--chip-family-codes"><code>riscvchip</code> — chip family codes</a></h2>
+<p>Source: <code>RiscvChip</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/lib.rs"><code>src/lib.rs</code></a>. The
+one-byte value is returned by <code>AttachChip</code> and is passed to <code>SetSpeed</code> and to
+the special-erase subcommands.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Code</th><th>Family</th><th>Series / notes</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>CH32V103</code></td><td>RISC-V3A</td></tr>
+<tr><td><code>0x02</code></td><td><code>CH57X</code></td><td>CH571/CH573, RISC-V3A BLE 4.2</td></tr>
+<tr><td><code>0x03</code></td><td><code>CH56X</code></td><td>CH565/CH569, RISC-V3A</td></tr>
+<tr><td><code>0x04</code></td><td><code>CH32F10X</code></td><td>Cortex-M (not a RISC-V target)</td></tr>
+<tr><td><code>0x05</code></td><td><code>CH32V20X</code></td><td>RISC-V4B/V4C</td></tr>
+<tr><td><code>0x06</code></td><td><code>CH32V30X</code></td><td>RISC-V4C/V4F, shares type 5 traits</td></tr>
+<tr><td><code>0x07</code></td><td><code>CH582</code></td><td>CH581/CH582/CH583, RISC-V4A BLE 5.3</td></tr>
+<tr><td><code>0x08</code></td><td><code>CH32F20X</code></td><td>Cortex-M (not a RISC-V target)</td></tr>
+<tr><td><code>0x09</code></td><td><code>CH32V003</code></td><td>RISC-V2A</td></tr>
+<tr><td><code>0x0a</code></td><td><code>CH8571</code></td><td>Undocumented RISC-V EC controller</td></tr>
+<tr><td><code>0x0b</code></td><td><code>CH59X</code></td><td>CH59x RISC-V4C BLE 5.4, falls back as CH58X</td></tr>
+<tr><td><code>0x0c</code></td><td><code>CH643</code></td><td>RISC-V4C, RGB display driver</td></tr>
+<tr><td><code>0x0d</code></td><td><code>CH32X035</code></td><td>CH32X035/033, RISC-V4C USB-PD</td></tr>
+<tr><td><code>0x0e</code></td><td><code>CH32L103</code></td><td>RISC-V4C low-power USB-PD</td></tr>
+<tr><td><code>0x0f</code></td><td><code>CH564</code></td><td>RISC-V4J</td></tr>
+<tr><td><code>0x46</code></td><td><code>CH645</code></td><td>CH645/CH653, RISC-V4C</td></tr>
+<tr><td><code>0x49</code></td><td><code>CH641</code></td><td>RISC-V2A USB-PD, falls back as CH32V003</td></tr>
+<tr><td><code>0x4b</code></td><td><code>CH585</code></td><td>CH585/CH584, RISC-V3C BLE 5.4 / NFC / USB HS</td></tr>
+<tr><td><code>0x4e</code></td><td><code>CH32V00X</code></td><td>CH32V002/4/5/6/7, CH32M007</td></tr>
+<tr><td><code>0x86</code></td><td><code>CH32V317</code></td><td>RISC-V4</td></tr>
+<tr><td><code>0x8b</code></td><td><code>CH570</code></td><td>CH570/CH572, RISC-V BLE</td></tr>
+<tr><td><code>0x8e</code></td><td><code>CH32M030</code></td><td>RISC-V motor control</td></tr>
+<tr><td><code>0xa6</code></td><td><code>CH32V4X7</code></td><td>CH32V407/CH32V467</td></tr>
+<tr><td><code>0xab</code></td><td><code>CH586</code></td><td>CH586/CH587, RISC-V BLE 5.4</td></tr>
+<tr><td><code>0xc6</code></td><td><code>CH32H41X</code></td><td>CH32H415/416/417, RISC-V5F + RISC-V3F</td></tr>
+<tr><td><code>0xce</code></td><td><code>CH32V205</code></td><td>New-generation CH32V205/CH32V203 (QingKe V3B), unrelated to <code>CH32V20X</code></td></tr>
+<tr><td><code>0xe6</code></td><td><code>CH32X3X5</code></td><td>CH32X315/CH32X305, RISC-V3F</td></tr>
+</tbody>
+</table>
+</div>
+<p><code>RiscvChip</code> also implements clap’s <code>ValueEnum</code>, so <code>--chip</code> accepts the family
+name plus part-number aliases such as <code>CH32H417QEU</code> or <code>CH32X315MCU6</code>. The
+ChipID-to-part-name database is <code>chip_id_to_chip_name</code> in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/chips.rs"><code>src/chips.rs</code></a>.</p>
+<h2 id="speed-codes-0x0c-setspeed"><a class="header" href="#speed-codes-0x0c-setspeed">Speed codes (<code>0x0c SetSpeed</code>)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Code</th><th><code>Speed</code> variant</th><th>Clock</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01</code></td><td><code>High</code> (default)</td><td>6000 kHz</td></tr>
+<tr><td><code>0x02</code></td><td><code>Medium</code></td><td>4000 kHz</td></tr>
+<tr><td><code>0x03</code></td><td><code>Low</code></td><td>400 kHz</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="protection-flags-0x06-configchip"><a class="header" href="#protection-flags-0x06-configchip">Protection flags (<code>0x06 ConfigChip</code>)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Constant</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td><code>FLAG_READ_PROTECTED</code></td><td><code>0x01</code></td></tr>
+<tr><td><code>FLAG_READ_UNPROTECTED</code></td><td><code>0x02</code></td></tr>
+<tr><td><code>FLAG_WRITE_PROTECTED</code></td><td><code>0x11</code></td></tr>
+<tr><td><code>FLAG_WRITE_UNPROTECTED</code></td><td><code>0x00</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>CheckReadProtect</code> returns the read flags; <code>CheckReadProtectEx</code> returns the
+write flags.</p>
+<h2 id="error-reasons"><a class="header" href="#error-reasons">Error reasons</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>REASON</code></th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x55</code></td><td>Failed to connect to the target RISC-V chip</td></tr>
+<tr><td>other</td><td>Unknown; wlink preserves the whole frame in <code>Error::Protocol(reason, bytes)</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="usb-constants"><a class="header" href="#usb-constants">USB constants</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Constant</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td><code>VENDOR_ID</code></td><td><code>0x1a86</code></td></tr>
+<tr><td><code>PRODUCT_ID</code> (RV)</td><td><code>0x8010</code></td></tr>
+<tr><td><code>PRODUCT_ID_DAP</code></td><td><code>0x8012</code></td></tr>
+<tr><td><code>ENDPOINT_OUT</code> / <code>ENDPOINT_IN</code></td><td><code>0x01</code> / <code>0x81</code></td></tr>
+<tr><td><code>DATA_ENDPOINT_OUT</code> / <code>DATA_ENDPOINT_IN</code></td><td><code>0x02</code> / <code>0x82</code></td></tr>
+<tr><td><code>ENDPOINT_OUT_DAP</code></td><td><code>0x02</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="flash-algorithm-blobs"><a class="header" href="#flash-algorithm-blobs">Flash algorithm blobs</a></h2>
+<p>Each supported family has a binary “flash OP” blob in
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/flash_op.rs"><code>src/flash_op.rs</code></a>,
+sent over the data endpoint after <code>0x02 / 0x05 Program::WriteFlashOP</code>. They are
+opaque byte arrays selected by <code>RiscvChip::get_flash_op</code>, for example
+<code>CH32V307: [u8; 446]</code>, <code>CH32V003: [u8; 498]</code>, <code>CH32H417: [u8; 618]</code>,
+<code>CH564: [u8; 1532]</code>. Some families have an <code>_ALT</code> variant. Packet and write
+chunk sizes come from <code>RiscvChip::data_packet_size</code> and
+<code>RiscvChip::write_pack_size</code> in <code>src/lib.rs</code>.</p>
+<h2 id="debug-interface-keys"><a class="header" href="#debug-interface-keys">Debug interface keys</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Constant</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td><code>KEY1</code></td><td><code>0x45670123</code></td></tr>
+<tr><td><code>KEY2</code></td><td><code>0xCDEF89AB</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Used to unlock flash/option-byte writes through the debug interface; see
+<a href="#dmi-and-the-debug-module">DMI</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="unverified-commands-and-captures"><a class="header" href="#unverified-commands-and-captures">Unverified Commands and Captures</a></h1>
+<p>This page collects protocol knowledge that wlink does <strong>not</strong> implement and
+cannot confirm. It exists so that the old <code>protocol.md</code>’s <code>???</code> markers are not
+silently dropped: they are either resolved (and documented on other pages) or
+listed here as observations.</p>
+<blockquote>
+<p><code>unverified</code> means: seen in a USB capture from WCH’s utility, or written in
+an older note, without a confirmed implementation in wlink. Do not rely on
+these byte sequences in new code without re-capturing.</p>
+</blockquote>
+<h2 id="raw-captures-recorded-in-the-source"><a class="header" href="#raw-captures-recorded-in-the-source">Raw captures recorded in the source</a></h2>
+<p>Copied verbatim from the comment block at the end of
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/commands/mod.rs"><code>src/commands/mod.rs</code></a>:</p>
+<pre><code class="language-text">81 0D 05 11 SetAccessAddress
+81 0F 01 02 GetDeviceMode
+81 0D 01 07 EnableQE
+81 0D 01 06 CheckQE
+81 FE 01 00 DisEncrypt
+81 0D 01 0F ClearCodeFlashB
+81 0D 02 08 xx ClearCodeFlash
+81 11 01 0D unknown in query info, before GetChipRomRamSplit
+81 0D 02 EE 00/02/03 SetSDLineMode
+81 0F 01 01 SetIAPMode
+</code></pre>
+<p>Observations:</p>
+<ul>
+<li><code>0x0f</code> appears as a command ID in <code>GetDeviceMode</code> / <code>SetIAPMode</code> captures,
+not as a “begin verify” <code>0x02</code> subcommand as the old document claimed.</li>
+<li><code>0xfe</code> appears once as <code>DisEncrypt</code>.</li>
+<li><code>81 0D 01 0F</code> (<code>ClearCodeFlashB</code>) has <code>LEN = 1</code> while two payload bytes
+follow — see the discussion of the analogous <code>0x0f</code> length quirk in
+<a href="#control-subcommands-0x0d">Control Subcommands</a>.</li>
+<li><code>81 11 01 0D</code> is a <code>0x11</code> variant not used by wlink, which only sends <code>0x09</code>
+(V1) and <code>0x06</code> (V2).</li>
+<li><code>81 0D 02 EE 00/02/03</code> suggests additional SDI line modes; wlink only uses
+<code>ee 00</code> / <code>ee 01</code>.</li>
+</ul>
+<h2 id="subcommands-not-implemented-by-wlink"><a class="header" href="#subcommands-not-implemented-by-wlink">Subcommands not implemented by wlink</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>CMD / SUB</code></th><th>Capture label</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x0d / 0x03</code></td><td>“stage after connect chip” (old note, <code>riscvchip 1</code>)</td><td><code>unverified</code></td></tr>
+<tr><td><code>0x0d / 0x06</code></td><td><code>CheckQE</code></td><td><code>unverified</code></td></tr>
+<tr><td><code>0x0d / 0x07</code></td><td><code>EnableQE</code></td><td><code>unverified</code></td></tr>
+<tr><td><code>0x0d / 0x11</code></td><td><code>SetAccessAddress</code></td><td><code>unverified</code></td></tr>
+<tr><td><code>0x0f / 0x01</code></td><td><code>SetIAPMode</code></td><td><code>unverified</code></td></tr>
+<tr><td><code>0x0f / 0x02</code></td><td><code>GetDeviceMode</code></td><td><code>unverified</code></td></tr>
+<tr><td><code>0xfe / 0x00</code></td><td><code>DisEncrypt</code></td><td><code>unverified</code></td></tr>
+<tr><td><code>0x06 Config { data, wrp }</code></td><td>option-byte config flags</td><td>known capture <code>81 06 08 02 3f 00 00 ff ff ff ff</code>, but <code>todo!()</code> in wlink</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="old-protocolmd-questions-and-their-resolution"><a class="header" href="#old-protocolmd-questions-and-their-resolution">Old <code>protocol.md</code> questions and their resolution</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Old entry</th><th>Resolution</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0x01 - Set RAM address and size</code> (empty section)</td><td><code>SetWriteMemoryRegion</code>, 8-byte payload — <a href="#command-reference">Command Reference</a></td></tr>
+<tr><td><code>0x02</code> subcommand guesses (<code>0x03 execute ram</code>, <code>0x05 begin bulk transfer</code>, <code>0x07 verify</code>, <code>0x09 bulk transfer ends</code>, <code>0x0a verify</code>, <code>0x0b verify for riscvchip 1</code>)</td><td>Replaced by the implemented <code>Program</code> enum; unconfirmed labels are <code>unverified</code></td></tr>
+<tr><td><code>0x08 - DMI OP</code> (two empty tables)</td><td>Filled in — <a href="#dmi-and-the-debug-module">DMI</a></td></tr>
+<tr><td><code>0x0c - ???</code></td><td><code>SetSpeed</code>; see also the v0.0.6 CHANGELOG correction</td></tr>
+<tr><td><code>0x0d - Info</code> in the command table vs <code>0x0d - Control</code> as a heading</td><td>Both refer to the <strong>Control</strong> command — <a href="#control-subcommands-0x0d">Control Subcommands</a></td></tr>
+<tr><td><code>0x0e</code> (unnamed)</td><td><code>DisableDebug</code></td></tr>
+<tr><td><code>0x0f - ? begin verify</code></td><td><code>unverified</code>; captures point at <code>GetDeviceMode</code> / <code>SetIAPMode</code></td></tr>
+<tr><td><code>0x03 Reset, normal?</code></td><td><code>Reset::Normal</code> (<code>0x03</code>)</td></tr>
+<tr><td><code>0x03 ? stage after connect chip</code></td><td>Still <code>unverified</code></td></tr>
+<tr><td><code>Error Reason: 0x55 only</code></td><td>Still the only reason with a known meaning</td></tr>
+<tr><td><code>RiscvChip</code> with 7 families</td><td>28 entries — <a href="#constants-and-chip-families">Constants</a></td></tr>
+<tr><td><code>Firmware Versions: v2.8</code></td><td>Current baseline v2.15 (v35); encoding explained in <a href="#probe-info-and-firmware-version">Probe Info</a></td></tr>
+<tr><td><code>Variants: ?? / WCH-LinkB</code></td><td>Still <code>unverified</code></td></tr>
+<tr><td><code>beigin</code>, <code>buck</code>, <code>Swith</code> typos</td><td>Corrected</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="contributing-a-correction"><a class="header" href="#contributing-a-correction">Contributing a correction</a></h2>
+<ol>
+<li>Capture the exchange with <code>wlink -vv</code> (trace logs print <code>send</code> and <code>recv</code>
+hex for every frame) or with a USB sniffer.</li>
+<li>Identify the Rust symbol in <code>src/commands/</code> that produces or parses it.</li>
+<li>Update the relevant page here, and move the entry out of this page if it is
+now confirmed. If the implementation changes, update the code and the
+documentation in the same PR.</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch32v003"><a class="header" href="#ch32v003">CH32V003</a></h1>
+<p>RISC-V2A, 16KB Flash, 2KB SRAM, 48MHz.</p>
+<blockquote>
+<p><strong>Note</strong>
+CH32V003 is a riscv32ec core, which is not supported by ofiicial Rust yet.
+ch32-rs team maintains a fork of Rust at <a href="https://github.com/ch32-rs/rust">https://github.com/ch32-rs/rust</a>.
+You can check <a href="https://noxim.xyz/blog/rust-ch32v003/introduction/">Noxim’s Blog</a> for riscv32ec support.</p>
+</blockquote>
+<h2 id="debug-support"><a class="header" href="#debug-support">Debug support</a></h2>
+<p>1-wire debug.</p>
+<pre><code class="language-text">SWDIO &lt;-&gt; D1/DIO@MCU, PD1
+GND   &lt;-&gt; GND@MCU
+3V3   &lt;-&gt; 3V3@MCU (No need if you connect your MCU board with USB-C power supply)
+</code></pre>
+<ul>
+<li><input disabled="" type="checkbox" checked=""> Flash support</li>
+<li><input disabled="" type="checkbox" checked=""> Memory dump support</li>
+<li><input disabled="" type="checkbox" checked=""> Reset / Resume</li>
+<li><input disabled="" type="checkbox" checked=""> Reg read/write support</li>
+</ul>
+<pre><code class="language-console">&gt; wlink -v flash ./firmware.bin
+13:41:49 [INFO] WCH-Link v2.8 (WCH-LinkE-CH32V305)
+13:41:49 [INFO] attached chip: CH32V003(0x00300500)
+13:41:49 [DEBUG] (1) wlink::operations: Chip UID: cd-ab-80-17-48-bc-95-7f
+13:41:49 [DEBUG] (1) wlink::operations: flash protected: false
+13:41:49 [DEBUG] (1) wlink::operations: SRAM CODE mode: 3
+13:41:49 [DEBUG] (1) wlink::operations: already halted
+13:41:49 [DEBUG] (1) wlink::operations: RISC-V core version: Some("WCH-V2A")
+13:41:49 [INFO] flash 860 bytes
+13:41:49 [DEBUG] (1) wlink::operations: Code start address 0x08000000
+13:41:49 [DEBUG] (1) wlink::operations: flash op written
+13:41:49 [DEBUG] (1) wlink::operations: fastprogram done
+13:41:49 [INFO] flash done
+13:41:50 [INFO] now reset...
+13:41:51 [INFO] resume executing...
+13:41:51 [WARN] resume fails
+</code></pre>
+<h2 id="chips"><a class="header" href="#chips">Chips</a></h2>
+<pre><code> * CH32V003F4P6-0x003005x0
+ * CH32V003F4U6-0x003105x0
+ * CH32V003A4M6-0x003205x0
+ * CH32V003J4M6-0x003305x0
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch32v103"><a class="header" href="#ch32v103">CH32V103</a></h1>
+<p>SWDIO - PA13 @ MCU
+SWCLK - PA14 @ MCU</p>
+<p>“Deprotect” or “接触代码保护” must be run before using wlin.(use WCHISPTool or wchisp).</p>
+<h2 id="usbisp"><a class="header" href="#usbisp">USBISP</a></h2>
+<p>BOOT0 to VCC</p>
+<h2 id="chips-1"><a class="header" href="#chips-1">Chips</a></h2>
+<pre><code> * CH32F103C8T6-0x20004102
+ * CH32F103R8T6-0x2000410F
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch32v20x"><a class="header" href="#ch32v20x">CH32V20x</a></h1>
+<ul>
+<li>PA13 SWDIO</li>
+<li>PA14 SWCLK</li>
+</ul>
+<h2 id="dev-boards"><a class="header" href="#dev-boards">Dev Boards</a></h2>
+<ul>
+<li><a href="https://github.com/wuxx/nanoCH32V203">nanoCH32V203</a> by Muse Lab - CH32V203C8T6</li>
+<li><a href="https://github.com/metro94/FlappyBoard">FlappyBoard</a> - CH32V203G6U6</li>
+</ul>
+<h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
+<ul>
+<li>Erased bytes <code>39 e3 39 e3</code></li>
+</ul>
+<h2 id="chips-2"><a class="header" href="#chips-2">Chips</a></h2>
+<pre><code> * CH32V203C8U6-0x203005x0
+ * CH32V203C8T6-0x203105x0
+ * CH32V203K8T6-0x203205x0
+ * CH32V203C6T6-0x203305x0
+ * CH32V203K6T6-0x203505x0
+ * CH32V203G6U6-0x203605x0
+ * CH32V203G8R6-0x203B05x0
+ * CH32V203F8U6-0x203E05x0
+ * CH32V203F6P6-0x203705x0-0x203905x0
+ * CH32V203F8P6-0x203A05x0
+ * CH32V203RBT6-0x203405xC
+ * CH32V208WBU6-0x208005xC
+ * CH32V208RBT6-0x208105xC
+ * CH32V208CBU6-0x208205xC
+ * CH32V208GBU6-0x208305xC
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch32v30x"><a class="header" href="#ch32v30x">CH32V30x</a></h1>
+<ul>
+<li>CH32V303</li>
+<li>CH32V305</li>
+<li>CH32V307</li>
+</ul>
+<pre><code class="language-console">wlink -v dump 0x08000000 0x10`
+14:40:22 [INFO] WCH-Link v2.8 (WCH-LinkE-CH32V305)
+14:40:22 [INFO] attached chip: CH32V30X(0x30700518)
+14:40:22 [DEBUG] (1) wlink::operations: Chip UID: 30-78-3e-26-3b-38-a9-d6
+14:40:22 [DEBUG] (1) wlink::operations: flash protected: false
+14:40:22 [DEBUG] (1) wlink::operations: SRAM CODE mode: 3
+14:40:22 [DEBUG] (1) wlink::operations: already halted
+14:40:22 [DEBUG] (1) wlink::operations: RISC-V core version: Some("WCH-V4A")
+14:40:22 [INFO] Read memory from 0x08000000 to 0x08000010
+08000000:   b7 00 00 08  67 80 80 00  73 50 40 30  73 50 40 34   ×00•g××0sP@0sP@4
+</code></pre>
+<h2 id="notes-1"><a class="header" href="#notes-1">Notes</a></h2>
+<ul>
+<li>erased flash <code>39 e3 39 e3</code></li>
+</ul>
+<h2 id="chips-3"><a class="header" href="#chips-3">Chips</a></h2>
+<pre><code> * CH32V303CBT6-0x303305x4
+ * CH32V303RBT6-0x303205x4
+ * CH32V303RCT6-0x303105x4
+ * CH32V303VCT6-0x303005x4
+ * CH32V305FBP6-0x305205x8
+ * CH32V305RBT6-0x305005x8
+ * CH32V305GBU6-0x305B05x8
+ * CH32V307WCU6-0x307305x8
+ * CH32V307FBP6-0x307205x8
+ * CH32V307RCT6-0x307105x8
+ * CH32V307VCT6-0x307005x8
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch32x035ch32x033"><a class="header" href="#ch32x035ch32x033">CH32X035/CH32X033</a></h1>
+<p>RISC-V4C, 62KB Flash, 20KB SRAM.</p>
+<p>OPA/PGA/CMP, USB-PD/Type-C.</p>
+<h2 id="debug-pins"><a class="header" href="#debug-pins">Debug Pins</a></h2>
+<ul>
+<li>SWDIO - PC18/DIO @ MCU</li>
+<li>SWCLK - PC19/DCK @ MCU</li>
+</ul>
+<p>PC17 to High, enable USB ISP DOWNLOAD MODE</p>
+<h2 id="boards"><a class="header" href="#boards">Boards</a></h2>
+<p>Official CH32X035EVT</p>
+<ul>
+<li>CH32X035F8U6-R0</li>
+<li>CH32X035G8U6-R0</li>
+<li>CH32X035C8T6-R0</li>
+</ul>
+<p>LED1, LED2 blue LED, active low, open, connected to open jumper</p>
+<h2 id="chips-4"><a class="header" href="#chips-4">Chips</a></h2>
+<pre><code>CH32X035R8T6-0x035006x1
+CH32X035C8T6-0x035106x1
+CH32X035F8U6-0x035E06x1
+CH32X035G8U6-0x035606x1
+CH32X035G8R6-0x035B06x1
+CH32X035F7P6-0x035706x1
+CH32X033F8P6-0x035A06x1
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch32l103"><a class="header" href="#ch32l103">CH32L103</a></h1>
+<p>RISC-V4C, 96MHz, 64KB Flash, 20KB SRAM.</p>
+<p>RTC, ADC/TKey, CAN, OPA, CMP, USB-PD/Type-C.</p>
+<h2 id="chips-5"><a class="header" href="#chips-5">Chips</a></h2>
+<pre><code>* CH32L103C8U6-0x103007x0
+* CH32L103C8T6-0x103107x0
+* CH32L103F8P6-0x103A07x0
+* CH32L103G8R6-0x103B07x0
+* CH32L103K8U6-0x103207x0
+* CH32L103F8U6-0x103D07x0
+* CH32L103F7P6-0x103707x0
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch569ch565"><a class="header" href="#ch569ch565">CH569/CH565</a></h1>
+<p>RISC-V3A, 448KB Code Flash, 32KB Data Flash, 32/64/96KB SRAM(RAMX).</p>
+<p>BUS8, USB-SS, ETH, EMMC, SerDes</p>
+<ul>
+<li>CH569: HSPI</li>
+<li>CH565: DVP</li>
+</ul>
+<h2 id="debug-pins-1"><a class="header" href="#debug-pins-1">Debug Pins</a></h2>
+<ul>
+<li>TCK=HTACK=PA10</li>
+<li>TIO=HTCLK=PA11</li>
+</ul>
+<h2 id="boards-1"><a class="header" href="#boards-1">Boards</a></h2>
+<ul>
+<li>CH569W-R0-1v0</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch57x--ch58x--ch59x"><a class="header" href="#ch57x--ch58x--ch59x">CH57X &amp; CH58X &amp; CH59X</a></h1>
+<p>BLE MCUs. They are sharing almost the same preipheral set</p>
+<h2 id="debug-pins-2"><a class="header" href="#debug-pins-2">Debug Pins</a></h2>
+<ul>
+<li>PB15 TCK</li>
+<li>PB14 TIO</li>
+</ul>
+<h2 id="notes-2"><a class="header" href="#notes-2">Notes</a></h2>
+<ul>
+<li>Enable debug using WCHISPTool</li>
+<li>Always specify chip type using <code>--chip xxx</code> parameter during connect, auto-detection mechanism does not work on these targets</li>
+<li>Similiarly, use <code>-c "chip_id CH59x"</code> while using official OpenOCD release from MRS, as there’s no way to know the chip type before connecting to it</li>
+<li>After debug enabled, flash should be prgrammed at lease once</li>
+<li><code>a9 bd f9 f3</code> means erased flash or protected flash. The detailed mechanism is unknown</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch641"><a class="header" href="#ch641">CH641</a></h1>
+<p>RISC-V2A, 48MHz, 16KB Flash, 2KB SRAM.</p>
+<p>USB-PD/Type-C, BC1.2, HV DCP.
+ISP/ISN, QII.</p>
+<blockquote>
+<p><strong>Note</strong>
+CH641 is a riscv32ec core, which is not supported by ofiicial Rust yet.
+ch32-rs team maintains a fork of Rust at <a href="https://github.com/ch32-rs/rust">https://github.com/ch32-rs/rust</a>.
+You can check <a href="https://noxim.xyz/blog/rust-ch32v003/introduction/">Noxim’s Blog</a> for riscv32ec support.</p>
+</blockquote>
+<h2 id="chips-6"><a class="header" href="#chips-6">Chips</a></h2>
+<pre><code>* CH641F-0x641005x0
+* CH641D-0x641105x0
+* CH641U-0x641505x0
+* CH641P-0x641605x0
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="ch643"><a class="header" href="#ch643">CH643</a></h1>
+<p>RISC-V4C, 62KB Flash, 20KB SRAM.</p>
+<p>OPA/PGA/CMP, LEDPWM, USB-PD/Type-C.</p>
+<h2 id="chips-7"><a class="header" href="#chips-7">Chips</a></h2>
+<pre><code>* CH643W-0x64300601
+* CH643Q-0x64310601
+* CH643L-0x64330601
+* CH643U-0x64340601
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="references"><a class="header" href="#references">References</a></h1>
+<h2 id="real-shot"><a class="header" href="#real-shot">Real Shot</a></h2>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="https://web.archive.org/web/20230613102346im_/https://www.wch.cn/uploads/image/20221230/1672381416120803.png" alt="real shot"><span class="img-wrapper"><img src="https://web.archive.org/web/20230613102346im_/https://www.wch.cn/uploads/image/20221230/1672381416120803.png" alt="real shot"></span></label></p>
+<h2 id="feature-matrix"><a class="header" href="#feature-matrix">Feature matrix</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Feature</th><th style="text-align: center">WCH-Link</th><th style="text-align: center">WCH-LinkE</th><th style="text-align: center">WCH-LinkW</th><th style="text-align: center">WCH-DAPLink</th></tr>
+</thead>
+<tbody>
+<tr><td>RISC-V mode</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>ARM-SWD mode (HID device)</td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center">✓</td></tr>
+<tr><td>ARM-SWD mode (WinUSB device)</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>ARM-JTAG mode (HID device)</td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center">✓</td></tr>
+<tr><td>ARM-JTAG mode (WinUSB device)</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>ModeS button</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>DFU via 2-wire</td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
+<tr><td>DFU via serial-port</td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
+<tr><td>DFU via USB</td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>Power Supply (3.3v)</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>Power Supply (5.0v)</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>Power Supply (Configurable)</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>USB 2.0 to JTAG</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
+<tr><td>Wireless mode</td><td style="text-align: center"></td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>Download via <a href="http://www.mounriver.com" title="MounRiver Studio">MounRiver Studio</a></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>Download via <a href="https://web.archive.org/web/20230613114515if_/https://www.wch.cn/downloads/file/418.html?time=2023-06-13%2019:44:31&amp;code=z88GXEXY3kNBV9rTwDe0iWerDk5iKHB50lkst8j8" title="WCH LinkUtility">WCH-LinkUtility</a></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>Download via <a href="https://www.keil.com" title="Keil Embedded Development Tools">Keil</a></td><td style="text-align: center">≥ v5.25</td><td style="text-align: center">≥ v5.25</td><td style="text-align: center">≥ v5.25</td><td style="text-align: center">✓</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="supported-chip-matrix"><a class="header" href="#supported-chip-matrix">Supported Chip matrix</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Chip</th><th style="text-align: center">WCH-Link</th><th style="text-align: center">WCH-LinkE</th><th style="text-align: center">WCH-LinkW</th><th style="text-align: center">WCH-DAPLink</th></tr>
+</thead>
+<tbody>
+<tr><td>JTAG interface</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>SWD interface</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>CH32F10x</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>CH32F20x</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>CH32V003</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>CH32V10x</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>CH32V20X</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>CH32V30X</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td></tr>
+<tr><td>CH569</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
+<tr><td>CH573</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
+<tr><td>CH579</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td>CH583</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center"></td><td style="text-align: center"></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="supported-baud-matrix"><a class="header" href="#supported-baud-matrix">Supported Baud matrix</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: right">Baud</th><th style="text-align: center">WCH-Link</th><th style="text-align: center">WCH-LinkE</th><th style="text-align: center">WCH-LinkW</th><th style="text-align: center">WCH-DAPLink</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: right">1200</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">2400</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">4800</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">9600</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">14400</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">19200</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">38400</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">57600</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">115200</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">230400</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">460800</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+<tr><td style="text-align: right">921600</td><td style="text-align: center"></td><td style="text-align: center">✓</td><td style="text-align: center">✓</td><td style="text-align: center">✓</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="swd-pin-matrix"><a class="header" href="#swd-pin-matrix">SWD PIN matrix</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Chip</th><th style="text-align: center">SWDIO</th><th style="text-align: center">SWCLK</th></tr>
+</thead>
+<tbody>
+<tr><td>CH32F10x</td><td style="text-align: center">PA13</td><td style="text-align: center">PA14</td></tr>
+<tr><td>CH32F20x</td><td style="text-align: center">PA13</td><td style="text-align: center">PA14</td></tr>
+<tr><td>CH32V003</td><td style="text-align: center">PD1</td><td style="text-align: center"></td></tr>
+<tr><td>CH32V10x</td><td style="text-align: center">PA13</td><td style="text-align: center">PA14</td></tr>
+<tr><td>CH32V20X</td><td style="text-align: center">PA13</td><td style="text-align: center">PA14</td></tr>
+<tr><td>CH32V30X</td><td style="text-align: center">PA13</td><td style="text-align: center">PA14</td></tr>
+<tr><td>CH32X035</td><td style="text-align: center">PC18</td><td style="text-align: center">PC19</td></tr>
+<tr><td>CH569</td><td style="text-align: center">PA11</td><td style="text-align: center">PA10</td></tr>
+<tr><td>CH573</td><td style="text-align: center">PB14</td><td style="text-align: center">PB15</td></tr>
+<tr><td>CH579</td><td style="text-align: center">PB16</td><td style="text-align: center">PB17</td></tr>
+<tr><td>CH583</td><td style="text-align: center">PB14</td><td style="text-align: center">PB15</td></tr>
+<tr><td>CH59x</td><td style="text-align: center">PB14</td><td style="text-align: center">PB15</td></tr>
+<tr><td>CH643</td><td style="text-align: center">PC18</td><td style="text-align: center">PC19</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="documentation"><a class="header" href="#documentation">Documentation</a></h2>
+<ul>
+<li><a href="https://web.archive.org/web/20230613102346/https://www.wch.cn/bbs/thread-71088-1.html">WCH-Link 相关资料汇总</a></li>
+<li><a href="https://web.archive.org/web/20230613114619if_/https://www.wch.cn/downloads/file/417.html?time=2023-06-13%2019:46:05&amp;code=1BaRkx0gWHP7accBAPUtCuJ0dk0emAIzZ85o8UIf">WCH-Link 使用说明 v1.7</a></li>
+<li><a href="https://web.archive.org/web/20230613133629/https://www.wch.cn/downloads/file/421.html?time=2023-06-13%2021:35:48&amp;code=CA0Mz2JvD7YBhFB9t8jVb3MhgGgZV4fxg23Ku5B6">WCH-LinkSCH.pdf</a></li>
+<li><a href="https://web.archive.org/web/20230613102015if_/https://www.wch.cn/downloads/file/417.html?time=2023-06-13%2018:19:04&amp;code=z6nAIBmh1M4Uv64xdbCeAwywfJ9OEPG6OBvdUz1A">User Manual (Chinese)</a></li>
+<li><a href="https://web.archive.org/web/20230613102158if_/http://www.wch-ic.com/downloads/file/372.html?time=2023-06-13%2018:20:36&amp;code=uRfQmamyIynlCZPHO33rloOWiCgb44NLTXxStO8l">User Manual (English)</a></li>
+</ul>
+<h2 id="isp"><a class="header" href="#isp">ISP</a></h2>
+<ul>
+<li><a href="https://web.archive.org/web/20220811233210if_/https://www.wch.cn/downloads/file/196.html?time=2022-06-30%2014:56:16&amp;code=LS2LHywwDiw3P71gxsM1hfZClwSQlbI4nQga1Kzo">WCHISPTool_Setup.exe</a> v3.3</li>
+</ul>
+<h2 id="firmware"><a class="header" href="#firmware">Firmware</a></h2>
+<ul>
+<li><a href="https://web.archive.org/web/20230613112000if_/https://www.wch.cn/uploads/file/20220628/1656415558432295.zip">WCH_RISC-V_MCU_ProgramTool.zip</a></li>
+<li><a href="https://web.archive.org/web/20230613112654if_/https://www.wch.cn/uploads/file/20220718/1658124411917956.zip">WCH-Link v2.3</a></li>
+<li><a href="https://web.archive.org/web/20230613112104if_/https://www.wch.cn/uploads/file/20220913/1663036474195451.zip">WCH-LinkE v1.1</a></li>
+</ul>
+<h2 id="other-foss-implementation"><a class="header" href="#other-foss-implementation">Other FOSS implementation</a></h2>
+<ul>
+<li><a href="https://github.com/openwch/ch32v003">https://github.com/openwch/ch32v003</a> RISC-V QingKeV2 Microprocessor Debug Manual</li>
+<li><a href="https://github.com/cnlohr/ch32v003fun">https://github.com/cnlohr/ch32v003fun</a> A miniwchlink implementation</li>
+<li><a href="https://github.com/blackmagic-debug/blackmagic/pull/1399">https://github.com/blackmagic-debug/blackmagic/pull/1399</a></li>
+<li><a href="http://www.mounriver.com" title="MounRiver Studio">MounRiver Studio</a> compatible WCH-Link OpenOCD source code <a href="https://github.com/treideme/openocd-hacks">https://github.com/treideme/openocd-hacks</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>
