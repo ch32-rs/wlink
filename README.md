@@ -216,6 +216,11 @@ x5     t0: 0xb4a9b38a
 > wlink write-reg 0x7b1 0x000009a8
 ```
 
+## Documentation
+
+- [WCH-LinkRV protocol reference](docs/protocol/overview.md) — frame format, command tables, operation flows and constants, rebuilt from the source code. Also published at <https://ch32-rs.github.io/wlink/> once GitHub Pages is enabled (built with mdBook from `docs/`).
+- [Chip wiring and part-number notes](docs/references.md) — see the `docs/` subdirectory for per-family connection guides.
+
 ## References
 
 - [docs/references.md](docs/references.md)

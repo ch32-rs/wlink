@@ -1,0 +1,20 @@
+[book]
+title = "wlink — WCH-LinkRV Protocol Reference"
+authors = ["ch32-rs contributors"]
+language = "en"
+src = "docs"
+description = "Reverse-engineered WCH-LinkRV USB protocol reference and wlink documentation"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/ch32-rs/wlink"
+edit-url-template = "https://github.com/ch32-rs/wlink/edit/main/docs/{path}"
+no-section-label = false
+
+[output.html.search]
+enable = true
