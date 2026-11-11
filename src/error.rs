@@ -56,8 +56,8 @@ pub enum Error {
 }
 
 /// Builds the "pick one of these probes" error message. Only RV-mode probes
-/// are offered as flash targets; `WchLink::open_nth` rejects DAP-mode probes,
-/// so those come with a `mode-switch --rv` hint instead.
+/// are offered as operation targets; `WchLink::open_nth` rejects DAP-mode
+/// probes, so those come with a `mode-switch --rv` hint instead.
 fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
     use std::fmt::Write as _;
 
@@ -68,13 +68,13 @@ fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
         .collect();
 
     let mut msg = format!(
-        "{} WCH-Link probes attached; refusing to flash without an explicit probe.",
+        "{} WCH-Link probes attached; refusing to continue without an explicit probe.",
         choices.len()
     );
     if rv.is_empty() {
         let _ = write!(
             msg,
-            "\nNone of them is in RV mode, so no probe can be flashed yet."
+            "\nNone of them is in RV mode, so no probe can be used yet."
         );
     } else {
         let _ = write!(
@@ -93,7 +93,7 @@ fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
     if !dap.is_empty() {
         let _ = write!(
             msg,
-            "\nAlso attached in DAP mode (cannot be flashed; switch back to RV mode first):"
+            "\nAlso attached in DAP mode (cannot be used; switch back to RV mode first):"
         );
         for choice in dap {
             let _ = write!(

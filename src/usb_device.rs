@@ -176,6 +176,12 @@ pub struct AttachedDevice {
     pub index: usize,
     /// USB serial number, when the backend can read it.
     pub serial: Option<String>,
+    /// Whether `DeviceSelector::Serial` can open this device.
+    ///
+    /// False when the 32-bit Windows CH375 driver can see matching probes:
+    /// `open` tries CH375 first, that backend cannot select by serial, and
+    /// nusb cannot open a CH375-bound device, so only an index works.
+    pub serial_selectable: bool,
 }
 
 /// Lists matching probes using the same enumeration that [`open`] selects
@@ -187,18 +193,27 @@ pub struct AttachedDevice {
 /// would double count them. nusb is preferred because it exposes serials, but
 /// CH375 can also see probes nusb cannot, so the larger count wins.
 pub fn list_attached_devices(vid: u16, pid: u16) -> Result<Vec<AttachedDevice>> {
-    let devices = libusb::list_attached_devices(vid, pid)?;
+    let mut devices = libusb::list_attached_devices(vid, pid)?;
 
     // On 32-bit Windows `open` tries CH375 before nusb, so probes visible only
     // there still take part in a selector-less open. The DLL is optional.
     #[cfg(all(target_os = "windows", target_arch = "x86"))]
-    let min_count = ch375_driver::list_devices(vid, pid)
+    let ch375_count = ch375_driver::list_devices(vid, pid)
         .map(|devs| devs.len())
         .unwrap_or(0);
     #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
-    let min_count = 0;
+    let ch375_count = 0;
 
-    Ok(pad_index_only_devices(devices, min_count))
+    // CH375 cannot select by serial, so when it can see a matching probe a
+    // serial selector may fail even though nusb reported one (a CH375-bound
+    // device cannot be opened by nusb either). Offer indices instead: they are
+    // accepted by both backends.
+    let serial_selectable = ch375_count == 0;
+    for device in &mut devices {
+        device.serial_selectable = serial_selectable;
+    }
+
+    Ok(pad_index_only_devices(devices, ch375_count))
 }
 
 /// Pads a device list with index-only placeholders when another backend sees
@@ -214,6 +229,7 @@ fn pad_index_only_devices(
         devices.push(AttachedDevice {
             index,
             serial: None,
+            serial_selectable: false,
         });
     }
     devices
@@ -325,6 +341,7 @@ pub mod libusb {
             .map(|(index, device)| AttachedDevice {
                 index,
                 serial: device.serial_number().map(|s| s.to_string()),
+                serial_selectable: true,
             })
             .collect())
     }
@@ -680,6 +697,7 @@ mod tests {
         let devices = vec![AttachedDevice {
             index: 0,
             serial: Some("AAA".into()),
+            serial_selectable: true,
         }];
 
         let padded = pad_index_only_devices(devices.clone(), 3);
@@ -689,14 +707,16 @@ mod tests {
             padded[1],
             AttachedDevice {
                 index: 1,
-                serial: None
+                serial: None,
+                serial_selectable: false,
             }
         );
         assert_eq!(
             padded[2],
             AttachedDevice {
                 index: 2,
-                serial: None
+                serial: None,
+                serial_selectable: false,
             }
         );
 

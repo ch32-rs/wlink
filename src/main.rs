@@ -6,7 +6,7 @@ use wlink::{
     dmi::DebugModuleInterface,
     firmware::{Firmware, read_firmware_from_file},
     operations::ProbeSession,
-    probe::{ProbeChoice, WchLink},
+    probe::WchLink,
     regs,
     usb_device::DeviceSelector,
 };
@@ -181,6 +181,31 @@ impl SdiPrint {
     }
 }
 
+impl Commands {
+    /// Whether this command writes to the chip or changes its state, and thus
+    /// must not pick a probe by enumeration order. Read-only commands
+    /// (`dump`, `regs`, `status`, `list`, `dev`) are safe with any probe.
+    fn requires_explicit_probe(&self) -> bool {
+        match self {
+            Self::Flash { .. }
+            | Self::Erase { .. }
+            | Self::Unprotect {}
+            | Self::Protect {}
+            | Self::WriteReg { .. }
+            | Self::WriteMem { .. }
+            | Self::Halt {}
+            | Self::Resume {}
+            | Self::Reset { .. }
+            | Self::ModeSwitch { .. }
+            | Self::SetPower { .. }
+            | Self::SdiPrint(_) => true,
+            Self::Dump { .. } | Self::Regs {} | Self::Status {} | Self::List {} | Self::Dev {} => {
+                false
+            }
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -199,17 +224,18 @@ fn main() -> Result<()> {
     )
     .expect("initialize simple logger");
 
-    // Without `-d` a flash uses whichever probe enumerates first. Refuse that
-    // when several probes are attached, so a firmware image is never written
-    // to the wrong board. Other commands keep the historical behaviour.
-    if flashing_without_explicit_probe(&cli.device, &cli.command) {
+    // Without `-d`, commands that write to the chip or change its state use
+    // whichever probe enumerates first. Refuse that when several probes are
+    // attached, so the wrong board is never modified. Read-only commands keep
+    // the historical behaviour.
+    if needs_explicit_probe(&cli.device, &cli.command) {
         let choices = WchLink::probe_choices().map_err(|e| {
             anyhow::anyhow!(
-                "cannot enumerate WCH-Link probes ({e}); refusing to flash without an explicit probe. \
+                "cannot enumerate WCH-Link probes ({e}); refusing to continue without an explicit probe. \
                  Pass `-d <INDEX>` or `-d VID:PID:<SERIAL>` to select one"
             )
         })?;
-        ensure_unambiguous_flash_probe(&choices)?;
+        wlink::probe::ensure_unambiguous_probe(&choices)?;
     }
 
     // No `-d` keeps the historical "first probe" behaviour.
@@ -480,24 +506,13 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Whether this invocation would flash to a probe chosen by enumeration order
-/// alone, i.e. `flash` without `-d`.
-fn flashing_without_explicit_probe(
-    device: &Option<DeviceSelector>,
-    command: &Option<Commands>,
-) -> bool {
-    device.is_none() && matches!(command, Some(Commands::Flash { .. }))
-}
-
-/// "The first enumerated probe" is ambiguous when more than one probe is
-/// attached. Zero or one probe is fine: zero still fails later with a proper
-/// "probe not found" error.
-fn ensure_unambiguous_flash_probe(choices: &[ProbeChoice]) -> Result<()> {
-    if choices.len() > 1 {
-        Err(wlink::Error::AmbiguousProbe(choices.to_vec()).into())
-    } else {
-        Ok(())
-    }
+/// Whether this invocation would operate on a probe chosen by enumeration
+/// order alone, i.e. a write-like command without `-d`.
+fn needs_explicit_probe(device: &Option<DeviceSelector>, command: &Option<Commands>) -> bool {
+    device.is_none()
+        && command
+            .as_ref()
+            .is_some_and(Commands::requires_explicit_probe)
 }
 
 pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
@@ -518,7 +533,6 @@ pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
 mod tests {
     use super::*;
     use clap::Parser;
-    use wlink::probe::ProbeMode;
 
     #[test]
     fn erase_by_power_off_accepts_a_probe_rs_selector() {
@@ -576,117 +590,54 @@ mod tests {
     }
 
     #[test]
-    fn only_a_selector_less_flash_needs_the_probe_check() {
-        let cli = Cli::try_parse_from(["wlink", "flash", "firmware.bin"]).unwrap();
-        assert!(flashing_without_explicit_probe(&cli.device, &cli.command));
+    fn write_like_commands_require_an_explicit_probe() {
+        // Commands that write to the chip or change its state must not pick a
+        // probe by enumeration order.
+        for args in [
+            vec!["wlink", "flash", "firmware.bin"],
+            vec!["wlink", "erase"],
+            vec!["wlink", "erase", "--method", "power-off"],
+            vec!["wlink", "unprotect"],
+            vec!["wlink", "protect"],
+            vec!["wlink", "write-reg", "0x1000", "0"],
+            vec!["wlink", "write-mem", "0x08000000", "0"],
+            vec!["wlink", "halt"],
+            vec!["wlink", "resume"],
+            vec!["wlink", "reset"],
+            vec!["wlink", "set-power", "enable3v3"],
+            vec!["wlink", "mode-switch", "--rv"],
+            vec!["wlink", "sdi-print", "enable"],
+        ] {
+            let cli = Cli::try_parse_from(args.clone()).unwrap();
+            assert!(
+                needs_explicit_probe(&cli.device, &cli.command),
+                "{args:?} should require an explicit probe"
+            );
+        }
 
         // An explicit index or serial names the probe, so no check is needed.
         for selector in ["0", "1a86:8010:D7708F065C7F"] {
             let cli =
                 Cli::try_parse_from(["wlink", "-d", selector, "flash", "firmware.bin"]).unwrap();
             assert!(
-                !flashing_without_explicit_probe(&cli.device, &cli.command),
+                !needs_explicit_probe(&cli.device, &cli.command),
                 "{selector} should count as an explicit selection"
             );
         }
 
-        // Only flashing is guarded; other commands keep the old behaviour.
+        // Read-only commands keep the historical first-probe behaviour.
         for args in [
             vec!["wlink", "status"],
             vec!["wlink", "list"],
-            vec!["wlink", "erase"],
-            vec!["wlink", "mode-switch", "--rv"],
+            vec!["wlink", "dump", "0x08000000", "16"],
+            vec!["wlink", "regs"],
+            vec!["wlink", "dev"],
         ] {
             let cli = Cli::try_parse_from(args.clone()).unwrap();
             assert!(
-                !flashing_without_explicit_probe(&cli.device, &cli.command),
+                !needs_explicit_probe(&cli.device, &cli.command),
                 "{args:?} should not be guarded"
             );
         }
-    }
-
-    #[test]
-    fn flashing_error_lists_every_probe_with_a_selector() {
-        let choice = |serial: &str, index: usize| ProbeChoice {
-            selector: format!("1a86:8010:{serial}"),
-            description: format!("WCH-Link#{index} (RV mode)"),
-            mode: ProbeMode::Rv,
-        };
-
-        assert!(ensure_unambiguous_flash_probe(&[]).is_ok());
-        assert!(ensure_unambiguous_flash_probe(&[choice("AAA", 0)]).is_ok());
-
-        let choices = vec![
-            choice("7E238F0602BE", 0),
-            choice("F93D8F067E10", 1),
-            choice("D7708F065C7F", 2),
-        ];
-        let err = ensure_unambiguous_flash_probe(&choices)
-            .expect_err("three attached probes must be ambiguous");
-        let msg = err.to_string();
-        assert!(msg.contains("3 WCH-Link probes attached"), "{msg}");
-        assert!(msg.contains("Select one of the following"), "{msg}");
-        assert_eq!(msg.lines().count(), 5, "{msg}");
-        for c in &choices {
-            assert!(msg.contains(&c.selector), "missing {}: {msg}", c.selector);
-            assert!(
-                msg.contains(&c.description),
-                "missing {}: {msg}",
-                c.description
-            );
-        }
-        assert!(msg.contains("-d 1a86:8010:7E238F0602BE"), "{msg}");
-    }
-
-    #[test]
-    fn dap_probes_are_not_offered_as_flash_targets() {
-        let choices = vec![
-            ProbeChoice {
-                selector: "1a86:8010:AAA".into(),
-                description: "WCH-Link#0 (RV mode)".into(),
-                mode: ProbeMode::Rv,
-            },
-            ProbeChoice {
-                selector: "BBB".into(),
-                description: "WCH-Link#0 (DAP mode)".into(),
-                mode: ProbeMode::Dap,
-            },
-        ];
-        let err = ensure_unambiguous_flash_probe(&choices)
-            .expect_err("two probes, one in DAP mode, must be ambiguous");
-        let msg = err.to_string();
-        assert!(msg.contains("2 WCH-Link probes attached"), "{msg}");
-        assert!(msg.contains("-d 1a86:8010:AAA"), "{msg}");
-        // A DAP-mode selector only appears in the mode-switch hint, never as
-        // a `-d` line that could be copied into the failed flash command.
-        assert!(
-            !msg.lines()
-                .any(|line| line.trim_start().starts_with("-d BBB")),
-            "{msg}"
-        );
-        assert!(msg.contains("wlink -d BBB mode-switch --rv"), "{msg}");
-        assert!(msg.contains("cannot be flashed"), "{msg}");
-    }
-
-    #[test]
-    fn all_dap_probes_report_no_flashable_probe() {
-        let choices = vec![
-            ProbeChoice {
-                selector: "AAA".into(),
-                description: "WCH-Link#0 (DAP mode)".into(),
-                mode: ProbeMode::Dap,
-            },
-            ProbeChoice {
-                selector: "BBB".into(),
-                description: "WCH-Link#1 (DAP mode)".into(),
-                mode: ProbeMode::Dap,
-            },
-        ];
-        let msg = ensure_unambiguous_flash_probe(&choices)
-            .expect_err("two DAP-mode probes must be ambiguous")
-            .to_string();
-        assert!(msg.contains("None of them is in RV mode"), "{msg}");
-        assert!(!msg.contains("Select one of the following"), "{msg}");
-        assert!(msg.contains("wlink -d AAA mode-switch --rv"), "{msg}");
     }
 }
