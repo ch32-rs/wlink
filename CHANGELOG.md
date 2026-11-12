@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refuse write-like commands (`flash`, `erase`, `unprotect`, `protect`, `write-reg`, `write-mem`, `reset`, `halt`, `resume`, `set-power`, `sdi-print`, `mode-switch`) when several WCH-Links are attached and no `-d` was given, instead of silently using the first one. The error lists a ready-to-copy `-d` selector per RV-mode probe and a `mode-switch --rv` hint for DAP-mode probes.
 - Count probes visible only through the 32-bit Windows CH375 driver; they are offered by index because that backend cannot select by serial.
+- Explain the `0x55` protocol error with hints about SWD wiring, target power and `wchisp config enable-debug`.
 
 ## [0.1.3] - 2026-10-21
 

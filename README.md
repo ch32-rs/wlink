@@ -254,6 +254,10 @@ led toggle
 ....
 
 
+> # Write the dumped bytes to a file instead of printing a hex dump
+> wlink dump 0x0800FC00 1024 --out calib.bin
+
+
 > # Dump all general purpose registers
 > wlink regs
 16:24:20 [INFO] Dump GPRs
@@ -270,6 +274,35 @@ x5     t0: 0xb4a9b38a
 > # Set dpc(pc) to System Flash
 > wlink write-reg 0x7b1 0x000009a8
 ```
+
+Detaching the probe resumes the MCU, so commands like `regs` leave a halted
+core running. Pass `--no-detach` to keep the target halted:
+
+```console
+> wlink halt
+> wlink --no-detach regs
+```
+
+### Troubleshooting
+
+**`WCH-Link underlying protocol error: 0x55`**
+
+The probe could not connect to the target chip. Check the SWD wiring and that
+the target is powered. If the wiring is fine, the chip's debug interface is
+probably disabled. `wchisp` can inspect and enable it (use the invocation from
+your `wchisp` version; some chips also need `-u`):
+
+```console
+> wchisp config info
+> wchisp config enable-debug
+```
+
+**Windows does not find the probe, or reports `USB error: Entity not found`**
+
+See [Windows drivers](#windows-drivers). wlink supports WCH's native driver,
+the legacy CH375 DLL (32-bit only) and WinUSB via Zadig. A probe bound to the
+native or CH375 driver must be selected with `-d <INDEX>`; serial selectors
+require WinUSB.
 
 ## Documentation
 
