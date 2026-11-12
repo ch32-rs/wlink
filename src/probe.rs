@@ -156,7 +156,7 @@ fn probe_choice(
         (Some(serial), false) => (
             device.index.to_string(),
             format!(
-                "WCH-Link#{} ({mode_label}, CH375 driver: select by index; serial {serial})",
+                "WCH-Link#{} ({mode_label}, index-only Windows driver: index order may differ; serial {serial})",
                 device.index
             ),
         ),
@@ -215,7 +215,8 @@ impl WchLink {
     /// A probe in DAP mode still counts: several attached probes make a
     /// selector-less operation ambiguous. It is not offered as an operation
     /// target, though, because `WchLink::open_nth` rejects DAP-mode probes.
-    /// Serials are preferred because an index shifts on replug or mode switch.
+    /// A serial is preferred when the probe's driver supports one, because an
+    /// index shifts on replug or mode switch.
     pub fn probe_choices() -> Result<Vec<ProbeChoice>> {
         let mut choices = Vec::new();
         for (vid, pid, mode) in [
@@ -241,9 +242,12 @@ impl WchLink {
             println!("{} (DAP mode)", dev)
         }
         if rv_count + dap_count > 1 {
-            // The indices follow enumeration order and change when a probe is
-            // replugged or switches mode; a serial always names the same one.
-            println!("hint: use `-d 1a86:8010:<SERIAL>` to select a probe by serial number");
+            // A serial is only offered when the probe is bound to WinUSB; the
+            // index-only Windows drivers have to be named by index.
+            println!(
+                "hint: use `-d <INDEX>` to select one of the probes above, or \
+                 `-d 1a86:8010:<SERIAL>` when a WinUSB driver exposes a serial"
+            );
         }
         Ok(())
     }
@@ -499,9 +503,10 @@ mod tests {
     }
 
     #[test]
-    fn ch375_bound_probes_fall_back_to_an_index() {
-        // CH375 cannot select by serial, so suggesting one would fail; the
-        // serial stays in the description to help identify the probe.
+    fn index_only_driver_probes_fall_back_to_an_index() {
+        // Neither CH375 nor WCH's native driver can select by serial, so
+        // suggesting one would fail; the serial stays in the description to
+        // help identify the probe, with a warning that indices may differ.
         let choice = probe_choice(
             VENDOR_ID,
             PRODUCT_ID,
@@ -510,7 +515,14 @@ mod tests {
         );
         assert_eq!(choice.selector, "3");
         assert_eq!(choice.selector.parse(), Ok(DeviceSelector::Index(3)));
-        assert!(choice.description.contains("CH375 driver"), "{choice:?}");
+        assert!(
+            choice.description.contains("index-only Windows driver"),
+            "{choice:?}"
+        );
+        assert!(
+            choice.description.contains("index order may differ"),
+            "{choice:?}"
+        );
         assert!(choice.description.contains("D7708F065C7F"), "{choice:?}");
     }
 

@@ -28,7 +28,7 @@
 - [x] Enable or Disable 3.3V, 5V output
 - [x] [SDI print](https://www.cnblogs.com/liaigu/p/17628184.html) support, requires 2.10+ firmware
 - [x] [Serial port watching](https://github.com/ch32-rs/wlink/pull/36) for a smooth development experience
-- [x] Windows native driver support, no need to install libusb manually (requires x86 build)
+- [x] Windows native driver support (WCHLinkDrv), no WinUSB/libusb driver needed; works on x86, x64 and ARM64 (nightly builds currently ship x86/x64 Windows binaries, so build from source on ARM64)
 
 ## Tested On
 
@@ -113,6 +113,23 @@ Current firmware version: 2.15 (aka. v35).
 > On Linux, you should install libudev and libusb development lib first.
 > Like `sudo apt install libudev-dev libusb-1.0-0-dev` on Ubuntu.
 
+### Windows drivers
+
+On Windows, wlink tries these backends in order and uses the first one that
+can open the probe:
+
+1. the legacy `WCHLinkDLL.dll` / CH375 driver — 32-bit builds only;
+2. WCH's native driver (`WCHLinkDrv`, installed by WCH's WCH-Link tooling) —
+   available on x86, x64 and ARM64;
+3. WinUSB via [Zadig](https://zadig.akeo.ie) (nusb/libusb) — all platforms.
+
+A probe is normally bound to one driver. nusb can still *enumerate* a probe
+bound to WCH's native driver (and report its USB serial number), but it cannot
+open that interface — only the native driver can. Serial selectors
+(`-d 1a86:8010:<SERIAL>`) therefore require WinUSB; with the native or CH375
+driver use `-d <INDEX>` instead. wlink says so when a serial fails to open, and
+`-d <SERIAL>` never silently falls back to an index.
+
 ### Arch Linux
 
 Arch Linux users can install [wlink-git](https://aur.archlinux.org/packages/wlink-git) via the AUR.
@@ -142,7 +159,7 @@ into the command:
 ```console
 > wlink flash firmware.bin
 Error: 3 WCH-Link probes attached; refusing to continue without an explicit probe.
-Select one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):
+Select one of the following with `-d` (a serial stays stable across replugs when available; `wlink list` shows details):
   -d 1a86:8010:7E238F0602BE     # WCH-Link#0 (RV mode)
   -d 1a86:8010:F93D8F067E10     # WCH-Link#1 (RV mode)
   -d 1a86:8010:D7708F065C7F     # WCH-Link#2 (RV mode)
@@ -154,14 +171,16 @@ A probe in DAP mode still counts toward the check, but cannot be used: it is
 listed separately with the command to switch it back to RV mode first,
 `wlink -d 1a86:8012:<SERIAL> mode-switch --rv`.
 
-When a probe does not expose a USB serial number, or is reachable only through
-the 32-bit Windows CH375 driver (which cannot select by serial), the error
-falls back to `-d <INDEX>` instead and keeps the serial in the description to
-help identify the probe. Indices follow enumeration order and can change when
-a probe is replugged or switches mode, so prefer the serial form when it is
+When a probe does not expose a USB serial number, or is reachable through an
+index-only Windows driver (CH375 on 32-bit, or WCH's native WCHLinkDrv), the
+error offers `-d <INDEX>` instead and keeps the serial in the description to
+help identify the probe. The index is resolved by the backend that actually
+opens the probe, whose enumeration order need not match nusb's, so the serial
+shown beside it is a hint rather than a guarantee. Indices also change when a
+probe is replugged or switches mode, so prefer the serial form when it is
 offered.
 
-Pass a USB serial number instead of an index to name one probe reliably:
+A serial names one probe reliably:
 
 ```console
 > wlink list

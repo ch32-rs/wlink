@@ -53,6 +53,9 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Driver error")]
     Driver,
+    #[cfg(windows)]
+    #[error("Windows driver error: {0}")]
+    Windows(#[from] windows::core::Error),
 }
 
 /// Builds the "pick one of these probes" error message. Only RV-mode probes
@@ -79,7 +82,7 @@ fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
     } else {
         let _ = write!(
             msg,
-            "\nSelect one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):"
+            "\nSelect one of the following with `-d` (a serial stays stable across replugs when available; `wlink list` shows details):"
         );
         for choice in rv {
             // Formatting into a String is infallible.

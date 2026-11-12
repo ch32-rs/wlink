@@ -7,6 +7,9 @@ use std::{
     time::Duration,
 };
 
+#[cfg(windows)]
+pub mod wch_link_driver;
+
 /// Which WCH-Link to operate on when more than one is attached.
 ///
 /// The index form (`-d 1`) is the original one and follows enumeration order,
@@ -117,55 +120,136 @@ pub trait USBDeviceBackend: Debug {
     fn write_endpoint(&mut self, ep: u8, buf: &[u8]) -> Result<()>;
 }
 
-/// Opens the Nth matching probe, in enumeration order.
-pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
-    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+/// Number of matching probes visible through Windows backends that `open`
+/// tries before nusb. Neither of them can match a USB serial number.
+#[cfg(windows)]
+fn index_only_backend_count(vid: u16, pid: u16) -> Result<usize> {
+    let mut count = 0;
+
+    #[cfg(target_arch = "x86")]
     {
-        ch375_driver::CH375USBDevice::open_nth(vid, pid, nth)
-            .or_else(|_| libusb::NusbDevice::open_nth(vid, pid, nth))
+        // CH375's DLL is optional; when it is missing it simply sees nothing.
+        count = count.max(
+            ch375_driver::list_devices(vid, pid)
+                .map(|devs| devs.len())
+                .unwrap_or(0),
+        );
     }
-    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
-    {
-        libusb::NusbDevice::open_nth(vid, pid, nth)
+
+    // Unlike that optional DLL, an enumeration failure here means we cannot
+    // tell how many probes are reachable. Propagate it so the ambiguous probe
+    // guard fails closed instead of silently undercounting.
+    count = count.max(wch_link_driver::matching_device_paths(vid, pid)?.len());
+    Ok(count)
+}
+
+#[cfg(not(windows))]
+fn index_only_backend_count(_vid: u16, _pid: u16) -> Result<usize> {
+    Ok(0)
+}
+
+/// How [`open`] resolves a selector. Kept separate from the platform-specific
+/// backend chain so the "a serial never falls back to an index" rule is
+/// testable without hardware.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OpenPlan {
+    BySerial,
+    ByIndex(usize),
+}
+
+fn open_plan(selector: &DeviceSelector) -> OpenPlan {
+    match selector {
+        DeviceSelector::Serial(_) => OpenPlan::BySerial,
+        DeviceSelector::Index(nth) => OpenPlan::ByIndex(*nth),
     }
 }
 
+fn open_by_index(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
+    #[cfg(all(windows, target_arch = "x86"))]
+    if let Ok(device) = ch375_driver::CH375USBDevice::open_nth(vid, pid, nth) {
+        return Ok(device);
+    }
+
+    #[cfg(windows)]
+    if let Ok(device) = wch_link_driver::WCHLinkUSBDevice::open_nth(vid, pid, nth) {
+        return Ok(device);
+    }
+
+    libusb::NusbDevice::open_nth(vid, pid, nth)
+}
+
+/// Opens the Nth matching probe, in enumeration order.
+pub fn open_nth(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
+    open_by_index(vid, pid, nth)
+}
+
 /// Opens the probe `selector` names. A plain index behaves like [`open_nth`].
+///
+/// A serial is resolved by nusb only: no other backend can match a serial, and
+/// deliberately *not* falling back to an index keeps a mistyped serial from
+/// silently opening a different probe (the ambiguous probe guard, #134).
 pub fn open(
     vid: u16,
     pid: u16,
     selector: impl Into<DeviceSelector>,
 ) -> Result<Box<dyn USBDeviceBackend>> {
     let selector = &selector.into();
-    #[cfg(all(target_os = "windows", target_arch = "x86"))]
-    {
-        ch375_driver::CH375USBDevice::open_selector(vid, pid, selector)
-            .or_else(|_| libusb::NusbDevice::open_selector(vid, pid, selector))
-    }
-    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
-    {
-        libusb::NusbDevice::open_selector(vid, pid, selector)
+    match open_plan(selector) {
+        OpenPlan::BySerial => libusb::NusbDevice::open_selector(vid, pid, selector)
+            .map_err(|err| serial_open_error(selector, err)),
+        OpenPlan::ByIndex(nth) => open_by_index(vid, pid, nth),
     }
 }
 
+/// On Windows in particular, nusb can enumerate a probe bound to WCH's native
+/// driver but cannot open it, and the raw `incompatible driver` error gives no
+/// hint about what to change. Keep the original cause and name the options.
+fn serial_open_error(selector: &DeviceSelector, err: crate::Error) -> crate::Error {
+    crate::Error::Custom(format!(
+        "cannot open WCH-Link by USB {selector}: {err}. Check `wlink list` for \
+         the available probes. A serial selector requires a WinUSB/libusb driver \
+         (see https://zadig.akeo.ie); with WCH's native driver or the 32-bit \
+         CH375 driver, use `-d <INDEX>` instead."
+    ))
+}
+
 pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
-    let mut ret = vec![];
-    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    // Report the same probe set `open` would pick from. On Windows more than
+    // one backend can enumerate the same physical probe (CH375/native/nusb),
+    // so concatenating every list would print it twice and make `wlink list`
+    // disagree with the ambiguous probe guard.
+    #[cfg(all(windows, target_arch = "x86"))]
     {
-        ret.extend(
-            ch375_driver::list_devices(vid, pid)?
-                .into_iter()
-                .map(|s| s.to_string()),
-        );
+        // The CH375 DLL is optional. `open_by_index` simply skips that backend
+        // when it cannot be loaded, so listing must not fail either.
+        let ch375 = match ch375_driver::list_devices(vid, pid) {
+            Ok(devs) => devs.into_iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            Err(err) => {
+                log::debug!("CH375 driver unavailable, skipping: {err}");
+                Vec::new()
+            }
+        };
+        if !ch375.is_empty() {
+            return Ok(ch375);
+        }
     }
 
-    ret.extend(
-        libusb::list_libusb_devices(vid, pid)?
-            .into_iter()
-            .map(|s| s.to_string()),
-    );
+    #[cfg(windows)]
+    {
+        // Listing is informational: unlike the ambiguous probe guard (which
+        // must fail closed), it can fall through to nusb when the native
+        // driver cannot be queried, e.g. a probe is busy in WCH's own tooling.
+        match wch_link_driver::list_devices(vid, pid) {
+            Ok(native) if !native.is_empty() => return Ok(native),
+            Ok(_) => {}
+            Err(err) => log::warn!("could not enumerate the WCH native driver: {err}"),
+        }
+    }
 
-    Ok(ret)
+    Ok(libusb::list_libusb_devices(vid, pid)?
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect())
 }
 
 /// Minimal description of a matching USB device, used to offer the user an
@@ -178,9 +262,10 @@ pub struct AttachedDevice {
     pub serial: Option<String>,
     /// Whether `DeviceSelector::Serial` can open this device.
     ///
-    /// False when the 32-bit Windows CH375 driver can see matching probes:
-    /// `open` tries CH375 first, that backend cannot select by serial, and
-    /// nusb cannot open a CH375-bound device, so only an index works.
+    /// False when an index-only Windows backend (CH375 on 32-bit, or WCH's
+    /// native driver) can see matching probes: `open` tries those first for
+    /// index selectors and their enumeration order need not match nusb's, so
+    /// an index may not name the probe carrying this serial.
     pub serial_selectable: bool,
 }
 
@@ -188,38 +273,37 @@ pub struct AttachedDevice {
 /// from, so the offered selectors agree with what a selector-less open would
 /// actually pick.
 ///
-/// This is separate from [`list_devices`]: on 32-bit Windows the CH375 driver
-/// and nusb both see the same physical probes, so merging their printed lists
-/// would double count them. nusb is preferred because it exposes serials, but
-/// CH375 can also see probes nusb cannot, so the larger count wins.
+/// This is separate from [`list_devices`]: on Windows the index-only backends
+/// and nusb can enumerate the same physical probe (nusb just cannot open one
+/// bound to WCH's driver), so merging their printed lists would double count
+/// it. nusb is preferred because it exposes serials; taking the larger count
+/// also keeps a probe that only a native driver reports in the guard.
 pub fn list_attached_devices(vid: u16, pid: u16) -> Result<Vec<AttachedDevice>> {
-    let mut devices = libusb::list_attached_devices(vid, pid)?;
+    let devices = libusb::list_attached_devices(vid, pid)?;
+    let index_only_count = index_only_backend_count(vid, pid)?;
+    Ok(merge_attached_views(devices, index_only_count))
+}
 
-    // On 32-bit Windows `open` tries CH375 before nusb, so probes visible only
-    // there still take part in a selector-less open. The DLL is optional.
-    #[cfg(all(target_os = "windows", target_arch = "x86"))]
-    let ch375_count = ch375_driver::list_devices(vid, pid)
-        .map(|devs| devs.len())
-        .unwrap_or(0);
-    #[cfg(not(all(target_os = "windows", target_arch = "x86")))]
-    let ch375_count = 0;
-
-    // CH375 cannot select by serial, so when it can see a matching probe a
-    // serial selector may fail even though nusb reported one (a CH375-bound
-    // device cannot be opened by nusb either). Offer indices instead: they are
-    // accepted by both backends.
-    let serial_selectable = ch375_count == 0;
-    for device in &mut devices {
-        device.serial_selectable = serial_selectable;
+fn merge_attached_views(
+    mut devices: Vec<AttachedDevice>,
+    index_only_count: usize,
+) -> Vec<AttachedDevice> {
+    if index_only_count > 0 {
+        // `open` tries those backends first for index selectors, and their
+        // enumeration order need not match nusb's. Offering a serial next to
+        // an index that may resolve through a different view would name the
+        // wrong probe, so offer indices for every entry.
+        for device in &mut devices {
+            device.serial_selectable = false;
+        }
     }
-
-    Ok(pad_index_only_devices(devices, ch375_count))
+    pad_index_only_devices(devices, index_only_count)
 }
 
 /// Pads a device list with index-only placeholders when another backend sees
 /// more probes than nusb. Without this, an ambiguous setup would look like a
 /// single probe and the flash would go ahead. Index selectors are opened by
-/// the CH375 backend first on 32-bit Windows, so these remain selectable.
+/// the native drivers first on Windows, so these remain selectable.
 fn pad_index_only_devices(
     mut devices: Vec<AttachedDevice>,
     min_count: usize,
@@ -723,5 +807,83 @@ mod tests {
         // nusb seeing more (or the same) keeps its richer, serial-bearing list.
         assert_eq!(pad_index_only_devices(devices.clone(), 1), devices);
         assert!(pad_index_only_devices(vec![], 0).is_empty());
+    }
+
+    #[test]
+    fn a_serial_never_falls_back_to_an_index() {
+        // Regression (Windows native driver): a backend that cannot match a
+        // serial must not be allowed to answer with "the Nth probe instead".
+        // That would silently open the wrong board when a serial is mistyped.
+        assert_eq!(
+            open_plan(&DeviceSelector::Serial("D7708F065C7F".into())),
+            OpenPlan::BySerial
+        );
+        assert_eq!(open_plan(&DeviceSelector::Index(3)), OpenPlan::ByIndex(3));
+    }
+
+    #[test]
+    fn a_failed_serial_names_the_winusb_requirement() {
+        let selector = DeviceSelector::Serial("2FC48F06B4A8".into());
+        let err = serial_open_error(
+            &selector,
+            crate::Error::Custom("incompatible driver is installed".into()),
+        )
+        .to_string();
+        assert!(err.contains("2FC48F06B4A8"), "{err}");
+        assert!(err.contains("incompatible driver"), "{err}");
+        assert!(err.contains("`wlink list`"), "{err}");
+        assert!(err.contains("WinUSB"), "{err}");
+        assert!(err.contains("-d <INDEX>"), "{err}");
+    }
+
+    #[test]
+    fn probes_only_visible_to_a_native_driver_are_not_undercounted() {
+        // If the only available view comes from an index-only backend, its
+        // count must still make the ambiguous probe guard refuse a flash.
+        let views = merge_attached_views(vec![], 2);
+        assert_eq!(views.len(), 2);
+        assert!(
+            views
+                .iter()
+                .all(|d| d.serial.is_none() && !d.serial_selectable)
+        );
+        assert_eq!(views[0].index, 0);
+        assert_eq!(views[1].index, 1);
+    }
+
+    #[test]
+    fn an_index_only_backend_disables_serial_selectors() {
+        let mut devices = vec![
+            AttachedDevice {
+                index: 0,
+                serial: Some("AAA".into()),
+                serial_selectable: true,
+            },
+            AttachedDevice {
+                index: 1,
+                serial: Some("BBB".into()),
+                serial_selectable: true,
+            },
+        ];
+
+        let merged = merge_attached_views(devices.clone(), 1);
+        assert_eq!(merged.len(), 2);
+        assert!(merged.iter().all(|d| !d.serial_selectable));
+
+        for device in &mut devices {
+            device.serial_selectable = false;
+        }
+        assert_eq!(merged, devices);
+
+        // With no native backend in play, serials stay usable.
+        let unchanged = merge_attached_views(
+            vec![AttachedDevice {
+                index: 0,
+                serial: Some("AAA".into()),
+                serial_selectable: true,
+            }],
+            0,
+        );
+        assert!(unchanged[0].serial_selectable);
     }
 }
