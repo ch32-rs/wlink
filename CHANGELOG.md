@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Log the ELF target RISC-V architecture (e.g. `rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0`) when flashing an ELF file.
 - Select a specific WCH-Link by USB serial with `-d VID:PID:SERIAL` (the form `probe-rs` uses in `PROBE_RS_PROBE`) or `-d <SERIAL>`. A plain number still selects by index. This stays stable when probes are replugged or a probe is in DAP mode. Probes without a usable serial are selected by index.
 - Rewrite the WCH-LinkRV protocol reference as a multi-page mdBook site under `docs/protocol/` (USB transport, frame format, full command and `0x0d` subcommand tables, probe info, ESIG, operation flows, DMI, constants and unverified captures), derived from the implementation instead of the outdated 2023 `protocol.md`. Add a workflow that publishes `docs/` to the `gh-pages` branch for <https://ch32-rs.github.io/wlink/>.
+- Support WCH's native Windows driver (`WCHLinkDrv` / `WCHLinkW64.SYS`) on 64-bit Windows: probes bound to it can be opened without replacing the driver with WinUSB/Zadig, are shown by `wlink list`, and are counted by the ambiguous-probe guard. Select them with `-d <INDEX>`: a USB serial selector still requires a WinUSB/libusb driver. The 32-bit CH375 DLL backend remains available on x86 builds and is tried first there.
 
 ### Fixed
 

@@ -1,13 +1,15 @@
 # USB Transport
 
-WCH-Link uses USB **bulk transfers**. There is no kernel driver in the loop on
-Linux/macOS: wlink opens the device with `nusb`, claims interface 0, and reads
-and writes bulk endpoints directly. On 32-bit Windows an optional native
-`WCHLinkDLL.dll` (CH375) backend is available, falling back to `nusb`.
+WCH-Link uses USB **bulk transfers**. On Linux/macOS wlink opens the device
+with `nusb`, claims interface 0, and reads and writes bulk endpoints directly.
+Windows additionally has two vendor-specific backends that are tried before
+`nusb`; see [Windows driver backends](#windows-driver-backends).
 
 Source: [`src/probe.rs`](https://github.com/ch32-rs/wlink/blob/main/src/probe.rs)
 (constants), [`src/usb_device.rs`](https://github.com/ch32-rs/wlink/blob/main/src/usb_device.rs)
-(backend implementations).
+(backend selection),
+[`src/usb_device/wch_link_driver.rs`](https://github.com/ch32-rs/wlink/blob/main/src/usb_device/wch_link_driver.rs)
+(native Windows driver protocol).
 
 ## USB identifiers
 
@@ -38,6 +40,56 @@ The `nusb` backend stores a 5-second default in `NusbDevice::timeout`; the
 current bulk read/write calls do not apply it and rely on nusb's own blocking
 behaviour.
 
+## Windows driver backends
+
+On Windows, wlink tries these backends in order and uses the first one that can
+open a probe with the requested VID/PID:
+
+1. the legacy `WCHLinkDLL.dll` (CH375) DLL — 32-bit builds only;
+2. WCH's native driver (`WCHLinkDrv` / `WCHLinkW64.SYS`) — 64-bit Windows
+   (x64 and ARM64). The backend is compiled for x86 too, but WCH ships no
+   32-bit build of that driver;
+3. WinUSB via [Zadig](https://zadig.akeo.ie), through `nusb` — all platforms.
+
+The native and WinUSB backends are not interchangeable at the USB level. A
+probe bound to WCH's native driver is **not** a WinUSB device: `nusb` can still
+enumerate it and read its USB serial number, but opening interface 0 fails with
+`incompatible driver is installed for this interface`. `wlink list` therefore
+reports one view (the first backend that finds probes), and the ambiguous-probe
+guard counts probes visible to the native driver as well.
+
+### Native driver IOCTL
+
+The driver installer registers a device interface class
+`{F8D5EDCA-B647-4E9C-9BD3-A5BD2328D55C}`. wlink enumerates present interfaces
+with `SetupDiGetClassDevsW` / `SetupDiEnumDeviceInterfaces`, resolves each path
+with `SetupDiGetDeviceInterfaceDetailW`, and opens it with `CreateFileW`.
+Every descriptor query, bulk read, bulk write and timeout goes through a single
+vendor `DeviceIoControl` (`0x00223CDC`, `METHOD_BUFFERED`) on that handle —
+there are no bulk USB transfers in this backend.
+
+There is no public specification for this interface; the layout below comes
+from observed driver behaviour, originally proposed in
+[#116](https://github.com/ch32-rs/wlink/pull/116). Request and response share
+one buffer, with an 8-byte header in front of the response:
+
+| Offset | Size | Meaning |
+| --- | --- | --- |
+| `0..4` | u32 | Command word. For bulk transfers byte 0 is the endpoint index (USB address minus 1) and byte 2 is `0x01` (read) or `0x02` (write) |
+| `4..8` | u32 | Payload length; on a read the driver replaces it with the number of bytes returned |
+
+| Command | Header | Payload | Purpose |
+| --- | --- | --- | --- |
+| GET_DESCRIPTOR(Device) | `0x04`, `8` | 8-byte USB setup packet (`80 06 00 01 00 00 12 00`) | Returns the 18-byte device descriptor, used to match VID/PID |
+| bulk read | endpoint, `0x01`, `length` | response only | Reads from a bulk IN endpoint |
+| bulk write | endpoint, `0x02`, `length` | bytes to write | Writes to a bulk OUT endpoint |
+| SET_TIMEOUT | `0x0F`, `0x10` | four u32 millisecond values | Sets the driver's timeouts |
+
+The driver exposes no USB serial through this interface, so native-driver (and
+CH375) probes can only be selected by index. See
+[Selecting a probe](#selecting-a-probe): a `-d 1a86:8010:<SERIAL>` selector
+requires WinUSB; with either vendor driver use `-d <INDEX>` instead.
+
 ## Selecting a probe
 
 With several probes attached, enumeration order is not stable. wlink accepts
@@ -54,7 +106,9 @@ wlink -d 1 status                        # legacy index
 ```
 
 Serial matching is case-insensitive and works in either RV or DAP mode; the
-VID/PID in the selector are validated but not used for matching.
+VID/PID in the selector are validated but not used for matching. A serial
+selector requires a WinUSB/libusb driver, since the Windows vendor backends
+cannot open a device by serial; a mistyped serial never falls back to an index.
 
 ## Mode switching
 
