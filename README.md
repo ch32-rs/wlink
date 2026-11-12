@@ -141,7 +141,7 @@ open that interface — only the native driver can. Serial selectors
 driver use `-d <INDEX>` instead. wlink says so when a serial fails to open, and
 `-d <SERIAL>` never silently falls back to an index.
 
-See the [USB transport reference](docs/protocol/usb-transport.md#windows-driver-backends)
+See the [USB transport reference](docs/protocol/usb-transport.md#native-driver-ioctl)
 for the native driver's IOCTL layout.
 
 ## Usage

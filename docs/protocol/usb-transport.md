@@ -61,7 +61,7 @@ guard counts probes visible to the native driver as well.
 ### Native driver IOCTL
 
 The driver installer registers a device interface class
-`{F8D5EDCA-B647-4E9C-9BD3-A5BD-2328D55C}`. wlink enumerates present interfaces
+`{F8D5EDCA-B647-4E9C-9BD3-A5BD2328D55C}`. wlink enumerates present interfaces
 with `SetupDiGetClassDevsW` / `SetupDiEnumDeviceInterfaces`, resolves each path
 with `SetupDiGetDeviceInterfaceDetailW`, and opens it with `CreateFileW`.
 Every descriptor query, bulk read, bulk write and timeout goes through a single

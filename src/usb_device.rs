@@ -367,6 +367,7 @@ pub mod libusb {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.debug_struct("USBDevice")
                 .field("provider", &"nusb")
+                .field("device", &"WinUSB interface 0")
                 .finish()
         }
     }

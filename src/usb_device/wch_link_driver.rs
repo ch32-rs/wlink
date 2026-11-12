@@ -19,7 +19,8 @@ use windows::core::{GUID, HRESULT, PCWSTR};
 use super::*;
 use crate::Error;
 
-/// Device interface class registered by WCH's Windows driver installer.
+/// Device interface class registered by WCH's Windows driver installer:
+/// `{F8D5EDCA-B647-4E9C-9BD3-A5BD2328D55C}`.
 const GUID_DEVINTERFACE_WCH_LINK: GUID = GUID::from_values(
     0xF8D5EDCA,
     0xB647,
@@ -79,9 +80,10 @@ const TIMEOUT_PARAM_COUNT: usize = 4;
 const TIMEOUT_PARAMS_LEN: usize = TIMEOUT_PARAM_COUNT * core::mem::size_of::<u32>();
 const TIMEOUT_BUFFER_LEN: usize = RESPONSE_HEADER_LEN + TIMEOUT_PARAMS_LEN;
 
-// Every caller sizes its buffer from the constants above, so an out-of-range
-// offset here would be a programming error rather than a driver condition.
-
+/// Writes a native-endian u32, panicking if `offset` is out of range.
+/// Every caller sizes its buffer from the constants above, so that would be a
+/// programming error rather than a driver condition — unlike `read_u32_ne`,
+/// which has to cope with lengths reported by the driver.
 fn write_u32_ne(buffer: &mut [u8], offset: usize, value: u32) {
     let end = offset + core::mem::size_of::<u32>();
     buffer[offset..end].copy_from_slice(&value.to_ne_bytes());
@@ -305,7 +307,7 @@ fn prepare_endpoint_command(
 
 /// SET_TIMEOUT command: header plus four identical timeout values.
 fn timeout_command(timeout: Duration) -> [u8; TIMEOUT_BUFFER_LEN] {
-    let ds = timeout.as_millis().min(u32::MAX as u128) as u32;
+    let ds = u32::try_from(timeout.as_millis()).unwrap_or(u32::MAX);
     let mut buffer = [0u8; TIMEOUT_BUFFER_LEN];
     write_u32_ne(&mut buffer, HEADER_COMMAND_OFFSET, CMD_SET_TIMEOUT);
     write_u32_ne(&mut buffer, HEADER_LENGTH_OFFSET, TIMEOUT_PARAMS_LEN as u32);
@@ -486,10 +488,10 @@ impl Drop for WCHLinkUSBDevice {
 impl fmt::Debug for WCHLinkUSBDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // A raw HANDLE is unstable and useless in a log; name the driver
-        // instead, like CH375USBDevice reports its device index.
+        // instead. All three backends report `provider` + `device`.
         f.debug_struct("USBDevice")
             .field("provider", &"wch_link")
-            .field("driver", &"WCHLinkDrv")
+            .field("device", &"WCHLinkDrv")
             .finish()
     }
 }
@@ -511,6 +513,22 @@ pub(super) fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn interface_guid_matches_the_documented_value() {
+        // Keep the canonical 8-4-4-4-12 string in docs/protocol/usb-transport.md
+        // and the source constant in sync: the doc value must be usable as-is in
+        // the registry / guidgen.
+        let guid = GUID_DEVINTERFACE_WCH_LINK;
+        let [d0, d1, d2, d3, d4, d5, d6, d7] = guid.data4;
+        assert_eq!(
+            format!(
+                "{{{:08X}-{:04X}-{:04X}-{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}}}",
+                guid.data1, guid.data2, guid.data3, d0, d1, d2, d3, d4, d5, d6, d7
+            ),
+            "{F8D5EDCA-B647-4E9C-9BD3-A5BD2328D55C}"
+        );
+    }
 
     #[test]
     fn parses_vendor_and_product_from_a_device_descriptor() {
