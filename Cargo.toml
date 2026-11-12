@@ -41,7 +41,7 @@ libloading = "0.9"
 # WCH's native Windows driver. It exposes a device interface instead of a
 # WinUSB device, so nusb/libusb cannot see probes bound to it. See
 # `usb_device::wch_link_driver` for the interface GUID and IOCTL protocol.
-[target.'cfg(windows)'.dependencies]
+[target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.62.2", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
     "Win32_Foundation",

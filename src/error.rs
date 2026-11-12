@@ -53,7 +53,7 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Driver error")]
     Driver,
-    #[cfg(windows)]
+    #[cfg(target_os = "windows")]
     #[error("Windows driver error: {0}")]
     Windows(#[from] windows::core::Error),
 }

@@ -244,10 +244,8 @@ impl WchLink {
         if rv_count + dap_count > 1 {
             // A serial is only offered when the probe is bound to WinUSB; the
             // index-only Windows drivers have to be named by index.
-            println!(
-                "hint: use `-d <INDEX>` to select one of the probes above, or \
-                 `-d 1a86:8010:<SERIAL>` when a WinUSB driver exposes a serial"
-            );
+            println!("hint: use `-d <INDEX>` to select one of the probes above");
+            println!("hint: `-d 1a86:8010:<SERIAL>` also works with a WinUSB driver");
         }
         Ok(())
     }

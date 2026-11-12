@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 pub mod wch_link_driver;
 
 /// Which WCH-Link to operate on when more than one is attached.
@@ -122,11 +122,11 @@ pub trait USBDeviceBackend: Debug {
 
 /// Number of matching probes visible through Windows backends that `open`
 /// tries before nusb. Neither of them can match a USB serial number.
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 fn index_only_backend_count(vid: u16, pid: u16) -> Result<usize> {
     let mut count = 0;
 
-    #[cfg(target_arch = "x86")]
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
     {
         // CH375's DLL is optional; when it is missing it simply sees nothing.
         count = count.max(
@@ -143,7 +143,7 @@ fn index_only_backend_count(vid: u16, pid: u16) -> Result<usize> {
     Ok(count)
 }
 
-#[cfg(not(windows))]
+#[cfg(not(target_os = "windows"))]
 fn index_only_backend_count(_vid: u16, _pid: u16) -> Result<usize> {
     Ok(0)
 }
@@ -165,14 +165,18 @@ fn open_plan(selector: &DeviceSelector) -> OpenPlan {
 }
 
 fn open_by_index(vid: u16, pid: u16, nth: usize) -> Result<Box<dyn USBDeviceBackend>> {
-    #[cfg(all(windows, target_arch = "x86"))]
-    if let Ok(device) = ch375_driver::CH375USBDevice::open_nth(vid, pid, nth) {
-        return Ok(device);
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
+    {
+        if let Ok(device) = ch375_driver::CH375USBDevice::open_nth(vid, pid, nth) {
+            return Ok(device);
+        }
     }
 
-    #[cfg(windows)]
-    if let Ok(device) = wch_link_driver::WCHLinkUSBDevice::open_nth(vid, pid, nth) {
-        return Ok(device);
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(device) = wch_link_driver::WCHLinkUSBDevice::open_nth(vid, pid, nth) {
+            return Ok(device);
+        }
     }
 
     libusb::NusbDevice::open_nth(vid, pid, nth)
@@ -218,7 +222,7 @@ pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
     // one backend can enumerate the same physical probe (CH375/native/nusb),
     // so concatenating every list would print it twice and make `wlink list`
     // disagree with the ambiguous probe guard.
-    #[cfg(all(windows, target_arch = "x86"))]
+    #[cfg(all(target_os = "windows", target_arch = "x86"))]
     {
         // The CH375 DLL is optional. `open_by_index` simply skips that backend
         // when it cannot be loaded, so listing must not fail either.
@@ -234,7 +238,7 @@ pub fn list_devices(vid: u16, pid: u16) -> Result<Vec<String>> {
         }
     }
 
-    #[cfg(windows)]
+    #[cfg(target_os = "windows")]
     {
         // Listing is informational: unlike the ambiguous probe guard (which
         // must fail closed), it can fall through to nusb when the native
@@ -853,7 +857,7 @@ mod tests {
 
     #[test]
     fn an_index_only_backend_disables_serial_selectors() {
-        let mut devices = vec![
+        let devices = vec![
             AttachedDevice {
                 index: 0,
                 serial: Some("AAA".into()),
@@ -866,14 +870,22 @@ mod tests {
             },
         ];
 
-        let merged = merge_attached_views(devices.clone(), 1);
-        assert_eq!(merged.len(), 2);
-        assert!(merged.iter().all(|d| !d.serial_selectable));
-
-        for device in &mut devices {
-            device.serial_selectable = false;
-        }
-        assert_eq!(merged, devices);
+        let merged = merge_attached_views(devices, 1);
+        assert_eq!(
+            merged,
+            vec![
+                AttachedDevice {
+                    index: 0,
+                    serial: Some("AAA".into()),
+                    serial_selectable: false,
+                },
+                AttachedDevice {
+                    index: 1,
+                    serial: Some("BBB".into()),
+                    serial_selectable: false,
+                },
+            ]
+        );
 
         // With no native backend in play, serials stay usable.
         let unchanged = merge_attached_views(

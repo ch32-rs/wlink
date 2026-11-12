@@ -109,9 +109,19 @@ Current firmware version: 2.15 (aka. v35).
 
 `cargo install --git https://github.com/ch32-rs/wlink` or download a binary from the [Nightly Release page](https://github.com/ch32-rs/wlink/releases/tag/nightly).
 
+### Linux
+
 > **Note**
 > On Linux, you should install libudev and libusb development lib first.
 > Like `sudo apt install libudev-dev libusb-1.0-0-dev` on Ubuntu.
+
+#### Arch Linux
+
+Arch Linux users can install [wlink-git](https://aur.archlinux.org/packages/wlink-git) via the AUR.
+
+```bash
+yay -Syu wlink
+```
 
 ### Windows drivers
 
@@ -119,24 +129,20 @@ On Windows, wlink tries these backends in order and uses the first one that
 can open the probe:
 
 1. the legacy `WCHLinkDLL.dll` / CH375 driver — 32-bit builds only;
-2. WCH's native driver (`WCHLinkDrv`, installed by WCH's WCH-Link tooling) —
-   available on x86, x64 and ARM64;
+2. WCH's native driver (`WCHLinkDrv` / `WCHLinkW64.SYS`, installed by WCH's
+   WCH-Link tooling) — 64-bit Windows (x64 and ARM64). The backend also
+   compiles for x86, but WCH ships no 32-bit build of that driver;
 3. WinUSB via [Zadig](https://zadig.akeo.ie) (nusb/libusb) — all platforms.
 
-A probe is normally bound to one driver. nusb can still *enumerate* a probe
+A probe is bound to one driver for I/O. nusb can still *enumerate* a probe
 bound to WCH's native driver (and report its USB serial number), but it cannot
 open that interface — only the native driver can. Serial selectors
 (`-d 1a86:8010:<SERIAL>`) therefore require WinUSB; with the native or CH375
 driver use `-d <INDEX>` instead. wlink says so when a serial fails to open, and
 `-d <SERIAL>` never silently falls back to an index.
 
-### Arch Linux
-
-Arch Linux users can install [wlink-git](https://aur.archlinux.org/packages/wlink-git) via the AUR.
-
-```bash
-yay -Syu wlink
-```
+See the [USB transport reference](docs/protocol/usb-transport.md#windows-driver-backends)
+for the native driver's IOCTL layout.
 
 ## Usage
 
