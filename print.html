@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4d38065e.js";
+            window.path_to_searchindex_js = "searchindex-fcf36e8e.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-ecefeea2.js"></script>
@@ -320,13 +320,15 @@ example the correction that <code>0x0c</code> is a speed command rather than a v
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="usb-transport"><a class="header" href="#usb-transport">USB Transport</a></h1>
-<p>WCH-Link uses USB <strong>bulk transfers</strong>. There is no kernel driver in the loop on
-Linux/macOS: wlink opens the device with <code>nusb</code>, claims interface 0, and reads
-and writes bulk endpoints directly. On 32-bit Windows an optional native
-<code>WCHLinkDLL.dll</code> (CH375) backend is available, falling back to <code>nusb</code>.</p>
+<p>WCH-Link uses USB <strong>bulk transfers</strong>. On Linux/macOS wlink opens the device
+with <code>nusb</code>, claims interface 0, and reads and writes bulk endpoints directly.
+Windows additionally has two vendor-specific backends that are tried before
+<code>nusb</code>; see <a href="#windows-driver-backends">Windows driver backends</a>.</p>
 <p>Source: <a href="https://github.com/ch32-rs/wlink/blob/main/src/probe.rs"><code>src/probe.rs</code></a>
 (constants), <a href="https://github.com/ch32-rs/wlink/blob/main/src/usb_device.rs"><code>src/usb_device.rs</code></a>
-(backend implementations).</p>
+(backend selection),
+<a href="https://github.com/ch32-rs/wlink/blob/main/src/usb_device/wch_link_driver.rs"><code>src/usb_device/wch_link_driver.rs</code></a>
+(native Windows driver protocol).</p>
 <h2 id="usb-identifiers"><a class="header" href="#usb-identifiers">USB identifiers</a></h2>
 <div class="table-wrapper">
 <table>
@@ -363,6 +365,62 @@ final written chunk with <code>0xff</code> to the family’s data packet size.</
 <p>The <code>nusb</code> backend stores a 5-second default in <code>NusbDevice::timeout</code>; the
 current bulk read/write calls do not apply it and rely on nusb’s own blocking
 behaviour.</p>
+<h2 id="windows-driver-backends"><a class="header" href="#windows-driver-backends">Windows driver backends</a></h2>
+<p>On Windows, wlink tries these backends in order and uses the first one that can
+open a probe with the requested VID/PID:</p>
+<ol>
+<li>the legacy <code>WCHLinkDLL.dll</code> (CH375) DLL — 32-bit builds only;</li>
+<li>WCH’s native driver (<code>WCHLinkDrv</code> / <code>WCHLinkW64.SYS</code>) — 64-bit Windows
+(x64 and ARM64). The backend is compiled for x86 too, but WCH ships no
+32-bit build of that driver;</li>
+<li>WinUSB via <a href="https://zadig.akeo.ie">Zadig</a>, through <code>nusb</code> — all platforms.</li>
+</ol>
+<p>The native and WinUSB backends are not interchangeable at the USB level. A
+probe bound to WCH’s native driver is <strong>not</strong> a WinUSB device: <code>nusb</code> can still
+enumerate it and read its USB serial number, but opening interface 0 fails with
+<code>incompatible driver is installed for this interface</code>. <code>wlink list</code> therefore
+reports one view (the first backend that finds probes), and the ambiguous-probe
+guard counts probes visible to the native driver as well.</p>
+<h3 id="native-driver-ioctl"><a class="header" href="#native-driver-ioctl">Native driver IOCTL</a></h3>
+<p>The driver installer registers a device interface class
+<code>{F8D5EDCA-B647-4E9C-9BD3-A5BD2328D55C}</code>. wlink enumerates present interfaces
+with <code>SetupDiGetClassDevsW</code> / <code>SetupDiEnumDeviceInterfaces</code>, resolves each path
+with <code>SetupDiGetDeviceInterfaceDetailW</code>, and opens it with <code>CreateFileW</code>.
+Every descriptor query, bulk read, bulk write and timeout goes through a single
+vendor <code>DeviceIoControl</code> (<code>0x00223CDC</code>, <code>METHOD_BUFFERED</code>) on that handle —
+there are no bulk USB transfers in this backend.</p>
+<p>There is no public specification for this interface; the layout below comes
+from observed driver behaviour, originally proposed in
+<a href="https://github.com/ch32-rs/wlink/pull/116">#116</a>. Request and response share
+one buffer, with an 8-byte header in front of the response:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Offset</th><th>Size</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0..4</code></td><td>u32</td><td>Command word. For bulk transfers byte 0 is the endpoint index (USB address minus 1) and byte 2 is <code>0x01</code> (read) or <code>0x02</code> (write)</td></tr>
+<tr><td><code>4..8</code></td><td>u32</td><td>Payload length; on a read the driver replaces it with the number of bytes returned</td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Command</th><th>Header</th><th>Payload</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td>GET_DESCRIPTOR(Device)</td><td><code>0x04</code>, <code>8</code></td><td>8-byte USB setup packet (<code>80 06 00 01 00 00 12 00</code>)</td><td>Returns the 18-byte device descriptor, used to match VID/PID</td></tr>
+<tr><td>bulk read</td><td>endpoint, <code>0x01</code>, <code>length</code></td><td>response only</td><td>Reads from a bulk IN endpoint</td></tr>
+<tr><td>bulk write</td><td>endpoint, <code>0x02</code>, <code>length</code></td><td>bytes to write</td><td>Writes to a bulk OUT endpoint</td></tr>
+<tr><td>SET_TIMEOUT</td><td><code>0x0F</code>, <code>0x10</code></td><td>four u32 millisecond values</td><td>Sets the driver’s timeouts</td></tr>
+</tbody>
+</table>
+</div>
+<p>The driver exposes no USB serial through this interface, so native-driver (and
+CH375) probes can only be selected by index. See
+<a href="#selecting-a-probe">Selecting a probe</a>: a <code>-d 1a86:8010:&lt;SERIAL&gt;</code> selector
+requires WinUSB; with either vendor driver use <code>-d &lt;INDEX&gt;</code> instead.</p>
 <h2 id="selecting-a-probe"><a class="header" href="#selecting-a-probe">Selecting a probe</a></h2>
 <p>With several probes attached, enumeration order is not stable. wlink accepts
 either an index or a USB serial number:</p>
@@ -375,7 +433,9 @@ wlink -d D7708F065C7F status             # serial alone
 wlink -d 1 status                        # legacy index
 </code></pre>
 <p>Serial matching is case-insensitive and works in either RV or DAP mode; the
-VID/PID in the selector are validated but not used for matching.</p>
+VID/PID in the selector are validated but not used for matching. A serial
+selector requires a WinUSB/libusb driver, since the Windows vendor backends
+cannot open a device by serial; a mistyped serial never falls back to an index.</p>
 <h2 id="mode-switching"><a class="header" href="#mode-switching">Mode switching</a></h2>
 <p>Switching from RV to DAP mode sends a command frame on the normal command
 endpoint:</p>
