@@ -130,8 +130,38 @@ yay -Syu wlink
 
 `-d` picks which WCH-Link to use. Without it wlink takes the first one it
 enumerates, which is not deterministic when several probes are attached, or
-when one of them is in DAP mode. Pass a USB serial number instead of an index
-to name one probe reliably:
+when one of them is in DAP mode. Because that could modify the wrong board,
+write-like commands (`flash`, `erase`, `unprotect`, `protect`, `write-reg`,
+`write-mem`, `reset`, `halt`, `resume`, `set-power`, `sdi-print`,
+`mode-switch`) refuse to run when more than one probe is attached and no `-d`
+was given (probes in both RV and DAP mode are counted). Read-only commands
+such as `status`, `regs`, `dump` and `list` keep the first-probe behaviour.
+The error lists every RV-mode probe with a `-d` selector that can be copied
+into the command:
+
+```console
+> wlink flash firmware.bin
+Error: 3 WCH-Link probes attached; refusing to continue without an explicit probe.
+Select one of the following with `-d` (a serial stays stable across replugs; `wlink list` shows details):
+  -d 1a86:8010:7E238F0602BE     # WCH-Link#0 (RV mode)
+  -d 1a86:8010:F93D8F067E10     # WCH-Link#1 (RV mode)
+  -d 1a86:8010:D7708F065C7F     # WCH-Link#2 (RV mode)
+
+> wlink -d 1a86:8010:D7708F065C7F flash firmware.bin
+```
+
+A probe in DAP mode still counts toward the check, but cannot be used: it is
+listed separately with the command to switch it back to RV mode first,
+`wlink -d 1a86:8012:<SERIAL> mode-switch --rv`.
+
+When a probe does not expose a USB serial number, or is reachable only through
+the 32-bit Windows CH375 driver (which cannot select by serial), the error
+falls back to `-d <INDEX>` instead and keeps the serial in the description to
+help identify the probe. Indices follow enumeration order and can change when
+a probe is replugged or switches mode, so prefer the serial form when it is
+offered.
+
+Pass a USB serial number instead of an index to name one probe reliably:
 
 ```console
 > wlink list

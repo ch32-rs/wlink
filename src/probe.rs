@@ -97,6 +97,84 @@ pub struct WchLink {
     pub info: ProbeInfo,
 }
 
+/// Whether an attached probe can be flashed right now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProbeMode {
+    /// RV mode (`1a86:8010`): usable for flashing.
+    Rv,
+    /// DAP mode (`1a86:8012`): must be switched back to RV mode first.
+    Dap,
+}
+
+/// A `-d` selector for one attached probe, plus how it can be used.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProbeChoice {
+    /// Value to pass to `-d`. For DAP-mode probes this selects the probe for
+    /// `mode-switch --rv`, not for flashing.
+    pub selector: String,
+    /// Short description shown next to it in an error message.
+    pub description: String,
+    /// Whether the probe is in RV mode and can be flashed.
+    pub mode: ProbeMode,
+}
+
+/// Refuses to continue when more than one probe is attached. Zero or one is
+/// fine: zero still fails later with a proper "probe not found" error.
+///
+/// Library users that would otherwise fall back to `open_nth(0)` can call this
+/// first; `open_nth` itself stays selector-driven and cannot tell an explicit
+/// `-d 0` from a default.
+pub fn ensure_unambiguous_probe(choices: &[ProbeChoice]) -> Result<()> {
+    if choices.len() > 1 {
+        Err(Error::AmbiguousProbe(choices.to_vec()))
+    } else {
+        Ok(())
+    }
+}
+
+/// Builds the `-d` selector and description for one attached probe.
+///
+/// When a serial is usable, the selector is the full `VID:PID:SERIAL` form: a
+/// bare serial that is all decimal digits would be parsed as an index by
+/// `DeviceSelector::from_str`. Devices without a usable serial fall back to an
+/// index.
+fn probe_choice(
+    vid: u16,
+    pid: u16,
+    mode: ProbeMode,
+    device: &usb_device::AttachedDevice,
+) -> ProbeChoice {
+    let mode_label = match mode {
+        ProbeMode::Rv => "RV mode",
+        ProbeMode::Dap => "DAP mode",
+    };
+    let (selector, description) = match (&device.serial, device.serial_selectable) {
+        (Some(serial), true) => (
+            format!("{vid:04x}:{pid:04x}:{serial}"),
+            format!("WCH-Link#{} ({mode_label})", device.index),
+        ),
+        (Some(serial), false) => (
+            device.index.to_string(),
+            format!(
+                "WCH-Link#{} ({mode_label}, CH375 driver: select by index; serial {serial})",
+                device.index
+            ),
+        ),
+        (None, _) => (
+            device.index.to_string(),
+            format!(
+                "WCH-Link#{} ({mode_label}, no USB serial; index may change on replug)",
+                device.index
+            ),
+        ),
+    };
+    ProbeChoice {
+        selector,
+        description,
+        mode,
+    }
+}
+
 impl WchLink {
     /// Opens a probe. `selector` takes either a `usize` index, which is the
     /// original behaviour, or a [`DeviceSelector`] naming a USB serial number.
@@ -130,6 +208,25 @@ impl WchLink {
         log::info!("{}", info);
         self.info = info;
         Ok(info)
+    }
+
+    /// Attached probes and a `-d` selector for each, in both RV and DAP mode.
+    ///
+    /// A probe in DAP mode still counts: several attached probes make a
+    /// selector-less operation ambiguous. It is not offered as an operation
+    /// target, though, because `WchLink::open_nth` rejects DAP-mode probes.
+    /// Serials are preferred because an index shifts on replug or mode switch.
+    pub fn probe_choices() -> Result<Vec<ProbeChoice>> {
+        let mut choices = Vec::new();
+        for (vid, pid, mode) in [
+            (VENDOR_ID, PRODUCT_ID, ProbeMode::Rv),
+            (VENDOR_ID_DAP, PRODUCT_ID_DAP, ProbeMode::Dap),
+        ] {
+            for device in usb_device::list_attached_devices(vid, pid)? {
+                choices.push(probe_choice(vid, pid, mode, &device));
+            }
+        }
+        Ok(choices)
     }
 
     pub fn list_probes() -> Result<()> {
@@ -338,5 +435,173 @@ pub fn watch_serial() -> Result<()> {
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => (),
             Err(e) => return Err(e.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::usb_device::AttachedDevice;
+
+    fn attached(index: usize, serial: Option<&str>, serial_selectable: bool) -> AttachedDevice {
+        AttachedDevice {
+            index,
+            serial: serial.map(str::to_string),
+            serial_selectable,
+        }
+    }
+
+    #[test]
+    fn rv_probe_with_a_serial_uses_the_probe_rs_selector() {
+        let choice = probe_choice(
+            VENDOR_ID,
+            PRODUCT_ID,
+            ProbeMode::Rv,
+            &attached(0, Some("7E238F0602BE"), true),
+        );
+        assert_eq!(choice.selector, "1a86:8010:7E238F0602BE");
+        assert_eq!(
+            choice.selector.parse(),
+            Ok(DeviceSelector::Serial("7E238F0602BE".into()))
+        );
+        assert_eq!(choice.description, "WCH-Link#0 (RV mode)");
+    }
+
+    #[test]
+    fn dap_probe_uses_vid_pid_so_a_numeric_serial_is_not_an_index() {
+        // A bare all-digit serial would be parsed as an index by
+        // `DeviceSelector::from_str`; the full form keeps it a serial.
+        let choice = probe_choice(
+            VENDOR_ID_DAP,
+            PRODUCT_ID_DAP,
+            ProbeMode::Dap,
+            &attached(2, Some("123456"), true),
+        );
+        assert_eq!(choice.selector, "1a86:8012:123456");
+        assert_eq!(
+            choice.selector.parse(),
+            Ok(DeviceSelector::Serial("123456".into()))
+        );
+        assert_eq!(choice.mode, ProbeMode::Dap);
+    }
+
+    #[test]
+    fn probes_without_a_serial_fall_back_to_an_index() {
+        let choice = probe_choice(
+            VENDOR_ID,
+            PRODUCT_ID,
+            ProbeMode::Rv,
+            &attached(1, None, false),
+        );
+        assert_eq!(choice.selector, "1");
+        assert_eq!(choice.selector.parse(), Ok(DeviceSelector::Index(1)));
+        assert!(choice.description.contains("no USB serial"), "{choice:?}");
+    }
+
+    #[test]
+    fn ch375_bound_probes_fall_back_to_an_index() {
+        // CH375 cannot select by serial, so suggesting one would fail; the
+        // serial stays in the description to help identify the probe.
+        let choice = probe_choice(
+            VENDOR_ID,
+            PRODUCT_ID,
+            ProbeMode::Rv,
+            &attached(3, Some("D7708F065C7F"), false),
+        );
+        assert_eq!(choice.selector, "3");
+        assert_eq!(choice.selector.parse(), Ok(DeviceSelector::Index(3)));
+        assert!(choice.description.contains("CH375 driver"), "{choice:?}");
+        assert!(choice.description.contains("D7708F065C7F"), "{choice:?}");
+    }
+
+    #[test]
+    fn error_lists_every_probe_with_a_selector() {
+        let choice = |serial: &str, index: usize| ProbeChoice {
+            selector: format!("1a86:8010:{serial}"),
+            description: format!("WCH-Link#{index} (RV mode)"),
+            mode: ProbeMode::Rv,
+        };
+
+        assert!(ensure_unambiguous_probe(&[]).is_ok());
+        assert!(ensure_unambiguous_probe(&[choice("AAA", 0)]).is_ok());
+
+        let choices = vec![
+            choice("7E238F0602BE", 0),
+            choice("F93D8F067E10", 1),
+            choice("D7708F065C7F", 2),
+        ];
+        let err = ensure_unambiguous_probe(&choices)
+            .expect_err("three attached probes must be ambiguous");
+        let msg = err.to_string();
+        assert!(msg.contains("3 WCH-Link probes attached"), "{msg}");
+        assert!(msg.contains("Select one of the following"), "{msg}");
+        assert_eq!(msg.lines().count(), 5, "{msg}");
+        for c in &choices {
+            assert!(msg.contains(&c.selector), "missing {}: {msg}", c.selector);
+            assert!(
+                msg.contains(&c.description),
+                "missing {}: {msg}",
+                c.description
+            );
+        }
+        assert!(msg.contains("-d 1a86:8010:7E238F0602BE"), "{msg}");
+    }
+
+    #[test]
+    fn dap_probes_are_not_offered_as_operation_targets() {
+        let choices = vec![
+            ProbeChoice {
+                selector: "1a86:8010:AAA".into(),
+                description: "WCH-Link#0 (RV mode)".into(),
+                mode: ProbeMode::Rv,
+            },
+            ProbeChoice {
+                selector: "1a86:8012:BBB".into(),
+                description: "WCH-Link#0 (DAP mode)".into(),
+                mode: ProbeMode::Dap,
+            },
+        ];
+        let err = ensure_unambiguous_probe(&choices)
+            .expect_err("two probes, one in DAP mode, must be ambiguous");
+        let msg = err.to_string();
+        assert!(msg.contains("2 WCH-Link probes attached"), "{msg}");
+        assert!(msg.contains("-d 1a86:8010:AAA"), "{msg}");
+        // A DAP-mode selector only appears in the mode-switch hint, never as
+        // a `-d` line that could be copied into the failed command.
+        assert!(
+            !msg.lines()
+                .any(|line| line.trim_start().starts_with("-d 1a86:8012:BBB")),
+            "{msg}"
+        );
+        assert!(
+            msg.contains("wlink -d 1a86:8012:BBB mode-switch --rv"),
+            "{msg}"
+        );
+        assert!(msg.contains("cannot be used"), "{msg}");
+    }
+
+    #[test]
+    fn all_dap_probes_report_no_usable_probe() {
+        let choices = vec![
+            ProbeChoice {
+                selector: "1a86:8012:AAA".into(),
+                description: "WCH-Link#0 (DAP mode)".into(),
+                mode: ProbeMode::Dap,
+            },
+            ProbeChoice {
+                selector: "1a86:8012:BBB".into(),
+                description: "WCH-Link#1 (DAP mode)".into(),
+                mode: ProbeMode::Dap,
+            },
+        ];
+        let msg = ensure_unambiguous_probe(&choices)
+            .expect_err("two DAP-mode probes must be ambiguous")
+            .to_string();
+        assert!(msg.contains("None of them is in RV mode"), "{msg}");
+        assert!(!msg.contains("Select one of the following"), "{msg}");
+        assert!(
+            msg.contains("wlink -d 1a86:8012:AAA mode-switch --rv"),
+            "{msg}"
+        );
     }
 }

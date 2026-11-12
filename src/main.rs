@@ -181,6 +181,31 @@ impl SdiPrint {
     }
 }
 
+impl Commands {
+    /// Whether this command writes to the chip or changes its state, and thus
+    /// must not pick a probe by enumeration order. Read-only commands
+    /// (`dump`, `regs`, `status`, `list`, `dev`) are safe with any probe.
+    fn requires_explicit_probe(&self) -> bool {
+        match self {
+            Self::Flash { .. }
+            | Self::Erase { .. }
+            | Self::Unprotect {}
+            | Self::Protect {}
+            | Self::WriteReg { .. }
+            | Self::WriteMem { .. }
+            | Self::Halt {}
+            | Self::Resume {}
+            | Self::Reset { .. }
+            | Self::ModeSwitch { .. }
+            | Self::SetPower { .. }
+            | Self::SdiPrint(_) => true,
+            Self::Dump { .. } | Self::Regs {} | Self::Status {} | Self::List {} | Self::Dev {} => {
+                false
+            }
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -198,6 +223,20 @@ fn main() -> Result<()> {
         simplelog::ColorChoice::Auto,
     )
     .expect("initialize simple logger");
+
+    // Without `-d`, commands that write to the chip or change its state use
+    // whichever probe enumerates first. Refuse that when several probes are
+    // attached, so the wrong board is never modified. Read-only commands keep
+    // the historical behaviour.
+    if needs_explicit_probe(&cli.device, &cli.command) {
+        let choices = WchLink::probe_choices().map_err(|e| {
+            anyhow::anyhow!(
+                "cannot enumerate WCH-Link probes ({e}); refusing to continue without an explicit probe. \
+                 Pass `-d <INDEX>` or `-d VID:PID:<SERIAL>` to select one"
+            )
+        })?;
+        wlink::probe::ensure_unambiguous_probe(&choices)?;
+    }
 
     // No `-d` keeps the historical "first probe" behaviour.
     let device = cli.device.unwrap_or(DeviceSelector::Index(0));
@@ -467,6 +506,15 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+/// Whether this invocation would operate on a probe chosen by enumeration
+/// order alone, i.e. a write-like command without `-d`.
+fn needs_explicit_probe(device: &Option<DeviceSelector>, command: &Option<Commands>) -> bool {
+    device.is_none()
+        && command
+            .as_ref()
+            .is_some_and(Commands::requires_explicit_probe)
+}
+
 pub fn parse_number(s: &str) -> std::result::Result<u32, String> {
     let s = s.replace('_', "").to_lowercase();
     if let Some(hex_str) = s.strip_prefix("0x") {
@@ -539,5 +587,57 @@ mod tests {
             err.to_string().contains("expected INDEX or VID:PID:SERIAL"),
             "unexpected error: {err}"
         );
+    }
+
+    #[test]
+    fn write_like_commands_require_an_explicit_probe() {
+        // Commands that write to the chip or change its state must not pick a
+        // probe by enumeration order.
+        for args in [
+            vec!["wlink", "flash", "firmware.bin"],
+            vec!["wlink", "erase"],
+            vec!["wlink", "erase", "--method", "power-off"],
+            vec!["wlink", "unprotect"],
+            vec!["wlink", "protect"],
+            vec!["wlink", "write-reg", "0x1000", "0"],
+            vec!["wlink", "write-mem", "0x08000000", "0"],
+            vec!["wlink", "halt"],
+            vec!["wlink", "resume"],
+            vec!["wlink", "reset"],
+            vec!["wlink", "set-power", "enable3v3"],
+            vec!["wlink", "mode-switch", "--rv"],
+            vec!["wlink", "sdi-print", "enable"],
+        ] {
+            let cli = Cli::try_parse_from(args.clone()).unwrap();
+            assert!(
+                needs_explicit_probe(&cli.device, &cli.command),
+                "{args:?} should require an explicit probe"
+            );
+        }
+
+        // An explicit index or serial names the probe, so no check is needed.
+        for selector in ["0", "1a86:8010:D7708F065C7F"] {
+            let cli =
+                Cli::try_parse_from(["wlink", "-d", selector, "flash", "firmware.bin"]).unwrap();
+            assert!(
+                !needs_explicit_probe(&cli.device, &cli.command),
+                "{selector} should count as an explicit selection"
+            );
+        }
+
+        // Read-only commands keep the historical first-probe behaviour.
+        for args in [
+            vec!["wlink", "status"],
+            vec!["wlink", "list"],
+            vec!["wlink", "dump", "0x08000000", "16"],
+            vec!["wlink", "regs"],
+            vec!["wlink", "dev"],
+        ] {
+            let cli = Cli::try_parse_from(args.clone()).unwrap();
+            assert!(
+                !needs_explicit_probe(&cli.device, &cli.command),
+                "{args:?} should not be guarded"
+            );
+        }
     }
 }
