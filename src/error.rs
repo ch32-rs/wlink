@@ -33,7 +33,7 @@ pub enum Error {
     NotAttached,
     #[error("Chip mismatch: expected {0:?}, got {1:?}")]
     ChipMismatch(RiscvChip, RiscvChip),
-    #[error("WCH-Link underlying protocol error: {0:#04x} {1:#04x?}")]
+    #[error("{}", protocol_error_message(.0, .1))]
     Protocol(u8, Vec<u8>),
     #[error("Invalid payload length")]
     InvalidPayloadLength,
@@ -56,6 +56,23 @@ pub enum Error {
     #[cfg(target_os = "windows")]
     #[error("Windows driver error: {0}")]
     Windows(#[from] windows::core::Error),
+}
+
+/// Formats a protocol error, annotating the one reason with a defined meaning.
+///
+/// `0x55` means the probe could not reach the target chip. The usual causes
+/// are SWD wiring, target power, and a disabled debug interface; see
+/// <https://github.com/ch32-rs/wlink/issues/94>.
+fn protocol_error_message(reason: &u8, payload: &[u8]) -> String {
+    let mut msg = format!("WCH-Link underlying protocol error: {reason:#04x} {payload:#04x?}");
+    if *reason == 0x55 {
+        msg.push_str(
+            "\nThe probe could not connect to the target chip. Check the SWD wiring and target \
+             power, and make sure the chip's debug interface is enabled (e.g. `wchisp config \
+             enable-debug`).",
+        );
+    }
+    msg
 }
 
 /// Builds the "pick one of these probes" error message. Only RV-mode probes
@@ -142,5 +159,25 @@ impl AbstractcsCmdErr {
 
             _ => unreachable!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn protocol_0x55_explains_how_to_fix_the_target_connection() {
+        let msg = Error::Protocol(0x55, vec![0x81, 0x55, 0x01, 0x02]).to_string();
+        assert!(msg.contains("0x55"), "{msg}");
+        assert!(msg.contains("SWD wiring"), "{msg}");
+        assert!(msg.contains("wchisp config enable-debug"), "{msg}");
+    }
+
+    #[test]
+    fn other_protocol_errors_keep_the_raw_message() {
+        let msg = Error::Protocol(0x1f, vec![0x81, 0x1f]).to_string();
+        assert!(msg.contains("0x1f"), "{msg}");
+        assert!(!msg.contains("wchisp"), "{msg}");
     }
 }
