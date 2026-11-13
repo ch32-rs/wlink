@@ -428,7 +428,7 @@ fn main() -> Result<()> {
                             sleep(Duration::from_millis(500));
                         }
                     }
-                }
+                }/////////
                 Commands::Unprotect {} => {
                     log::info!("Unprotect Flash");
                     sess.unprotect_flash()?;
@@ -477,6 +477,7 @@ fn main() -> Result<()> {
                     sess.dump_info()?;
                     sess.dump_core_csrs()?;
                     sess.dump_dmi()?;
+                    sess.ensure_mcu_resume()?;
                 }
                 Commands::SdiPrint(v) => match v {
                     // By enabling SDI print and modifying the _write function called by printf in the mcu code,
