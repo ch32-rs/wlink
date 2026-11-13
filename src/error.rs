@@ -1,6 +1,9 @@
 use thiserror::Error;
 
-use crate::RiscvChip;
+use crate::{
+    RiscvChip,
+    probe::{ProbeChoice, ProbeMode},
+};
 
 /// Alias for a `Result` with the error type `wlink::Error`.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -13,6 +16,9 @@ pub enum Error {
     Usb(nusb::Error),
     #[error("WCH-Link not found, please check your connection")]
     ProbeNotFound,
+    /// Several probes are attached, but the operation did not name one.
+    #[error("{}", ambiguous_probe_message(.0))]
+    AmbiguousProbe(Vec<ProbeChoice>),
     #[error("WCH-Link is connected, but is not in RV mode")]
     ProbeModeNotSupported,
     #[error("WCH-Link doesn't support current chip: {0:?}")]
@@ -47,6 +53,60 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Driver error")]
     Driver,
+    #[cfg(target_os = "windows")]
+    #[error("Windows driver error: {0}")]
+    Windows(#[from] windows::core::Error),
+}
+
+/// Builds the "pick one of these probes" error message. Only RV-mode probes
+/// are offered as operation targets; `WchLink::open_nth` rejects DAP-mode
+/// probes, so those come with a `mode-switch --rv` hint instead.
+fn ambiguous_probe_message(choices: &[ProbeChoice]) -> String {
+    use std::fmt::Write as _;
+
+    let rv: Vec<_> = choices.iter().filter(|c| c.mode == ProbeMode::Rv).collect();
+    let dap: Vec<_> = choices
+        .iter()
+        .filter(|c| c.mode == ProbeMode::Dap)
+        .collect();
+
+    let mut msg = format!(
+        "{} WCH-Link probes attached; refusing to continue without an explicit probe.",
+        choices.len()
+    );
+    if rv.is_empty() {
+        let _ = write!(
+            msg,
+            "\nNone of them is in RV mode, so no probe can be used yet."
+        );
+    } else {
+        let _ = write!(
+            msg,
+            "\nSelect one of the following with `-d` (a serial stays stable across replugs when available; `wlink list` shows details):"
+        );
+        for choice in rv {
+            // Formatting into a String is infallible.
+            let _ = write!(
+                msg,
+                "\n  -d {:<26} # {}",
+                choice.selector, choice.description
+            );
+        }
+    }
+    if !dap.is_empty() {
+        let _ = write!(
+            msg,
+            "\nAlso attached in DAP mode (cannot be used; switch back to RV mode first):"
+        );
+        for choice in dap {
+            let _ = write!(
+                msg,
+                "\n  wlink -d {} mode-switch --rv   # {}",
+                choice.selector, choice.description
+            );
+        }
+    }
+    msg
 }
 
 #[derive(Debug, Clone, Copy)]

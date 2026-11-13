@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Report CH32M103G8R6 (chip ID `0x10330700`) in `status` output. It shares the CH32L103 chip ID prefix and flashes as a CH32L103.
 - Log the ELF target RISC-V architecture (e.g. `rv32i2p1_m2p0_a2p1_c2p0_zmmul1p0`) when flashing an ELF file.
+- Select a specific WCH-Link by USB serial with `-d VID:PID:SERIAL` (the form `probe-rs` uses in `PROBE_RS_PROBE`) or `-d <SERIAL>`. A plain number still selects by index. This stays stable when probes are replugged or a probe is in DAP mode. Probes without a usable serial are selected by index.
+- Rewrite the WCH-LinkRV protocol reference as a multi-page mdBook site under `docs/protocol/` (USB transport, frame format, full command and `0x0d` subcommand tables, probe info, ESIG, operation flows, DMI, constants and unverified captures), derived from the implementation instead of the outdated 2023 `protocol.md`. Add a workflow that publishes `docs/` to the `gh-pages` branch for <https://ch32-rs.github.io/wlink/>.
+- Support WCH's native Windows driver (`WCHLinkDrv` / `WCHLinkW64.SYS`) on 64-bit Windows: probes bound to it can be opened without replacing the driver with WinUSB/Zadig, are shown by `wlink list`, and are counted by the ambiguous-probe guard. Select them with `-d <INDEX>`: a USB serial selector still requires a WinUSB/libusb driver. The 32-bit CH375 DLL backend remains available on x86 builds and is tried first there.
+
+### Fixed
+
+- Refuse write-like commands (`flash`, `erase`, `unprotect`, `protect`, `write-reg`, `write-mem`, `reset`, `halt`, `resume`, `set-power`, `sdi-print`, `mode-switch`) when several WCH-Links are attached and no `-d` was given, instead of silently using the first one. The error lists a ready-to-copy `-d` selector per RV-mode probe and a `mode-switch --rv` hint for DAP-mode probes.
+- Count probes visible only through the 32-bit Windows CH375 driver; they are offered by index because that backend cannot select by serial.
 
 ## [0.1.3] - 2026-10-21
 

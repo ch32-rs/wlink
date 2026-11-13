@@ -333,6 +333,8 @@ impl RiscvChip {
                 | RiscvChip::CH32H41X
                 | RiscvChip::CH32M030
                 | RiscvChip::CH32X3X5
+                | RiscvChip::CH585
+                | RiscvChip::CH59X
         )
     }
 

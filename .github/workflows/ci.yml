@@ -130,7 +130,9 @@ jobs:
           body: |
             This is a nightly binary release of the wlink command line tool.
 
-            For Windows users, please use the x86 version since it has the Windows driver support.
+            On Windows, the x64 build works with WCH's native driver (WCHLinkDrv)
+            and with WinUSB. The x86 build additionally supports the legacy
+            WCHLinkDLL.dll / CH375 driver; use it only when that driver is needed.
           files: |
             wlink-*.tar.gz
             wlink-*.zip
